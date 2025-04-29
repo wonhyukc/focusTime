@@ -411,4 +411,36 @@ h3 {
 /* 반응형 호버 효과 */
 .setting-item:hover {
     background-color: #f0f2f5;
+}
+
+.debug-section {
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.debug-section h3 {
+    color: #2c3e50;
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.debug-info {
+    background: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+#debug-info {
+    margin: 0;
+    color: #666;
 } 

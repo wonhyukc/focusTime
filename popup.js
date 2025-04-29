@@ -7,8 +7,11 @@ let completedSessions = 0;
 let abandonedSessions = 0;
 let sessionHistory = [];
 let settings = {
+    version: "1.0",
     focusTime: 25,
     breakTime: 5,
+    longBreakTime: 15,
+    setsBeforeLongBreak: 4,
     soundEnabled: true
 };
 
@@ -29,6 +32,9 @@ let soundInfo;
 let progressRing;
 let container;
 let soundEnabledCheckbox;
+let debugInfo;
+let longBreakTimeInput;
+let setsBeforeLongBreakInput;
 
 // DOM 요소 초기화
 function initializeDOM() {
@@ -48,12 +54,17 @@ function initializeDOM() {
     soundInfo = document.getElementById('sound-info');
     progressRing = document.querySelector('.progress-ring__progress');
     soundEnabledCheckbox = document.getElementById('sound-enabled');
+    debugInfo = document.getElementById('debug-info');
+    longBreakTimeInput = document.getElementById('long-break-time');
+    setsBeforeLongBreakInput = document.getElementById('sets-before-long-break');
 }
 
 // 설정값 저장
 function saveSettings() {
     settings.focusTime = parseFloat(focusTimeInput.value);
     settings.breakTime = parseFloat(breakTimeInput.value);
+    settings.longBreakTime = parseInt(longBreakTimeInput.value);
+    settings.setsBeforeLongBreak = parseInt(setsBeforeLongBreakInput.value);
     settings.soundEnabled = soundEnabledCheckbox.checked;
     chrome.storage.local.set({ settings });
     updateTimerDisplay();
@@ -61,19 +72,107 @@ function saveSettings() {
 
 // 설정값 로드
 function loadSettings() {
-    if (!focusTimeInput || !breakTimeInput) {
+    if (!focusTimeInput || !breakTimeInput || !longBreakTimeInput || !setsBeforeLongBreakInput) {
         console.error('설정 입력 요소를 찾을 수 없습니다.');
         return;
     }
 
     chrome.storage.local.get(['settings'], (result) => {
         if (result.settings) {
-            settings = result.settings;
+            settings = { ...settings, ...result.settings };
             focusTimeInput.value = settings.focusTime;
             breakTimeInput.value = settings.breakTime;
-            soundEnabledCheckbox.checked = settings.soundEnabled !== undefined ? settings.soundEnabled : true;
+            longBreakTimeInput.value = settings.longBreakTime;
+            setsBeforeLongBreakInput.value = settings.setsBeforeLongBreak;
+            soundEnabledCheckbox.checked = settings.soundEnabled;
         }
         updateTimerDisplay();
+        updateDebugInfo(result);
+    });
+}
+
+// 입력 필드 초기화
+function initializeInputs() {
+    // 포커스 시간 입력 처리
+    focusTimeInput.addEventListener('input', function() {
+        // 입력 중에는 숫자와 소수점만 허용
+        this.value = this.value.replace(/[^0-9.]/g, '');
+    });
+
+    focusTimeInput.addEventListener('blur', function() {
+        // 포커스가 벗어날 때만 값 검증
+        if (this.value === '') {
+            this.value = 25;
+            settings.focusTime = 25;
+            saveSettings();
+        } else {
+            let value = parseFloat(this.value);
+            if (isNaN(value) || value < 0.1) value = 0.1;
+            if (value > 60) value = 60;
+            this.value = value;
+            settings.focusTime = value;
+            saveSettings();
+        }
+    });
+
+    // 휴식 시간 입력 처리
+    breakTimeInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9.]/g, '');
+    });
+
+    breakTimeInput.addEventListener('blur', function() {
+        if (this.value === '') {
+            this.value = 5;
+            settings.breakTime = 5;
+            saveSettings();
+        } else {
+            let value = parseFloat(this.value);
+            if (isNaN(value) || value < 0.1) value = 0.1;
+            if (value > 30) value = 30;
+            this.value = value;
+            settings.breakTime = value;
+            saveSettings();
+        }
+    });
+
+    // 긴 휴식 시간 입력 처리
+    longBreakTimeInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+    });
+
+    longBreakTimeInput.addEventListener('blur', function() {
+        if (this.value === '') {
+            this.value = 15;
+            settings.longBreakTime = 15;
+            saveSettings();
+        } else {
+            let value = parseInt(this.value);
+            if (isNaN(value) || value < 1) value = 1;
+            if (value > 60) value = 60;
+            this.value = value;
+            settings.longBreakTime = value;
+            saveSettings();
+        }
+    });
+
+    // 세트 수 입력 처리
+    setsBeforeLongBreakInput.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
+    });
+
+    setsBeforeLongBreakInput.addEventListener('blur', function() {
+        if (this.value === '') {
+            this.value = 4;
+            settings.setsBeforeLongBreak = 4;
+            saveSettings();
+        } else {
+            let value = parseInt(this.value);
+            if (isNaN(value) || value < 1) value = 1;
+            if (value > 10) value = 10;
+            this.value = value;
+            settings.setsBeforeLongBreak = value;
+            saveSettings();
+        }
     });
 }
 
@@ -94,6 +193,7 @@ function init() {
             settings = result.settings;
             focusTimeInput.value = settings.focusTime;
             breakTimeInput.value = settings.breakTime;
+            soundEnabledCheckbox.checked = settings.soundEnabled !== undefined ? settings.soundEnabled : true;
         }
 
         // 타이머 상태 초기화
@@ -104,6 +204,7 @@ function init() {
         // UI 업데이트
         updateDisplay();
         updateModeStyles();
+        updateDebugInfo(result);
         
         // 이벤트 리스너 설정
         setupEventListeners();
@@ -112,7 +213,13 @@ function init() {
         loadStats();
 
         // 주기적 업데이트 시작
-        setInterval(updateDisplay, 1000);
+        setInterval(() => {
+            updateDisplay();
+            updateDebugInfo();
+        }, 1000);
+
+        // 입력 필드 초기화
+        initializeInputs();
     });
 }
 
@@ -139,14 +246,6 @@ function setupEventListeners() {
                 chrome.runtime.sendMessage({ action: 'resetTimer' });
             }
         });
-    }
-
-    if (focusTimeInput) {
-        focusTimeInput.addEventListener('change', handleTimeChange);
-    }
-
-    if (breakTimeInput) {
-        breakTimeInput.addEventListener('change', handleTimeChange);
     }
 
     if (exportDataButton) exportDataButton.addEventListener('click', exportData);
@@ -376,21 +475,23 @@ function updateStats() {
 
 // 데이터 내보내기
 function exportData() {
-    if (sessionHistory.length === 0) {
-        alert('내보낼 통계 데이터가 없습니다.');
-        return;
-    }
-
     const exportData = {
-        sessionHistory: sessionHistory,
-        settings: settings
+        version: settings.version,
+        settings: {
+            focusTime: settings.focusTime,
+            breakTime: settings.breakTime,
+            longBreakTime: settings.longBreakTime,
+            setsBeforeLongBreak: settings.setsBeforeLongBreak,
+            soundEnabled: settings.soundEnabled
+        },
+        sessionHistory: sessionHistory
     };
 
-    const blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'pomodoro_data.json';
+    a.download = 'pomodoro_settings.json';
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -468,21 +569,15 @@ function updateDisplay() {
         sessionTypeDisplay.textContent = result.isBreak ? '휴식 시간' : '집중 시간';
         sessionTypeDisplay.style.color = result.isBreak ? '#2ecc71' : '#3498db';
         
-        focusTimeInput.value = result.focusTime || 25;
-        breakTimeInput.value = result.breakTime || 5;
-    });
-}
+        // 입력 필드가 포커스를 가지고 있지 않을 때만 값을 업데이트
+        if (document.activeElement !== focusTimeInput) {
+            focusTimeInput.value = result.focusTime || 25;
+        }
+        if (document.activeElement !== breakTimeInput) {
+            breakTimeInput.value = result.breakTime || 5;
+        }
 
-// 시간 설정 변경 이벤트
-function handleTimeChange() {
-    const focusTime = parseFloat(focusTimeInput.value) || 25;
-    const breakTime = parseFloat(breakTimeInput.value) || 5;
-    
-    chrome.storage.local.set({
-        focusTime: focusTime,
-        breakTime: breakTime
-    }, () => {
-        chrome.runtime.sendMessage({ action: 'resetTimer' });
+        updateDebugInfo(result);
     });
 }
 
@@ -493,6 +588,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     return true;
 });
+
+// 디버그 정보 업데이트 함수
+function updateDebugInfo(data) {
+    if (!debugInfo) return;
+    
+    const debugData = {
+        '현재 설정': settings,
+        '타이머 상태': {
+            timeLeft: timeLeft,
+            isRunning: isRunning,
+            isFocusSession: isFocusSession,
+            '현재 시간': new Date().toLocaleTimeString()
+        }
+    };
+
+    if (data) {
+        debugData['스토리지 데이터'] = data;
+    }
+
+    debugInfo.textContent = JSON.stringify(debugData, null, 2);
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(init, 0);
