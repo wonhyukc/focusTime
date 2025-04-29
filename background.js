@@ -1,3 +1,13 @@
+// 기본 설정값
+const DEFAULT_SETTINGS = {
+    version: "1.0",
+    focusTime: 25,
+    breakTime: 5,
+    longBreakTime: 15,
+    setsBeforeLongBreak: 4,
+    soundEnabled: true
+};
+
 let timer = {
     timeLeft: 0,
     isRunning: false,
@@ -8,19 +18,14 @@ let timer = {
 
 // 타이머 상태 초기화
 chrome.runtime.onInstalled.addListener(() => {
-    chrome.storage.local.get(['focusTime', 'breakTime'], (result) => {
-        const focusTime = result.focusTime || 25;
-        const breakTime = result.breakTime || 5;
+    chrome.storage.local.get(['settings'], (result) => {
+        const settings = result.settings || DEFAULT_SETTINGS;
         chrome.storage.local.set({
-            timeLeft: focusTime * 60,
+            timeLeft: settings.focusTime * 60,
             isRunning: false,
             isBreak: false,
             sessionComplete: false,
-            settings: {
-                focusTime: focusTime,
-                breakTime: breakTime,
-                soundEnabled: true
-            }
+            settings: settings
         });
     });
 });
@@ -44,7 +49,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
                         title: title,
                         message: message,
                         requireInteraction: true,
-                        silent: !result.settings?.soundEnabled // 설정에 따라 시스템 알림음 제어
+                        silent: !result.settings?.soundEnabled
                     });
 
                     // 타이머 일시 정지 및 세션 완료 상태로 변경
@@ -53,9 +58,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
                         isRunning: false,
                         sessionComplete: true
                     }, () => {
-                        // 알람 중지
                         chrome.alarms.clear(timer.alarmName);
-                        // 배지 업데이트
                         updateBadge(0, result.isBreak);
                     });
                 } else {
@@ -85,18 +88,24 @@ chrome.notifications.onClicked.addListener((notificationId) => {
 
 // 다음 세션 시작
 function startNextSession() {
-    chrome.storage.local.get(['isBreak', 'focusTime', 'breakTime'], (result) => {
+    chrome.storage.local.get(['isBreak', 'settings'], (result) => {
         const isBreak = !result.isBreak;
-        const newTimeLeft = isBreak ? result.breakTime * 60 : result.focusTime * 60;
+        const settings = result.settings || DEFAULT_SETTINGS;
+        const newTimeLeft = isBreak ? settings.breakTime * 60 : settings.focusTime * 60;
         
+        // 먼저 상태를 업데이트
         chrome.storage.local.set({
             timeLeft: newTimeLeft,
             isBreak: isBreak,
             isRunning: true,
             sessionComplete: false
+        }, () => {
+            // 상태 업데이트 후 타이머 시작
+            chrome.alarms.create(timer.alarmName, {
+                periodInMinutes: 1/60  // 1초마다 실행
+            });
+            updateBadge(newTimeLeft, isBreak);
         });
-
-        updateBadge(newTimeLeft, isBreak);
     });
 }
 
@@ -133,8 +142,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             toggleTimer(false);
             break;
         case 'resetTimer':
-            chrome.storage.local.get(['focusTime', 'isBreak'], (result) => {
-                const newTime = result.isBreak ? result.breakTime * 60 : result.focusTime * 60;
+            chrome.storage.local.get(['settings', 'isBreak'], (result) => {
+                const settings = result.settings || DEFAULT_SETTINGS;
+                const newTime = result.isBreak ? settings.breakTime * 60 : settings.focusTime * 60;
                 chrome.storage.local.set({
                     timeLeft: newTime,
                     isRunning: false,

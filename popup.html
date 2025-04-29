@@ -26,8 +26,11 @@
         </div>
         
         <div class="controls">
-            <button id="start" class="start-button">시작</button>
-            <button id="reset">초기화</button>
+            <button id="start" class="start-button full-width" title="스페이스바">시작</button>
+            <div class="secondary-controls">
+                <button id="skip" class="secondary-button">다음 세션</button>
+                <button id="reset" class="secondary-button">초기화</button>
+            </div>
         </div>
 
         <div class="settings">
@@ -68,11 +71,20 @@
         </div>
 
         <div class="data-section">
-            <h3>💾 데이터 관리</h3>
+            <h3>⚙️ 설정 관리</h3>
             <div class="data-buttons">
                 <button id="export-data">내보내기</button>
                 <button id="import-data">가져오기</button>
                 <button id="reset-data">초기화</button>
+            </div>
+        </div>
+
+        <div class="stats-data-section">
+            <h3>📊 통계 데이터 관리</h3>
+            <div class="data-buttons">
+                <button id="export-stats">내보내기</button>
+                <button id="import-stats">가져오기</button>
+                <button id="reset-stats">초기화</button>
             </div>
         </div>
 

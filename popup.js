@@ -1,3 +1,13 @@
+// 기본 설정값
+const DEFAULT_SETTINGS = {
+    version: "1.0",
+    focusTime: 25,
+    breakTime: 5,
+    longBreakTime: 15,
+    setsBeforeLongBreak: 4,
+    soundEnabled: true
+};
+
 // 상태 변수
 let timeLeft;
 let timer;
@@ -6,14 +16,7 @@ let isFocusSession = true;
 let completedSessions = 0;
 let abandonedSessions = 0;
 let sessionHistory = [];
-let settings = {
-    version: "1.0",
-    focusTime: 25,
-    breakTime: 5,
-    longBreakTime: 15,
-    setsBeforeLongBreak: 4,
-    soundEnabled: true
-};
+let settings = { ...DEFAULT_SETTINGS };
 
 // DOM 요소
 let timerDisplay;
@@ -34,6 +37,9 @@ let container;
 let soundEnabledCheckbox;
 let longBreakTimeInput;
 let setsBeforeLongBreakInput;
+let exportStatsButton;
+let importStatsButton;
+let resetStatsButton;
 
 // DOM 요소 초기화
 function initializeDOM() {
@@ -55,6 +61,9 @@ function initializeDOM() {
     soundEnabledCheckbox = document.getElementById('sound-enabled');
     longBreakTimeInput = document.getElementById('long-break-time');
     setsBeforeLongBreakInput = document.getElementById('sets-before-long-break');
+    exportStatsButton = document.getElementById('export-stats');
+    importStatsButton = document.getElementById('import-stats');
+    resetStatsButton = document.getElementById('reset-stats');
 }
 
 // 설정값 저장
@@ -64,7 +73,22 @@ function saveSettings() {
     settings.longBreakTime = parseInt(longBreakTimeInput.value);
     settings.setsBeforeLongBreak = parseInt(setsBeforeLongBreakInput.value);
     settings.soundEnabled = soundEnabledCheckbox.checked;
-    chrome.storage.local.set({ settings });
+
+    // 현재 세션 타입에 따라 타이머 시간 업데이트
+    const newTimeInSeconds = (isFocusSession ? settings.focusTime : settings.breakTime) * 60;
+    
+    // 타이머가 실행 중이 아닐 때만 timeLeft 업데이트
+    if (!isRunning) {
+        timeLeft = newTimeInSeconds;
+        chrome.storage.local.set({ 
+            settings,
+            timeLeft: newTimeInSeconds
+        });
+    } else {
+        chrome.storage.local.set({ settings });
+    }
+
+    // 타이머 디스플레이 업데이트
     updateTimerDisplay();
 }
 
@@ -78,8 +102,8 @@ function loadSettings() {
     chrome.storage.local.get(['settings'], (result) => {
         if (result.settings) {
             settings = { ...settings, ...result.settings };
-            focusTimeInput.value = settings.focusTime;
-            breakTimeInput.value = settings.breakTime;
+            focusTimeInput.value = settings.focusTime % 1 === 0 ? Math.floor(settings.focusTime) : settings.focusTime;
+            breakTimeInput.value = settings.breakTime % 1 === 0 ? Math.floor(settings.breakTime) : settings.breakTime.toFixed(1);
             longBreakTimeInput.value = settings.longBreakTime;
             setsBeforeLongBreakInput.value = settings.setsBeforeLongBreak;
             soundEnabledCheckbox.checked = settings.soundEnabled;
@@ -107,7 +131,8 @@ function initializeInputs() {
             let value = parseFloat(this.value);
             if (isNaN(value) || value < 0.1) value = 0.1;
             if (value > 60) value = 60;
-            this.value = value;
+            // 소수점 이하가 0이면 정수로 표시
+            this.value = value % 1 === 0 ? Math.floor(value) : value;
             settings.focusTime = value;
             saveSettings();
         }
@@ -134,7 +159,8 @@ function initializeInputs() {
             let value = parseFloat(this.value);
             if (isNaN(value) || value < 0.1) value = 0.1;
             if (value > 30) value = 30;
-            this.value = value.toFixed(1); // 소수점 첫째 자리까지 표시
+            // 소수점 이하가 0이면 정수로 표시
+            this.value = value % 1 === 0 ? Math.floor(value) : value.toFixed(1);
             settings.breakTime = value;
             saveSettings();
         }
@@ -196,30 +222,18 @@ function init() {
     // 초기 설정 로드
     chrome.storage.local.get(['settings', 'timeLeft', 'isRunning', 'isBreak'], (result) => {
         if (result.settings) {
-            settings = result.settings;
-            // 저장된 설정이 있으면 그것을 사용
-            focusTimeInput.value = settings.focusTime;
-            breakTimeInput.value = settings.breakTime;
-            longBreakTimeInput.value = settings.longBreakTime;
-            setsBeforeLongBreakInput.value = settings.setsBeforeLongBreak;
-            soundEnabledCheckbox.checked = settings.soundEnabled !== undefined ? settings.soundEnabled : true;
+            settings = { ...DEFAULT_SETTINGS, ...result.settings };
         } else {
-            // 저장된 설정이 없으면 기본값 사용
-            settings = {
-                version: "1.0",
-                focusTime: 25,
-                breakTime: 5,
-                longBreakTime: 15,
-                setsBeforeLongBreak: 4,
-                soundEnabled: true
-            };
-            focusTimeInput.value = settings.focusTime;
-            breakTimeInput.value = settings.breakTime;
-            longBreakTimeInput.value = settings.longBreakTime;
-            setsBeforeLongBreakInput.value = settings.setsBeforeLongBreak;
-            soundEnabledCheckbox.checked = settings.soundEnabled;
-            saveSettings();
+            settings = { ...DEFAULT_SETTINGS };
+            chrome.storage.local.set({ settings });
         }
+
+        // 입력 필드 업데이트 - 소수점 처리 추가
+        focusTimeInput.value = settings.focusTime % 1 === 0 ? Math.floor(settings.focusTime) : settings.focusTime;
+        breakTimeInput.value = settings.breakTime % 1 === 0 ? Math.floor(settings.breakTime) : settings.breakTime.toFixed(1);
+        longBreakTimeInput.value = settings.longBreakTime;
+        setsBeforeLongBreakInput.value = settings.setsBeforeLongBreak;
+        soundEnabledCheckbox.checked = settings.soundEnabled;
 
         // 타이머 상태 초기화
         timeLeft = result.timeLeft || settings.focusTime * 60;
@@ -249,16 +263,18 @@ function init() {
 // 이벤트 리스너 설정
 function setupEventListeners() {
     if (startButton) {
-        startButton.addEventListener('click', () => {
-            chrome.storage.local.get(['isRunning', 'sessionComplete'], (result) => {
-                if (result.sessionComplete) {
-                    chrome.runtime.sendMessage({ action: 'startNextSession' });
-                } else {
-                    const newState = !result.isRunning;
-                    chrome.runtime.sendMessage({
-                        action: newState ? 'startTimer' : 'pauseTimer'
-                    });
+        startButton.addEventListener('click', toggleTimerState);
+    }
+
+    if (document.getElementById('skip')) {
+        document.getElementById('skip').addEventListener('click', () => {
+            chrome.storage.local.get(['isBreak'], (result) => {
+                if (!result.isBreak) {
+                    // 집중 시간일 경우 포기로 처리
+                    abandonedSessions++;
+                    updateStats();
                 }
+                chrome.runtime.sendMessage({ action: 'startNextSession' });
             });
         });
     }
@@ -278,21 +294,32 @@ function setupEventListeners() {
     if (soundEnabledCheckbox) {
         soundEnabledCheckbox.addEventListener('change', saveSettings);
     }
+    if (exportStatsButton) exportStatsButton.addEventListener('click', exportStats);
+    if (importStatsButton) importStatsButton.addEventListener('click', importStats);
+    if (resetStatsButton) resetStatsButton.addEventListener('click', resetStats);
+
+    // 스페이스바 단축키 설정
+    document.addEventListener('keydown', (e) => {
+        // 입력 필드에 포커스가 있을 때는 스페이스바 단축키 비활성화
+        if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
+            e.preventDefault();
+            toggleTimerState();
+        }
+    });
 }
 
-// 타이머 토글 (시작/일시정지)
-function toggleTimer() {
-    if (!isRunning) {
-        isRunning = true;
-        timer = setInterval(updateTimer, 1000);
-        startButton.textContent = '일시정지';
-        startButton.classList.add('active');
-    } else {
-        isRunning = false;
-        clearInterval(timer);
-        startButton.textContent = '재개';
-        startButton.classList.remove('active');
-    }
+// 타이머 상태 토글 함수
+function toggleTimerState() {
+    chrome.storage.local.get(['isRunning', 'sessionComplete'], (result) => {
+        if (result.sessionComplete) {
+            chrome.runtime.sendMessage({ action: 'startNextSession' });
+        } else {
+            const newState = !result.isRunning;
+            chrome.runtime.sendMessage({
+                action: newState ? 'startTimer' : 'pauseTimer'
+            });
+        }
+    });
 }
 
 // 타이머 초기화
@@ -300,6 +327,12 @@ function resetTimer() {
     if (confirm('현재 진행 중인 세션을 포기하고 초기화하시겠습니까?')) {
         pauseTimer();
         isFocusSession = true;
+        timeLeft = settings.focusTime * 60;
+        chrome.storage.local.set({ 
+            timeLeft: timeLeft,
+            isRunning: false,
+            isBreak: false
+        });
         updateTimerDisplay();
         abandonedSessions++;
         updateStats();
@@ -326,6 +359,7 @@ function pauseTimer() {
 function updateTimer() {
     if (timeLeft > 0) {
         timeLeft--;
+        chrome.storage.local.set({ timeLeft: timeLeft });
         updateTimerDisplay();
         updateProgress();
     } else {
@@ -335,6 +369,11 @@ function updateTimer() {
         }
         isFocusSession = !isFocusSession;
         timeLeft = (isFocusSession ? settings.focusTime : settings.breakTime) * 60;
+        chrome.storage.local.set({ 
+            timeLeft: timeLeft,
+            isBreak: !isFocusSession,
+            isRunning: true  // 세션 전환 후에도 타이머가 계속 실행되도록 설정
+        });
         updateTimerDisplay();
         updateModeStyles();
         saveSession();
@@ -532,30 +571,49 @@ function importData() {
             try {
                 const importedData = JSON.parse(event.target.result);
                 
+                // 데이터 유효성 검사
+                if (!importedData || !importedData.settings) {
+                    throw new Error('잘못된 형식의 설정 파일입니다.');
+                }
+
+                // 기본값 설정
+                const defaultSettings = {
+                    focusTime: 25,
+                    breakTime: 5,
+                    longBreakTime: 15,
+                    setsBeforeLongBreak: 4,
+                    soundEnabled: true
+                };
+
                 // 가져온 설정 데이터를 보여주는 메시지 생성
                 let importMessage = '가져올 설정:\n\n';
-                importMessage += `집중 시간: ${importedData.settings?.focusTime || '기본값'}분\n`;
-                importMessage += `휴식 시간: ${importedData.settings?.breakTime || '기본값'}분\n`;
-                importMessage += `긴 휴식 시간: ${importedData.settings?.longBreakTime || '기본값'}분\n`;
-                importMessage += `세트 수: ${importedData.settings?.setsBeforeLongBreak || '기본값'}세트\n`;
-                importMessage += `알림음: ${importedData.settings?.soundEnabled ? '켜짐' : '꺼짐'}`;
+                importMessage += `집중 시간: ${importedData.settings.focusTime || defaultSettings.focusTime}분\n`;
+                importMessage += `휴식 시간: ${importedData.settings.breakTime || defaultSettings.breakTime}분\n`;
+                importMessage += `긴 휴식 시간: ${importedData.settings.longBreakTime || defaultSettings.longBreakTime}분\n`;
+                importMessage += `세트 수: ${importedData.settings.setsBeforeLongBreak || defaultSettings.setsBeforeLongBreak}세트\n`;
+                importMessage += `알림음: ${importedData.settings.soundEnabled !== undefined ? (importedData.settings.soundEnabled ? '켜짐' : '꺼짐') : '기본값'}`;
                 
                 if (confirm(importMessage + '\n\n이 설정을 적용하시겠습니까?')) {
-                    if (importedData.settings) {
-                        settings = importedData.settings;
-                        focusTimeInput.value = settings.focusTime;
-                        breakTimeInput.value = settings.breakTime;
-                        longBreakTimeInput.value = settings.longBreakTime;
-                        setsBeforeLongBreakInput.value = settings.setsBeforeLongBreak;
-                        soundEnabledCheckbox.checked = settings.soundEnabled;
-                        saveSettings();
-                    }
+                    // 설정값 검증 및 적용
+                    settings = {
+                        ...defaultSettings,
+                        ...importedData.settings
+                    };
 
+                    // 입력 필드 업데이트
+                    focusTimeInput.value = settings.focusTime % 1 === 0 ? Math.floor(settings.focusTime) : settings.focusTime;
+                    breakTimeInput.value = settings.breakTime % 1 === 0 ? Math.floor(settings.breakTime) : settings.breakTime.toFixed(1);
+                    longBreakTimeInput.value = settings.longBreakTime;
+                    setsBeforeLongBreakInput.value = settings.setsBeforeLongBreak;
+                    soundEnabledCheckbox.checked = settings.soundEnabled;
+
+                    // 설정 저장
+                    saveSettings();
                     alert('설정을 성공적으로 가져왔습니다.');
                 }
             } catch (error) {
                 console.error('데이터 가져오기 중 오류 발생:', error);
-                alert('데이터를 가져오는 중 오류가 발생했습니다.');
+                alert('데이터를 가져오는 중 오류가 발생했습니다: ' + error.message);
             }
         };
         reader.readAsText(file);
@@ -581,11 +639,13 @@ function updateDisplay() {
         return;
     }
 
-    chrome.storage.local.get(['timeLeft', 'isRunning', 'isBreak', 'sessionComplete'], (result) => {
+    chrome.storage.local.get(['timeLeft', 'isRunning', 'isBreak', 'sessionComplete', 'settings'], (result) => {
+        // 시간 표시 업데이트
         const minutes = Math.floor(result.timeLeft / 60);
         const seconds = result.timeLeft % 60;
         timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         
+        // 버튼 상태 업데이트
         if (result.sessionComplete) {
             const nextSessionType = result.isBreak ? '집중' : '휴식';
             startButton.textContent = `${nextSessionType} 시작`;
@@ -595,8 +655,24 @@ function updateDisplay() {
             startButton.classList.remove('next-session');
         }
 
-        sessionTypeDisplay.textContent = result.isBreak ? '휴식 시간' : '집중 시간';
-        sessionTypeDisplay.style.color = result.isBreak ? '#2ecc71' : '#3498db';
+        // 세션 타입에 따라 UI 업데이트
+        const isBreak = result.isBreak;
+        sessionTypeDisplay.textContent = isBreak ? '휴식 시간' : '집중 시간';
+        sessionTypeDisplay.style.color = isBreak ? '#2ecc71' : '#3498db';
+        
+        // 모드에 따른 컨테이너 클래스 업데이트
+        if (isBreak) {
+            container.classList.remove('focus-mode');
+            container.classList.add('break-mode');
+        } else {
+            container.classList.remove('break-mode');
+            container.classList.add('focus-mode');
+        }
+
+        // 로컬 상태 업데이트
+        isRunning = result.isRunning;
+        isFocusSession = !result.isBreak;
+        timeLeft = result.timeLeft;
     });
 }
 
@@ -607,6 +683,79 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     return true;
 });
+
+// 통계 데이터 내보내기
+function exportStats() {
+    const statsData = {
+        version: settings.version,
+        sessionHistory: sessionHistory,
+        stats: {
+            completedSessions: completedSessions,
+            abandonedSessions: abandonedSessions
+        }
+    };
+
+    const blob = new Blob([JSON.stringify(statsData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'pomodoro_statistics.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// 통계 데이터 가져오기
+function importStats() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const importedData = JSON.parse(event.target.result);
+                
+                // 가져온 통계 데이터를 보여주는 메시지 생성
+                let importMessage = '가져올 통계 데이터:\n\n';
+                importMessage += `완료한 세션: ${importedData.stats?.completedSessions || 0}회\n`;
+                importMessage += `포기한 세션: ${importedData.stats?.abandonedSessions || 0}회\n`;
+                importMessage += `세션 기록: ${importedData.sessionHistory?.length || 0}개`;
+                
+                if (confirm(importMessage + '\n\n이 통계 데이터를 적용하시겠습니까?')) {
+                    if (importedData.sessionHistory) {
+                        sessionHistory = importedData.sessionHistory;
+                    }
+                    if (importedData.stats) {
+                        completedSessions = importedData.stats.completedSessions || 0;
+                        abandonedSessions = importedData.stats.abandonedSessions || 0;
+                    }
+                    updateStats();
+                    alert('통계 데이터를 성공적으로 가져왔습니다.');
+                }
+            } catch (error) {
+                console.error('통계 데이터 가져오기 중 오류 발생:', error);
+                alert('통계 데이터를 가져오는 중 오류가 발생했습니다.');
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+// 통계 데이터 초기화
+function resetStats() {
+    if (confirm('모든 통계 데이터를 삭제하시겠습니까?\n(설정은 유지됩니다)')) {
+        sessionHistory = [];
+        completedSessions = 0;
+        abandonedSessions = 0;
+        chrome.storage.local.remove(['sessionHistory', 'completedSessions', 'abandonedSessions']);
+        updateStats();
+        alert('통계 데이터가 초기화되었습니다.');
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(init, 0);

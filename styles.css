@@ -4,12 +4,14 @@ body {
     font-family: 'Segoe UI', Arial, sans-serif;
     background-color: #ffffff;
     transition: background-color 0.5s ease;
+    min-height: 600px;
 }
 
 .container {
     display: flex;
     flex-direction: column;
     gap: 15px;
+    padding-bottom: 20px;
 }
 
 .timer-section {
@@ -163,16 +165,16 @@ button {
 }
 
 .start-button {
-    width: 200px;
-    font-size: 16px;
+    padding: 15px 30px;
+    font-size: 18px;
     font-weight: bold;
     transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
 .start-button.next-session {
     animation: pulse 2s infinite;
-    background-color: #4CAF50;
-    color: white;
 }
 
 .start-button::after {
@@ -311,14 +313,14 @@ button {
 }
 
 /* 데이터 관리 섹션 스타일 */
-.data-section {
+.data-section, .stats-data-section {
     background-color: #f8f9fa;
     border-radius: 12px;
     padding: 20px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.data-section h3 {
+.data-section h3, .stats-data-section h3 {
     color: #2c3e50;
     margin-top: 0;
     margin-bottom: 15px;
@@ -335,6 +337,11 @@ button {
     width: 100%;
     font-size: 12px;
     padding: 8px;
+    background-color: #666;
+}
+
+.data-buttons button:hover {
+    background-color: #444;
 }
 
 /* 알림음 테스트 섹션 스타일 */
@@ -434,4 +441,49 @@ h3 {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+.full-width {
+    width: 100% !important;
+}
+
+.secondary-controls {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+.secondary-button {
+    flex: 1;
+    padding: 8px 15px;
+    font-size: 14px;
+    background-color: #95a5a6;
+    transition: all 0.3s ease;
+}
+
+.secondary-button:hover {
+    background-color: #7f8c8d;
+}
+
+.focus-mode .secondary-button {
+    background-color: #3498db;
+}
+
+.focus-mode .secondary-button:hover {
+    background-color: #2980b9;
+}
+
+.break-mode .secondary-button {
+    background-color: #2ecc71;
+}
+
+.break-mode .secondary-button:hover {
+    background-color: #27ae60;
 } 
