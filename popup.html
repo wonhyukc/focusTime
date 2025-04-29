@@ -33,19 +33,19 @@
         <div class="settings">
             <div class="setting-item">
                 <label for="focus-time">집중 시간 (분):</label>
-                <input type="text" id="focus-time" pattern="[0-9]*\.?[0-9]*" inputmode="numeric" value="25">
+                <input type="number" id="focus-time" min="0.1" max="60" step="0.1" value="25">
             </div>
             <div class="setting-item">
                 <label for="break-time">휴식 시간 (분):</label>
-                <input type="text" id="break-time" pattern="[0-9]*\.?[0-9]*" inputmode="numeric" value="5">
+                <input type="number" id="break-time" min="0.1" max="30" step="0.1" value="5">
             </div>
             <div class="setting-item">
                 <label for="long-break-time">긴 휴식 시간 (분):</label>
-                <input type="text" id="long-break-time" pattern="[0-9]*" inputmode="numeric" value="15">
+                <input type="number" id="long-break-time" min="1" max="60" step="1" value="15">
             </div>
             <div class="setting-item">
                 <label for="sets-before-long-break">긴 휴식까지 세트 수:</label>
-                <input type="text" id="sets-before-long-break" pattern="[0-9]*" inputmode="numeric" value="4">
+                <input type="number" id="sets-before-long-break" min="1" max="10" step="1" value="4">
             </div>
             <div class="setting-item">
                 <label for="sound-enabled">알림음</label>
@@ -81,13 +81,6 @@
             <div class="sound-buttons">
                 <button id="test-sound">알림음 테스트</button>
                 <div id="sound-info"></div>
-            </div>
-        </div>
-
-        <div class="debug-section">
-            <h3>🔧 디버그 정보</h3>
-            <div class="debug-info">
-                <pre id="debug-info"></pre>
             </div>
         </div>
     </div>
