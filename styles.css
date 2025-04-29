@@ -1,0 +1,97 @@
+body {
+    width: 300px;
+    padding: 15px;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.timer-display {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#timer {
+    font-size: 48px;
+    font-weight: bold;
+    color: #1a73e8;
+}
+
+#session-type {
+    font-size: 18px;
+    color: #666;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: #1a73e8;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #1557b0;
+}
+
+.settings {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+input[type="number"] {
+    width: 60px;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.stats {
+    display: flex;
+    justify-content: space-around;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+
+.data-management {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+#export-data, #import-data, #reset-data {
+    background-color: #666;
+}
+
+#export-data:hover, #import-data:hover, #reset-data:hover {
+    background-color: #444;
+}
+
+/* 세션 타입에 따른 색상 변경 */
+.focus-session {
+    color: #1a73e8;
+}
+
+.break-session {
+    color: #0b8043;
+} 

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>포모도로 타이머</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="timer-display">
+            <div id="timer">25:00</div>
+            <div id="session-type">집중 시간</div>
+        </div>
+        
+        <div class="controls">
+            <button id="start">시작</button>
+            <button id="pause">일시정지</button>
+            <button id="reset">초기화</button>
+        </div>
+
+        <div class="settings">
+            <div class="setting-item">
+                <label for="focus-time">집중 시간 (분):</label>
+                <input type="number" id="focus-time" value="25" min="1" max="60">
+            </div>
+            <div class="setting-item">
+                <label for="break-time">휴식 시간 (분):</label>
+                <input type="number" id="break-time" value="5" min="1" max="30">
+            </div>
+        </div>
+
+        <div class="stats">
+            <div>완료 세션: <span id="completed-sessions">0</span></div>
+            <div>포기 세션: <span id="abandoned-sessions">0</span></div>
+        </div>
+
+        <div class="data-management">
+            <button id="export-data">통계 내보내기</button>
+            <button id="import-data">통계 가져오기</button>
+            <button id="reset-data">통계 초기화</button>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html> 
