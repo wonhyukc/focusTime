@@ -122,6 +122,8 @@ function resetTimer() {
         abandonedSessions++;
         updateStats();
         updateModeStyles();
+        // 배지 초기화
+        chrome.action.setBadgeText({ text: '' });
     }
 }
 
@@ -132,6 +134,9 @@ function pauseTimer() {
         clearInterval(timer);
         startButton.textContent = '재개';
         startButton.classList.remove('active');
+        // 일시정지 상태를 배지에 표시
+        const currentTime = timerDisplay.textContent;
+        chrome.action.setBadgeText({ text: '⏸️' + currentTime });
     }
 }
 
@@ -162,10 +167,29 @@ function updateTimerDisplay() {
     
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
-    timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     
+    // 타이머 디스플레이 업데이트
+    timerDisplay.textContent = timeString;
     sessionTypeDisplay.textContent = isFocusSession ? '집중 시간' : '휴식 시간';
+    
+    // 확장 프로그램 아이콘 배지 업데이트
+    updateBadge(timeString);
+    
     updateProgress();
+}
+
+// 배지 업데이트
+function updateBadge(timeString) {
+    // 배지 텍스트 업데이트
+    chrome.action.setBadgeText({ text: timeString });
+    
+    // 배지 색상 설정
+    const badgeColor = isFocusSession ? '#3498db' : '#2ecc71';
+    chrome.action.setBadgeBackgroundColor({ color: badgeColor });
+    
+    // 배지 텍스트 색상 설정
+    chrome.action.setBadgeTextColor({ color: '#FFFFFF' });
 }
 
 // 프로그레스 업데이트
