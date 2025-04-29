@@ -12,6 +12,8 @@ let importDataButton;
 let resetDataButton;
 let testSoundButton;
 let soundInfo;
+let progressRing;
+let container;
 
 // 상태 변수
 let timeLeft;
@@ -28,6 +30,7 @@ let settings = {
 
 // DOM 요소 초기화
 function initializeDOM() {
+    container = document.querySelector('.container');
     timerDisplay = document.getElementById('timer');
     sessionTypeDisplay = document.getElementById('session-type');
     startButton = document.getElementById('start');
@@ -41,6 +44,7 @@ function initializeDOM() {
     resetDataButton = document.getElementById('reset-data');
     testSoundButton = document.getElementById('test-sound');
     soundInfo = document.getElementById('sound-info');
+    progressRing = document.querySelector('.progress-ring__progress');
 }
 
 // 설정값 저장
@@ -48,6 +52,7 @@ function saveSettings() {
     settings.focusTime = parseInt(focusTimeInput.value);
     settings.breakTime = parseInt(breakTimeInput.value);
     chrome.storage.local.set({ settings });
+    updateTimerDisplay();
 }
 
 // 설정값 로드
@@ -68,6 +73,7 @@ function init() {
     loadSettings();
     loadStats();
     setupEventListeners();
+    updateModeStyles();
 }
 
 // 이벤트 리스너 설정
@@ -98,10 +104,12 @@ function toggleTimer() {
         isRunning = true;
         timer = setInterval(updateTimer, 1000);
         startButton.textContent = '일시정지';
+        startButton.classList.add('active');
     } else {
         isRunning = false;
         clearInterval(timer);
         startButton.textContent = '재개';
+        startButton.classList.remove('active');
     }
 }
 
@@ -113,6 +121,7 @@ function resetTimer() {
         updateTimerDisplay();
         abandonedSessions++;
         updateStats();
+        updateModeStyles();
     }
 }
 
@@ -122,6 +131,7 @@ function pauseTimer() {
         isRunning = false;
         clearInterval(timer);
         startButton.textContent = '재개';
+        startButton.classList.remove('active');
     }
 }
 
@@ -130,6 +140,7 @@ function updateTimer() {
     if (timeLeft > 0) {
         timeLeft--;
         updateTimerDisplay();
+        updateProgress();
     } else {
         playNotificationSound();
         if (isFocusSession) {
@@ -138,6 +149,7 @@ function updateTimer() {
         isFocusSession = !isFocusSession;
         timeLeft = (isFocusSession ? settings.focusTime : settings.breakTime) * 60;
         updateTimerDisplay();
+        updateModeStyles();
         saveSession();
     }
 }
@@ -145,7 +157,6 @@ function updateTimer() {
 // 타이머 표시 업데이트
 function updateTimerDisplay() {
     if (!isRunning) {
-        // 타이머가 실행 중이 아닐 때는 초기값을 표시
         timeLeft = (isFocusSession ? settings.focusTime : settings.breakTime) * 60;
     }
     
@@ -154,7 +165,32 @@ function updateTimerDisplay() {
     timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     
     sessionTypeDisplay.textContent = isFocusSession ? '집중 시간' : '휴식 시간';
-    sessionTypeDisplay.className = isFocusSession ? 'focus-session' : 'break-session';
+    updateProgress();
+}
+
+// 프로그레스 업데이트
+function updateProgress() {
+    const totalTime = (isFocusSession ? settings.focusTime : settings.breakTime) * 60;
+    const progress = ((totalTime - timeLeft) / totalTime) * 100;
+    
+    // 프로그레스 링 업데이트
+    if (progressRing) {
+        const circumference = 2 * Math.PI * 90;
+        const offset = circumference - (progress / 100) * circumference;
+        progressRing.style.strokeDasharray = `${circumference} ${circumference}`;
+        progressRing.style.strokeDashoffset = offset;
+    }
+}
+
+// 모드 스타일 업데이트
+function updateModeStyles() {
+    if (isFocusSession) {
+        container.classList.remove('break-mode');
+        container.classList.add('focus-mode');
+    } else {
+        container.classList.remove('focus-mode');
+        container.classList.add('break-mode');
+    }
 }
 
 // 알림음 재생
@@ -162,22 +198,36 @@ function playNotificationSound() {
     try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
         oscillator.type = 'sine';
         oscillator.frequency.setValueAtTime(350, audioCtx.currentTime);
-        oscillator.connect(audioCtx.destination);
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.5);
         
-        // 재생 중인 음 정보 표시
         soundInfo.textContent = '재생 중: 알림음';
+        soundInfo.style.opacity = '1';
+        
         setTimeout(() => {
-            soundInfo.textContent = '';
+            soundInfo.style.opacity = '0';
+            setTimeout(() => {
+                soundInfo.textContent = '';
+            }, 300);
         }, 2000);
     } catch (error) {
         console.error('알림음 재생 중 오류 발생:', error);
         soundInfo.textContent = '알림음 재생 실패';
+        soundInfo.style.opacity = '1';
         setTimeout(() => {
-            soundInfo.textContent = '';
+            soundInfo.style.opacity = '0';
+            setTimeout(() => {
+                soundInfo.textContent = '';
+            }, 300);
         }, 2000);
     }
 }
@@ -209,6 +259,15 @@ function updateStats() {
     completedSessionsDisplay.textContent = completedSessions;
     abandonedSessionsDisplay.textContent = abandonedSessions;
     chrome.storage.local.set({ completedSessions, abandonedSessions });
+    
+    // 통계 아이템 애니메이션
+    const statItems = document.querySelectorAll('.stat-item');
+    statItems.forEach(item => {
+        item.style.animation = 'pulse 0.3s ease';
+        setTimeout(() => {
+            item.style.animation = '';
+        }, 300);
+    });
 }
 
 // 데이터 내보내기
@@ -248,10 +307,9 @@ function importData() {
                 const lines = csv.split('\n');
                 const newSessions = [];
                 
-                // 헤더 라인 건너뛰기
                 for (let i = 1; i < lines.length; i++) {
                     const line = lines[i].trim();
-                    if (!line) continue; // 빈 라인 건너뛰기
+                    if (!line) continue;
                     
                     const [timestamp, type, duration] = line.split(',');
                     if (timestamp && type && duration) {
@@ -266,7 +324,6 @@ function importData() {
                 if (newSessions.length > 0) {
                     sessionHistory = [...sessionHistory, ...newSessions];
                     chrome.storage.local.set({ sessionHistory }, () => {
-                        // 통계 업데이트
                         completedSessions = sessionHistory.filter(session => 
                             session.type === 'focus' && session.duration === settings.focusTime
                         ).length;

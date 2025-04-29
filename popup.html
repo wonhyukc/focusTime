@@ -8,9 +8,21 @@
 </head>
 <body>
     <div class="container">
-        <div class="timer-display">
-            <div id="timer">25:00</div>
-            <div id="session-type">집중 시간</div>
+        <div class="timer-section">
+            <div class="session-badge">
+                <span class="session-icon focus-icon">🎯</span>
+                <span class="session-icon break-icon">☕</span>
+            </div>
+            <div class="timer-display">
+                <div class="progress-ring">
+                    <div id="timer">25:00</div>
+                    <svg class="progress-ring__circle">
+                        <circle class="progress-ring__background"/>
+                        <circle class="progress-ring__progress"/>
+                    </svg>
+                </div>
+                <div id="session-type">집중 시간</div>
+            </div>
         </div>
         
         <div class="controls">
@@ -27,21 +39,37 @@
                 <label for="break-time">휴식 시간 (분):</label>
                 <input type="number" id="break-time" value="5" min="1" max="30">
             </div>
-            <div class="setting-item">
-                <button id="test-sound">알림음 테스트</button>
-                <div id="sound-info" class="sound-info"></div>
+        </div>
+
+        <div class="stats-section">
+            <h3>📊 통계</h3>
+            <div class="stats-grid">
+                <div class="stat-item completed">
+                    <h4>완료한 세션</h4>
+                    <p id="completed-sessions">0</p>
+                </div>
+                <div class="stat-item abandoned">
+                    <h4>포기한 세션</h4>
+                    <p id="abandoned-sessions">0</p>
+                </div>
             </div>
         </div>
 
-        <div class="stats">
-            <div>완료 세션: <span id="completed-sessions">0</span></div>
-            <div>포기 세션: <span id="abandoned-sessions">0</span></div>
+        <div class="data-section">
+            <h3>💾 데이터 관리</h3>
+            <div class="data-buttons">
+                <button id="export-data">내보내기</button>
+                <button id="import-data">가져오기</button>
+                <button id="reset-data">초기화</button>
+            </div>
         </div>
 
-        <div class="data-management">
-            <button id="export-data">통계 내보내기</button>
-            <button id="import-data">통계 가져오기</button>
-            <button id="reset-data">통계 초기화</button>
+        <div class="sound-section">
+            <h3>🔊 알림음</h3>
+            <div class="sound-buttons">
+                <button id="test-sound">알림음 테스트</button>
+                <div id="sound-info"></div>
+            </div>
         </div>
     </div>
     <script src="popup.js"></script>

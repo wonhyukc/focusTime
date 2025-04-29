@@ -1,7 +1,9 @@
 body {
     width: 300px;
     padding: 15px;
-    font-family: Arial, sans-serif;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background-color: #ffffff;
+    transition: background-color 0.5s ease;
 }
 
 .container {
@@ -10,65 +12,208 @@ body {
     gap: 15px;
 }
 
+.timer-section {
+    position: relative;
+    padding: 20px;
+    border-radius: 15px;
+    transition: all 0.5s ease;
+}
+
+.session-badge {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 15px;
+    border-radius: 15px;
+    font-weight: bold;
+    z-index: 1;
+    transition: all 0.3s ease;
+}
+
+.session-icon {
+    font-size: 24px;
+    margin-right: 5px;
+    display: none;
+}
+
+.progress-ring {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto;
+}
+
+.progress-ring__circle {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.progress-ring__background,
+.progress-ring__progress {
+    fill: none;
+    stroke-width: 8;
+    cx: 100;
+    cy: 100;
+    r: 90;
+    transition: stroke-dashoffset 0.3s ease;
+}
+
+.progress-ring__background {
+    stroke: #e0e0e0;
+}
+
 .timer-display {
     text-align: center;
-    margin-bottom: 20px;
+    position: relative;
 }
 
 #timer {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     font-size: 48px;
     font-weight: bold;
-    color: #1a73e8;
+    transition: all 0.5s ease;
 }
 
 #session-type {
-    font-size: 18px;
-    color: #666;
+    font-size: 24px;
+    font-weight: bold;
+    margin-top: 10px;
+    transition: all 0.3s ease;
 }
 
-.controls {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
+.focus-mode {
+    .timer-section {
+        background-color: #e8f4f8;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.2);
+    }
+
+    .session-badge {
+        background-color: #3498db;
+        color: white;
+    }
+
+    .focus-icon {
+        display: inline;
+    }
+
+    .progress-ring__progress {
+        stroke: #3498db;
+    }
+
+    #timer {
+        color: #2c3e50;
+    }
+
+    button {
+        background-color: #3498db;
+    }
+
+    button:hover {
+        background-color: #2980b9;
+    }
+}
+
+.break-mode {
+    .timer-section {
+        background-color: #e8f8f0;
+        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.2);
+    }
+
+    .session-badge {
+        background-color: #2ecc71;
+        color: white;
+    }
+
+    .break-icon {
+        display: inline;
+    }
+
+    .progress-ring__progress {
+        stroke: #2ecc71;
+    }
+
+    #timer {
+        color: #27ae60;
+    }
+
+    button {
+        background-color: #2ecc71;
+    }
+
+    button:hover {
+        background-color: #27ae60;
+    }
 }
 
 button {
-    padding: 8px 16px;
+    padding: 10px 20px;
     border: none;
-    border-radius: 4px;
-    background-color: #3498db;
+    border-radius: 8px;
     color: white;
     cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-button:hover {
-    background-color: #2980b9;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .start-button {
-    width: 120px;
-    font-size: 14px;
-    font-weight: bold;
+    width: 140px;
+    font-size: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+.start-button::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.5);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%);
+    transform-origin: 50% 50%;
+}
+
+.start-button:focus:not(:active)::after {
+    animation: ripple 1s ease-out;
 }
 
 .settings {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    margin: 15px 0;
 }
 
 .setting-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
 }
 
-input[type="number"] {
+.setting-item label {
+    color: #2c3e50;
+    font-size: 14px;
+}
+
+.setting-item input {
     width: 60px;
     padding: 5px;
     border: 1px solid #ddd;
     border-radius: 4px;
+    text-align: center;
 }
 
 .stats {
@@ -116,10 +261,9 @@ input[type="number"] {
 /* 통계 섹션 스타일 */
 .stats-section {
     background-color: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 15px;
-    margin-top: 20px;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .stats-section h3 {
@@ -136,91 +280,36 @@ input[type="number"] {
 }
 
 .stat-item {
-    background-color: white;
-    padding: 10px;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: transform 0.3s ease;
 }
 
-.stat-item.completed {
-    border-left: 4px solid #3498db;
-}
-
-.stat-item.abandoned {
-    border-left: 4px solid #2ecc71;
+.stat-item:hover {
+    transform: translateY(-2px);
 }
 
 .stat-item h4 {
-    margin: 0 0 5px 0;
-    font-size: 14px;
+    margin: 0 0 10px 0;
     color: #2c3e50;
+    font-size: 14px;
 }
 
 .stat-item p {
     margin: 0;
-    font-size: 24px;
+    font-size: 28px;
     font-weight: bold;
-}
-
-.stat-item.completed p {
-    color: #3498db;
-}
-
-.stat-item.abandoned p {
-    color: #2ecc71;
-}
-
-/* 설정 섹션 스타일 */
-.settings-section {
-    background-color: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 15px;
-    margin-top: 20px;
-}
-
-.settings-section h3 {
-    color: #2c3e50;
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 16px;
-}
-
-.settings-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-}
-
-.setting-item {
-    background-color: white;
-    padding: 10px;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.setting-item label {
-    display: block;
-    margin-bottom: 5px;
-    font-size: 14px;
-    color: #2c3e50;
-}
-
-.setting-item input {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #e9ecef;
-    border-radius: 4px;
-    font-size: 14px;
 }
 
 /* 데이터 관리 섹션 스타일 */
 .data-section {
     background-color: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 15px;
-    margin-top: 20px;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .data-section h3 {
@@ -232,7 +321,7 @@ input[type="number"] {
 
 .data-buttons {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 10px;
 }
 
@@ -245,10 +334,9 @@ input[type="number"] {
 /* 알림음 테스트 섹션 스타일 */
 .sound-section {
     background-color: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 15px;
-    margin-top: 20px;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .sound-section h3 {
@@ -260,13 +348,56 @@ input[type="number"] {
 
 .sound-buttons {
     display: flex;
-    gap: 10px;
     align-items: center;
+    gap: 15px;
 }
 
-.sound-info {
-    margin-left: 10px;
+#sound-info {
     font-size: 14px;
-    color: #2ecc71;
-    text-align: center;
+    color: #666;
+    transition: opacity 0.3s ease;
+}
+
+/* 애니메이션 */
+@keyframes ripple {
+    0% {
+        transform: scale(0, 0);
+        opacity: 1;
+    }
+    20% {
+        transform: scale(25, 25);
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(40, 40);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* 섹션 헤더 스타일 */
+h3 {
+    color: #2c3e50;
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0 0 15px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 반응형 호버 효과 */
+.setting-item:hover {
+    background-color: #f0f2f5;
 } 
