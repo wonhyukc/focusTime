@@ -2,7 +2,8 @@ let timer = {
     timeLeft: 0,
     isRunning: false,
     isBreak: false,
-    alarmName: 'pomodoroTimer'
+    alarmName: 'pomodoroTimer',
+    sessionComplete: false  // 세션 완료 상태 추가
 };
 
 // 타이머 상태 초기화
@@ -14,6 +15,7 @@ chrome.runtime.onInstalled.addListener(() => {
             timeLeft: focusTime * 60,
             isRunning: false,
             isBreak: false,
+            sessionComplete: false,
             focusTime: focusTime,
             breakTime: breakTime
         });
@@ -23,30 +25,30 @@ chrome.runtime.onInstalled.addListener(() => {
 // 알람 이벤트 처리
 chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === timer.alarmName) {
-        chrome.storage.local.get(['timeLeft', 'isRunning', 'isBreak', 'focusTime', 'breakTime'], (result) => {
-            if (result.isRunning) {
+        chrome.storage.local.get(['timeLeft', 'isRunning', 'isBreak', 'focusTime', 'breakTime', 'sessionComplete'], (result) => {
+            if (result.isRunning && !result.sessionComplete) {
                 let newTimeLeft = result.timeLeft - 1;
                 
                 if (newTimeLeft <= 0) {
                     // 세션 완료 시 알림 표시
-                    chrome.notifications.create({
+                    const nextSessionType = !result.isBreak ? '휴식' : '집중';
+                    chrome.notifications.create('pomodoroNotification', {
                         type: 'basic',
                         iconUrl: 'icons/icon128.png',
                         title: result.isBreak ? '휴식 시간 종료!' : '집중 시간 종료!',
-                        message: result.isBreak ? '다시 집중할 시간입니다!' : '휴식 시간을 가지세요!'
+                        message: '이 메시지를 누르거나 상단 아이콘을 누르면 다음 세션으로 진행합니다',
+                        requireInteraction: true,  // 사용자가 클릭할 때까지 알림 유지
+                        silent: false
                     });
 
-                    // 다음 세션으로 전환
-                    const isBreak = !result.isBreak;
-                    newTimeLeft = isBreak ? result.breakTime * 60 : result.focusTime * 60;
-                    
+                    // 타이머 일시 정지 및 세션 완료 상태로 변경
                     chrome.storage.local.set({
-                        timeLeft: newTimeLeft,
-                        isBreak: isBreak
+                        isRunning: false,
+                        sessionComplete: true
                     });
 
-                    // 뱃지 업데이트
-                    updateBadge(newTimeLeft, isBreak);
+                    // 배지 업데이트
+                    updateBadge(0, result.isBreak);
                 } else {
                     chrome.storage.local.set({ timeLeft: newTimeLeft });
                     updateBadge(newTimeLeft, result.isBreak);
@@ -55,6 +57,39 @@ chrome.alarms.onAlarm.addListener((alarm) => {
         });
     }
 });
+
+// 알림 클릭 이벤트 처리
+chrome.notifications.onClicked.addListener((notificationId) => {
+    if (notificationId === 'pomodoroNotification') {
+        // 알림 업데이트로 클릭 피드백 표시
+        chrome.notifications.update(notificationId, {
+            message: '다음 세션으로 전환 중...'
+        }, () => {
+            // 잠시 후 알림 제거
+            setTimeout(() => {
+                chrome.notifications.clear(notificationId);
+                startNextSession();
+            }, 1000);
+        });
+    }
+});
+
+// 다음 세션 시작
+function startNextSession() {
+    chrome.storage.local.get(['isBreak', 'focusTime', 'breakTime'], (result) => {
+        const isBreak = !result.isBreak;
+        const newTimeLeft = isBreak ? result.breakTime * 60 : result.focusTime * 60;
+        
+        chrome.storage.local.set({
+            timeLeft: newTimeLeft,
+            isBreak: isBreak,
+            isRunning: true,
+            sessionComplete: false
+        });
+
+        updateBadge(newTimeLeft, isBreak);
+    });
+}
 
 // 타이머 시작/일시정지
 function toggleTimer(start) {
@@ -93,11 +128,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 const newTime = result.isBreak ? result.breakTime * 60 : result.focusTime * 60;
                 chrome.storage.local.set({
                     timeLeft: newTime,
-                    isRunning: false
+                    isRunning: false,
+                    sessionComplete: false
                 });
                 toggleTimer(false);
                 updateBadge(newTime, result.isBreak);
             });
+            break;
+        case 'startNextSession':
+            startNextSession();
             break;
     }
     sendResponse({ success: true });

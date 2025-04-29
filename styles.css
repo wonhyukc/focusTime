@@ -163,15 +163,16 @@ button {
 }
 
 .start-button {
-    width: 120px;
+    width: 200px;
     font-size: 16px;
     font-weight: bold;
+    transition: all 0.3s ease;
 }
 
 .start-button.next-session {
-    background-color: #f39c12;
+    animation: pulse 2s infinite;
+    background-color: #4CAF50;
     color: white;
-    animation: pulse 1.5s infinite;
 }
 
 .start-button::after {
@@ -382,12 +383,17 @@ button {
 @keyframes pulse {
     0% {
         transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
     }
-    50% {
+    
+    70% {
         transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
     }
+    
     100% {
         transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
     }
 }
 

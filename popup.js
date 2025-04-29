@@ -115,11 +115,15 @@ function init() {
 function setupEventListeners() {
     if (startButton) {
         startButton.addEventListener('click', () => {
-            chrome.storage.local.get(['isRunning'], (result) => {
-                const newState = !result.isRunning;
-                chrome.runtime.sendMessage({
-                    action: newState ? 'startTimer' : 'pauseTimer'
-                });
+            chrome.storage.local.get(['isRunning', 'sessionComplete'], (result) => {
+                if (result.sessionComplete) {
+                    chrome.runtime.sendMessage({ action: 'startNextSession' });
+                } else {
+                    const newState = !result.isRunning;
+                    chrome.runtime.sendMessage({
+                        action: newState ? 'startTimer' : 'pauseTimer'
+                    });
+                }
             });
         });
     }
@@ -443,12 +447,20 @@ function updateDisplay() {
         return;
     }
 
-    chrome.storage.local.get(['timeLeft', 'isRunning', 'isBreak', 'focusTime', 'breakTime'], (result) => {
+    chrome.storage.local.get(['timeLeft', 'isRunning', 'isBreak', 'focusTime', 'breakTime', 'sessionComplete'], (result) => {
         const minutes = Math.floor(result.timeLeft / 60);
         const seconds = result.timeLeft % 60;
         timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         
-        startButton.textContent = result.isRunning ? '일시정지' : '시작';
+        if (result.sessionComplete) {
+            const nextSessionType = result.isBreak ? '집중' : '휴식';
+            startButton.textContent = `${nextSessionType} 시작`;
+            startButton.classList.add('next-session');
+        } else {
+            startButton.textContent = result.isRunning ? '일시정지' : '시작';
+            startButton.classList.remove('next-session');
+        }
+
         sessionTypeDisplay.textContent = result.isBreak ? '휴식 시간' : '집중 시간';
         sessionTypeDisplay.style.color = result.isBreak ? '#2ecc71' : '#3498db';
         
