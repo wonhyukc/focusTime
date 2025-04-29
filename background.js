@@ -3,7 +3,7 @@ let timer = {
     isRunning: false,
     isBreak: false,
     alarmName: 'pomodoroTimer',
-    sessionComplete: false  // 세션 완료 상태 추가
+    sessionComplete: false
 };
 
 // 타이머 상태 초기화
@@ -16,8 +16,11 @@ chrome.runtime.onInstalled.addListener(() => {
             isRunning: false,
             isBreak: false,
             sessionComplete: false,
-            focusTime: focusTime,
-            breakTime: breakTime
+            settings: {
+                focusTime: focusTime,
+                breakTime: breakTime,
+                soundEnabled: true
+            }
         });
     });
 });
@@ -25,30 +28,36 @@ chrome.runtime.onInstalled.addListener(() => {
 // 알람 이벤트 처리
 chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === timer.alarmName) {
-        chrome.storage.local.get(['timeLeft', 'isRunning', 'isBreak', 'focusTime', 'breakTime', 'sessionComplete'], (result) => {
+        chrome.storage.local.get(['timeLeft', 'isRunning', 'isBreak', 'settings', 'sessionComplete'], (result) => {
             if (result.isRunning && !result.sessionComplete) {
                 let newTimeLeft = result.timeLeft - 1;
                 
                 if (newTimeLeft <= 0) {
                     // 세션 완료 시 알림 표시
-                    const nextSessionType = !result.isBreak ? '휴식' : '집중';
+                    const isBreakTime = result.isBreak;
+                    const title = isBreakTime ? '휴식 시간 종료!' : '수고하셨어요, 집중 시간 종료! 쉬세요!';
+                    const message = '\n이 메시지를 누르거나 상단 아이콘을 누르면 다음 세션으로 진행합니다';
+
                     chrome.notifications.create('pomodoroNotification', {
                         type: 'basic',
                         iconUrl: 'icons/icon128.png',
-                        title: result.isBreak ? '휴식 시간 종료!' : '집중 시간 종료!',
-                        message: '이 메시지를 누르거나 상단 아이콘을 누르면 다음 세션으로 진행합니다',
-                        requireInteraction: true,  // 사용자가 클릭할 때까지 알림 유지
-                        silent: false
+                        title: title,
+                        message: message,
+                        requireInteraction: true,
+                        silent: !result.settings?.soundEnabled // 설정에 따라 시스템 알림음 제어
                     });
 
                     // 타이머 일시 정지 및 세션 완료 상태로 변경
                     chrome.storage.local.set({
+                        timeLeft: 0,
                         isRunning: false,
                         sessionComplete: true
+                    }, () => {
+                        // 알람 중지
+                        chrome.alarms.clear(timer.alarmName);
+                        // 배지 업데이트
+                        updateBadge(0, result.isBreak);
                     });
-
-                    // 배지 업데이트
-                    updateBadge(0, result.isBreak);
                 } else {
                     chrome.storage.local.set({ timeLeft: newTimeLeft });
                     updateBadge(newTimeLeft, result.isBreak);

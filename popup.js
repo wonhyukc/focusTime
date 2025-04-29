@@ -8,7 +8,8 @@ let abandonedSessions = 0;
 let sessionHistory = [];
 let settings = {
     focusTime: 25,
-    breakTime: 5
+    breakTime: 5,
+    soundEnabled: true
 };
 
 // DOM 요소
@@ -27,6 +28,7 @@ let testSoundButton;
 let soundInfo;
 let progressRing;
 let container;
+let soundEnabledCheckbox;
 
 // DOM 요소 초기화
 function initializeDOM() {
@@ -45,12 +47,14 @@ function initializeDOM() {
     testSoundButton = document.getElementById('test-sound');
     soundInfo = document.getElementById('sound-info');
     progressRing = document.querySelector('.progress-ring__progress');
+    soundEnabledCheckbox = document.getElementById('sound-enabled');
 }
 
 // 설정값 저장
 function saveSettings() {
-    settings.focusTime = parseInt(focusTimeInput.value);
-    settings.breakTime = parseInt(breakTimeInput.value);
+    settings.focusTime = parseFloat(focusTimeInput.value);
+    settings.breakTime = parseFloat(breakTimeInput.value);
+    settings.soundEnabled = soundEnabledCheckbox.checked;
     chrome.storage.local.set({ settings });
     updateTimerDisplay();
 }
@@ -67,6 +71,7 @@ function loadSettings() {
             settings = result.settings;
             focusTimeInput.value = settings.focusTime;
             breakTimeInput.value = settings.breakTime;
+            soundEnabledCheckbox.checked = settings.soundEnabled !== undefined ? settings.soundEnabled : true;
         }
         updateTimerDisplay();
     });
@@ -148,6 +153,9 @@ function setupEventListeners() {
     if (importDataButton) importDataButton.addEventListener('click', importData);
     if (resetDataButton) resetDataButton.addEventListener('click', resetData);
     if (testSoundButton) testSoundButton.addEventListener('click', playNotificationSound);
+    if (soundEnabledCheckbox) {
+        soundEnabledCheckbox.addEventListener('change', saveSettings);
+    }
 }
 
 // 타이머 토글 (시작/일시정지)
@@ -273,29 +281,43 @@ function updateModeStyles() {
 // 알림음 재생
 function playNotificationSound() {
     try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        // 오실레이터 설정
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(350, audioCtx.currentTime);
-        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 음
         
+        // 게인(볼륨) 설정
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime); // 시작 볼륨
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5); // 페이드아웃
+
+        // 연결
         oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        
-        oscillator.start();
-        oscillator.stop(audioCtx.currentTime + 0.5);
-        
-        soundInfo.textContent = '재생 중: 알림음';
+        gainNode.connect(audioContext.destination);
+
+        // 재생
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+
+        // 상태 표시
+        soundInfo.textContent = '알림음 재생 중';
         soundInfo.style.opacity = '1';
-        
+
+        // 0.5초 후 상태 표시 제거
         setTimeout(() => {
             soundInfo.style.opacity = '0';
             setTimeout(() => {
                 soundInfo.textContent = '';
             }, 300);
-        }, 2000);
+        }, 500);
+
+        // 1초 후 컨텍스트 정리
+        setTimeout(() => {
+            audioContext.close();
+        }, 1000);
+
     } catch (error) {
         console.error('알림음 재생 중 오류 발생:', error);
         soundInfo.textContent = '알림음 재생 실패';
@@ -359,16 +381,16 @@ function exportData() {
         return;
     }
 
-    const csv = '시작시각(년월일시분),세션,지속시간\n' +
-        sessionHistory.map(session => 
-            `${session.timestamp},${session.type === 'focus' ? '집중' : '휴식'},${session.duration}`
-        ).join('\n');
-    
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const exportData = {
+        sessionHistory: sessionHistory,
+        settings: settings
+    };
+
+    const blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'pomodoro_stats.csv';
+    a.download = 'pomodoro_data.json';
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -377,7 +399,7 @@ function exportData() {
 function importData() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.csv';
+    input.accept = '.json';
     input.onchange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -385,43 +407,25 @@ function importData() {
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
-                const csv = event.target.result;
-                const lines = csv.split('\n');
-                const newSessions = [];
+                const importedData = JSON.parse(event.target.result);
                 
-                for (let i = 1; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    if (!line) continue;
-                    
-                    const [timestamp, type, duration] = line.split(',');
-                    if (timestamp && type && duration) {
-                        newSessions.push({
-                            timestamp,
-                            type: type === '집중' ? 'focus' : 'break',
-                            duration: parseInt(duration)
-                        });
-                    }
+                if (importedData.sessionHistory) {
+                    sessionHistory = importedData.sessionHistory;
                 }
                 
-                if (newSessions.length > 0) {
-                    sessionHistory = [...sessionHistory, ...newSessions];
-                    chrome.storage.local.set({ sessionHistory }, () => {
-                        completedSessions = sessionHistory.filter(session => 
-                            session.type === 'focus' && session.duration === settings.focusTime
-                        ).length;
-                        abandonedSessions = sessionHistory.filter(session => 
-                            session.type === 'focus' && session.duration < settings.focusTime
-                        ).length;
-                        
-                        updateStats();
-                        alert('통계 데이터를 성공적으로 가져왔습니다.');
-                    });
-                } else {
-                    alert('가져올 수 있는 통계 데이터가 없습니다.');
+                if (importedData.settings) {
+                    settings = importedData.settings;
+                    focusTimeInput.value = settings.focusTime;
+                    breakTimeInput.value = settings.breakTime;
+                    soundEnabledCheckbox.checked = settings.soundEnabled;
+                    saveSettings();
                 }
+
+                updateStats();
+                alert('데이터를 성공적으로 가져왔습니다.');
             } catch (error) {
-                console.error('통계 데이터 가져오기 중 오류 발생:', error);
-                alert('통계 데이터를 가져오는 중 오류가 발생했습니다.');
+                console.error('데이터 가져오기 중 오류 발생:', error);
+                alert('데이터를 가져오는 중 오류가 발생했습니다.');
             }
         };
         reader.readAsText(file);
@@ -471,8 +475,8 @@ function updateDisplay() {
 
 // 시간 설정 변경 이벤트
 function handleTimeChange() {
-    const focusTime = parseInt(focusTimeInput.value) || 25;
-    const breakTime = parseInt(breakTimeInput.value) || 5;
+    const focusTime = parseFloat(focusTimeInput.value) || 25;
+    const breakTime = parseFloat(breakTimeInput.value) || 5;
     
     chrome.storage.local.set({
         focusTime: focusTime,
@@ -482,7 +486,14 @@ function handleTimeChange() {
     });
 }
 
-// DOM이 로드된 후 초기화 실행
+// 메시지 리스너 추가
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'playSound') {
+        playNotificationSound();
+    }
+    return true;
+});
+
 document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(init, 0);  // 마이크로태스크 큐에 초기화 작업 추가
+    setTimeout(init, 0);
 }); 
