@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "포모도로 타이머",
   "version": "1.0",
-  "description": "집중력 향상과 효율적인 시간 관리를 위한 포모도로 타이머",
+  "description": "집중 시간과 휴식 시간을 관리하는 포모도로 타이머",
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -13,7 +13,7 @@
   },
   "permissions": [
     "storage",
-    "notifications"
+    "alarms"
   ],
   "icons": {
     "16": "images/icon16.png",

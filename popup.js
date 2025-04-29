@@ -1,17 +1,17 @@
 // DOM 요소
-const timerDisplay = document.getElementById('timer');
-const sessionTypeDisplay = document.getElementById('session-type');
-const startButton = document.getElementById('start');
-const pauseButton = document.getElementById('pause');
-const resetButton = document.getElementById('reset');
-const focusTimeInput = document.getElementById('focus-time');
-const breakTimeInput = document.getElementById('break-time');
-const completedSessionsDisplay = document.getElementById('completed-sessions');
-const abandonedSessionsDisplay = document.getElementById('abandoned-sessions');
-const exportDataButton = document.getElementById('export-data');
-const importDataButton = document.getElementById('import-data');
-const resetDataButton = document.getElementById('reset-data');
-const testSoundButton = document.getElementById('test-sound');
+let timerDisplay;
+let sessionTypeDisplay;
+let startButton;
+let resetButton;
+let focusTimeInput;
+let breakTimeInput;
+let completedSessionsDisplay;
+let abandonedSessionsDisplay;
+let exportDataButton;
+let importDataButton;
+let resetDataButton;
+let testSoundButton;
+let soundInfo;
 
 // 상태 변수
 let timeLeft;
@@ -22,8 +22,26 @@ let completedSessions = 0;
 let abandonedSessions = 0;
 let sessionHistory = [];
 
+// DOM 요소 초기화
+function initializeDOM() {
+    timerDisplay = document.getElementById('timer');
+    sessionTypeDisplay = document.getElementById('session-type');
+    startButton = document.getElementById('start');
+    resetButton = document.getElementById('reset');
+    focusTimeInput = document.getElementById('focus-time');
+    breakTimeInput = document.getElementById('break-time');
+    completedSessionsDisplay = document.getElementById('completed-sessions');
+    abandonedSessionsDisplay = document.getElementById('abandoned-sessions');
+    exportDataButton = document.getElementById('export-data');
+    importDataButton = document.getElementById('import-data');
+    resetDataButton = document.getElementById('reset-data');
+    testSoundButton = document.getElementById('test-sound');
+    soundInfo = document.getElementById('sound-info');
+}
+
 // 초기화
 function init() {
+    initializeDOM();
     loadStats();
     updateTimerDisplay();
     setupEventListeners();
@@ -31,23 +49,37 @@ function init() {
 
 // 이벤트 리스너 설정
 function setupEventListeners() {
-    startButton.addEventListener('click', startTimer);
-    pauseButton.addEventListener('click', pauseTimer);
-    resetButton.addEventListener('click', resetTimer);
-    focusTimeInput.addEventListener('change', updateTimerDisplay);
-    breakTimeInput.addEventListener('change', updateTimerDisplay);
-    exportDataButton.addEventListener('click', exportData);
-    importDataButton.addEventListener('click', importData);
-    resetDataButton.addEventListener('click', resetData);
-    testSoundButton.addEventListener('click', playNotificationSound);
+    if (startButton) startButton.addEventListener('click', toggleTimer);
+    if (resetButton) resetButton.addEventListener('click', resetTimer);
+    if (focusTimeInput) focusTimeInput.addEventListener('change', updateTimerDisplay);
+    if (breakTimeInput) breakTimeInput.addEventListener('change', updateTimerDisplay);
+    if (exportDataButton) exportDataButton.addEventListener('click', exportData);
+    if (importDataButton) importDataButton.addEventListener('click', importData);
+    if (resetDataButton) resetDataButton.addEventListener('click', resetData);
+    if (testSoundButton) testSoundButton.addEventListener('click', playNotificationSound);
 }
 
-// 타이머 시작
-function startTimer() {
+// 타이머 토글 (시작/일시정지)
+function toggleTimer() {
     if (!isRunning) {
         isRunning = true;
         timer = setInterval(updateTimer, 1000);
+        startButton.textContent = '일시정지';
+    } else {
+        isRunning = false;
+        clearInterval(timer);
         startButton.textContent = '재개';
+    }
+}
+
+// 타이머 초기화
+function resetTimer() {
+    if (confirm('현재 진행 중인 세션을 포기하고 초기화하시겠습니까?')) {
+        pauseTimer();
+        isFocusSession = true;
+        updateTimerDisplay();
+        abandonedSessions++;
+        updateStats();
     }
 }
 
@@ -56,17 +88,8 @@ function pauseTimer() {
     if (isRunning) {
         isRunning = false;
         clearInterval(timer);
-        startButton.textContent = '시작';
+        startButton.textContent = '재개';
     }
-}
-
-// 타이머 초기화
-function resetTimer() {
-    pauseTimer();
-    isFocusSession = true;
-    updateTimerDisplay();
-    abandonedSessions++;
-    updateStats();
 }
 
 // 타이머 업데이트
@@ -87,32 +110,32 @@ function updateTimer() {
 
 // 타이머 표시 업데이트
 function updateTimerDisplay() {
+    if (!isRunning) {
+        // 타이머가 실행 중이 아닐 때는 초기값을 표시
+        const initialMinutes = isFocusSession ? focusTimeInput.value : breakTimeInput.value;
+        timeLeft = initialMinutes * 60;
+    }
+    
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
     timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     
-    timeLeft = (isFocusSession ? focusTimeInput.value : breakTimeInput.value) * 60;
     sessionTypeDisplay.textContent = isFocusSession ? '집중 시간' : '휴식 시간';
     sessionTypeDisplay.className = isFocusSession ? 'focus-session' : 'break-session';
 }
 
 // 알림음 재생
 function playNotificationSound() {
-    // Tone.js 초기화
-    if (Tone.context.state !== 'running') {
-        Tone.start();
-    }
-    
-    // 알림음 시퀀스 생성
-    const synth = new Tone.Synth().toDestination();
-    const now = Tone.now();
-    
-    // 첫 번째 음
-    synth.triggerAttackRelease("C4", "8n", now);
-    // 두 번째 음 (약간의 지연 후)
-    synth.triggerAttackRelease("E4", "8n", now + 0.2);
-    // 세 번째 음 (약간의 지연 후)
-    synth.triggerAttackRelease("G4", "8n", now + 0.4);
+    // 간단한 알림음 재생
+    const audio = new Audio();
+    audio.src = 'data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU';
+    audio.play();
+
+    // 재생 중인 음 정보 표시
+    soundInfo.textContent = '재생 중: 알림음';
+    setTimeout(() => {
+        soundInfo.textContent = '';
+    }, 2000);
 }
 
 // 통계 저장
@@ -146,6 +169,11 @@ function updateStats() {
 
 // 데이터 내보내기
 function exportData() {
+    if (sessionHistory.length === 0) {
+        alert('내보낼 통계 데이터가 없습니다.');
+        return;
+    }
+
     const csv = '시작시각(년월일시분),세션,지속시간\n' +
         sessionHistory.map(session => 
             `${session.timestamp},${session.type === 'focus' ? '집중' : '휴식'},${session.duration}`
@@ -204,5 +232,5 @@ function resetData() {
     }
 }
 
-// 초기화 실행
-init(); 
+// DOM이 로드된 후 초기화 실행
+document.addEventListener('DOMContentLoaded', init); 
