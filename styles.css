@@ -36,19 +36,19 @@ button {
     padding: 8px 16px;
     border: none;
     border-radius: 4px;
-    background-color: #1a73e8;
+    background-color: #3498db;
     color: white;
     cursor: pointer;
     transition: background-color 0.3s;
 }
 
 button:hover {
-    background-color: #1557b0;
+    background-color: #2980b9;
 }
 
 .start-button {
-    width: 200px;
-    font-size: 16px;
+    width: 120px;
+    font-size: 14px;
     font-weight: bold;
 }
 
@@ -95,16 +95,178 @@ input[type="number"] {
 
 /* 세션 타입에 따른 색상 변경 */
 .focus-session {
-    color: #1a73e8;
+    color: #2c3e50;
+    background-color: #e8f4f8;
+    border-color: #3498db;
 }
 
 .break-session {
-    color: #0b8043;
+    color: #27ae60;
+    background-color: #e8f8f0;
+    border-color: #2ecc71;
 }
 
 .sound-info {
     margin-top: 5px;
     font-size: 12px;
     color: #666;
+    text-align: center;
+}
+
+/* 통계 섹션 스타일 */
+.stats-section {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.stats-section h3 {
+    color: #2c3e50;
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.stat-item {
+    background-color: white;
+    padding: 10px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-item.completed {
+    border-left: 4px solid #3498db;
+}
+
+.stat-item.abandoned {
+    border-left: 4px solid #2ecc71;
+}
+
+.stat-item h4 {
+    margin: 0 0 5px 0;
+    font-size: 14px;
+    color: #2c3e50;
+}
+
+.stat-item p {
+    margin: 0;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.stat-item.completed p {
+    color: #3498db;
+}
+
+.stat-item.abandoned p {
+    color: #2ecc71;
+}
+
+/* 설정 섹션 스타일 */
+.settings-section {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.settings-section h3 {
+    color: #2c3e50;
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.setting-item {
+    background-color: white;
+    padding: 10px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.setting-item label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: #2c3e50;
+}
+
+.setting-item input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+/* 데이터 관리 섹션 스타일 */
+.data-section {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.data-section h3 {
+    color: #2c3e50;
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.data-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+}
+
+.data-buttons button {
+    width: 100%;
+    font-size: 12px;
+    padding: 8px;
+}
+
+/* 알림음 테스트 섹션 스타일 */
+.sound-section {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.sound-section h3 {
+    color: #2c3e50;
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.sound-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.sound-info {
+    margin-left: 10px;
+    font-size: 14px;
+    color: #2ecc71;
     text-align: center;
 } 
