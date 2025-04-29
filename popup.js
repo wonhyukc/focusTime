@@ -1,20 +1,3 @@
-// DOM 요소
-let timerDisplay;
-let sessionTypeDisplay;
-let startButton;
-let resetButton;
-let focusTimeInput;
-let breakTimeInput;
-let completedSessionsDisplay;
-let abandonedSessionsDisplay;
-let exportDataButton;
-let importDataButton;
-let resetDataButton;
-let testSoundButton;
-let soundInfo;
-let progressRing;
-let container;
-
 // 상태 변수
 let timeLeft;
 let timer;
@@ -27,6 +10,23 @@ let settings = {
     focusTime: 25,
     breakTime: 5
 };
+
+// DOM 요소
+let timerDisplay;
+let startButton;
+let resetButton;
+let focusTimeInput;
+let breakTimeInput;
+let sessionTypeDisplay;
+let completedSessionsDisplay;
+let abandonedSessionsDisplay;
+let exportDataButton;
+let importDataButton;
+let resetDataButton;
+let testSoundButton;
+let soundInfo;
+let progressRing;
+let container;
 
 // DOM 요소 초기화
 function initializeDOM() {
@@ -57,6 +57,11 @@ function saveSettings() {
 
 // 설정값 로드
 function loadSettings() {
+    if (!focusTimeInput || !breakTimeInput) {
+        console.error('설정 입력 요소를 찾을 수 없습니다.');
+        return;
+    }
+
     chrome.storage.local.get(['settings'], (result) => {
         if (result.settings) {
             settings = result.settings;
@@ -70,28 +75,71 @@ function loadSettings() {
 // 초기화
 function init() {
     initializeDOM();
-    loadSettings();
-    loadStats();
-    setupEventListeners();
-    updateModeStyles();
+    
+    // DOM 요소 존재 여부 확인
+    if (!timerDisplay || !startButton || !resetButton || !sessionTypeDisplay || 
+        !focusTimeInput || !breakTimeInput || !container) {
+        console.error('필수 DOM 요소를 찾을 수 없습니다.');
+        return;
+    }
+
+    // 초기 설정 로드
+    chrome.storage.local.get(['settings', 'timeLeft', 'isRunning', 'isBreak'], (result) => {
+        if (result.settings) {
+            settings = result.settings;
+            focusTimeInput.value = settings.focusTime;
+            breakTimeInput.value = settings.breakTime;
+        }
+
+        // 타이머 상태 초기화
+        timeLeft = result.timeLeft || settings.focusTime * 60;
+        isRunning = result.isRunning || false;
+        isFocusSession = !result.isBreak;
+
+        // UI 업데이트
+        updateDisplay();
+        updateModeStyles();
+        
+        // 이벤트 리스너 설정
+        setupEventListeners();
+        
+        // 통계 로드
+        loadStats();
+
+        // 주기적 업데이트 시작
+        setInterval(updateDisplay, 1000);
+    });
 }
 
 // 이벤트 리스너 설정
 function setupEventListeners() {
-    if (startButton) startButton.addEventListener('click', toggleTimer);
-    if (resetButton) resetButton.addEventListener('click', resetTimer);
+    if (startButton) {
+        startButton.addEventListener('click', () => {
+            chrome.storage.local.get(['isRunning'], (result) => {
+                const newState = !result.isRunning;
+                chrome.runtime.sendMessage({
+                    action: newState ? 'startTimer' : 'pauseTimer'
+                });
+            });
+        });
+    }
+
+    if (resetButton) {
+        resetButton.addEventListener('click', () => {
+            if (confirm('타이머를 리셋하시겠습니까?')) {
+                chrome.runtime.sendMessage({ action: 'resetTimer' });
+            }
+        });
+    }
+
     if (focusTimeInput) {
-        focusTimeInput.addEventListener('change', () => {
-            saveSettings();
-            updateTimerDisplay();
-        });
+        focusTimeInput.addEventListener('change', handleTimeChange);
     }
+
     if (breakTimeInput) {
-        breakTimeInput.addEventListener('change', () => {
-            saveSettings();
-            updateTimerDisplay();
-        });
+        breakTimeInput.addEventListener('change', handleTimeChange);
     }
+
     if (exportDataButton) exportDataButton.addEventListener('click', exportData);
     if (importDataButton) importDataButton.addEventListener('click', importData);
     if (resetDataButton) resetDataButton.addEventListener('click', resetData);
@@ -172,6 +220,7 @@ function updateTimerDisplay() {
     // 타이머 디스플레이 업데이트
     timerDisplay.textContent = timeString;
     sessionTypeDisplay.textContent = isFocusSession ? '집중 시간' : '휴식 시간';
+    sessionTypeDisplay.style.color = isFocusSession ? '#3498db' : '#2ecc71';
     
     // 확장 프로그램 아이콘 배지 업데이트
     updateBadge(timeString);
@@ -280,6 +329,11 @@ function loadStats() {
 
 // 통계 업데이트
 function updateStats() {
+    if (!completedSessionsDisplay || !abandonedSessionsDisplay) {
+        console.error('통계 표시 요소를 찾을 수 없습니다.');
+        return;
+    }
+
     completedSessionsDisplay.textContent = completedSessions;
     abandonedSessionsDisplay.textContent = abandonedSessions;
     chrome.storage.local.set({ completedSessions, abandonedSessions });
@@ -382,5 +436,41 @@ function resetData() {
     }
 }
 
+// 타이머 상태 업데이트
+function updateDisplay() {
+    if (!timerDisplay || !startButton || !sessionTypeDisplay || !focusTimeInput || !breakTimeInput) {
+        console.error('필수 DOM 요소가 초기화되지 않았습니다.');
+        return;
+    }
+
+    chrome.storage.local.get(['timeLeft', 'isRunning', 'isBreak', 'focusTime', 'breakTime'], (result) => {
+        const minutes = Math.floor(result.timeLeft / 60);
+        const seconds = result.timeLeft % 60;
+        timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        startButton.textContent = result.isRunning ? '일시정지' : '시작';
+        sessionTypeDisplay.textContent = result.isBreak ? '휴식 시간' : '집중 시간';
+        sessionTypeDisplay.style.color = result.isBreak ? '#2ecc71' : '#3498db';
+        
+        focusTimeInput.value = result.focusTime || 25;
+        breakTimeInput.value = result.breakTime || 5;
+    });
+}
+
+// 시간 설정 변경 이벤트
+function handleTimeChange() {
+    const focusTime = parseInt(focusTimeInput.value) || 25;
+    const breakTime = parseInt(breakTimeInput.value) || 5;
+    
+    chrome.storage.local.set({
+        focusTime: focusTime,
+        breakTime: breakTime
+    }, () => {
+        chrome.runtime.sendMessage({ action: 'resetTimer' });
+    });
+}
+
 // DOM이 로드된 후 초기화 실행
-document.addEventListener('DOMContentLoaded', init); 
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(init, 0);  // 마이크로태스크 큐에 초기화 작업 추가
+}); 
