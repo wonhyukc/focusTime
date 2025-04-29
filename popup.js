@@ -21,6 +21,10 @@ let isFocusSession = true;
 let completedSessions = 0;
 let abandonedSessions = 0;
 let sessionHistory = [];
+let settings = {
+    focusTime: 25,
+    breakTime: 5
+};
 
 // DOM 요소 초기화
 function initializeDOM() {
@@ -39,11 +43,30 @@ function initializeDOM() {
     soundInfo = document.getElementById('sound-info');
 }
 
+// 설정값 저장
+function saveSettings() {
+    settings.focusTime = parseInt(focusTimeInput.value);
+    settings.breakTime = parseInt(breakTimeInput.value);
+    chrome.storage.local.set({ settings });
+}
+
+// 설정값 로드
+function loadSettings() {
+    chrome.storage.local.get(['settings'], (result) => {
+        if (result.settings) {
+            settings = result.settings;
+            focusTimeInput.value = settings.focusTime;
+            breakTimeInput.value = settings.breakTime;
+        }
+        updateTimerDisplay();
+    });
+}
+
 // 초기화
 function init() {
     initializeDOM();
+    loadSettings();
     loadStats();
-    updateTimerDisplay();
     setupEventListeners();
 }
 
@@ -51,8 +74,18 @@ function init() {
 function setupEventListeners() {
     if (startButton) startButton.addEventListener('click', toggleTimer);
     if (resetButton) resetButton.addEventListener('click', resetTimer);
-    if (focusTimeInput) focusTimeInput.addEventListener('change', updateTimerDisplay);
-    if (breakTimeInput) breakTimeInput.addEventListener('change', updateTimerDisplay);
+    if (focusTimeInput) {
+        focusTimeInput.addEventListener('change', () => {
+            saveSettings();
+            updateTimerDisplay();
+        });
+    }
+    if (breakTimeInput) {
+        breakTimeInput.addEventListener('change', () => {
+            saveSettings();
+            updateTimerDisplay();
+        });
+    }
     if (exportDataButton) exportDataButton.addEventListener('click', exportData);
     if (importDataButton) importDataButton.addEventListener('click', importData);
     if (resetDataButton) resetDataButton.addEventListener('click', resetData);
@@ -103,6 +136,7 @@ function updateTimer() {
             completedSessions++;
         }
         isFocusSession = !isFocusSession;
+        timeLeft = (isFocusSession ? settings.focusTime : settings.breakTime) * 60;
         updateTimerDisplay();
         saveSession();
     }
@@ -112,8 +146,7 @@ function updateTimer() {
 function updateTimerDisplay() {
     if (!isRunning) {
         // 타이머가 실행 중이 아닐 때는 초기값을 표시
-        const initialMinutes = isFocusSession ? focusTimeInput.value : breakTimeInput.value;
-        timeLeft = initialMinutes * 60;
+        timeLeft = (isFocusSession ? settings.focusTime : settings.breakTime) * 60;
     }
     
     const minutes = Math.floor(timeLeft / 60);
@@ -126,16 +159,27 @@ function updateTimerDisplay() {
 
 // 알림음 재생
 function playNotificationSound() {
-    // 간단한 알림음 재생
-    const audio = new Audio();
-    audio.src = 'data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU';
-    audio.play();
-
-    // 재생 중인 음 정보 표시
-    soundInfo.textContent = '재생 중: 알림음';
-    setTimeout(() => {
-        soundInfo.textContent = '';
-    }, 2000);
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(350, audioCtx.currentTime);
+        oscillator.connect(audioCtx.destination);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.5);
+        
+        // 재생 중인 음 정보 표시
+        soundInfo.textContent = '재생 중: 알림음';
+        setTimeout(() => {
+            soundInfo.textContent = '';
+        }, 2000);
+    } catch (error) {
+        console.error('알림음 재생 중 오류 발생:', error);
+        soundInfo.textContent = '알림음 재생 실패';
+        setTimeout(() => {
+            soundInfo.textContent = '';
+        }, 2000);
+    }
 }
 
 // 통계 저장
@@ -143,7 +187,7 @@ function saveSession() {
     const session = {
         timestamp: new Date().toISOString(),
         type: isFocusSession ? 'focus' : 'break',
-        duration: isFocusSession ? focusTimeInput.value : breakTimeInput.value
+        duration: isFocusSession ? settings.focusTime : settings.breakTime
     };
     sessionHistory.push(session);
     chrome.storage.local.set({ sessionHistory });
@@ -195,26 +239,51 @@ function importData() {
     input.accept = '.csv';
     input.onchange = (e) => {
         const file = e.target.files[0];
+        if (!file) return;
+
         const reader = new FileReader();
         reader.onload = (event) => {
-            const csv = event.target.result;
-            const lines = csv.split('\n');
-            const newSessions = [];
-            
-            for (let i = 1; i < lines.length; i++) {
-                const [timestamp, type, duration] = lines[i].split(',');
-                if (timestamp && type && duration) {
-                    newSessions.push({
-                        timestamp,
-                        type: type === '집중' ? 'focus' : 'break',
-                        duration
-                    });
+            try {
+                const csv = event.target.result;
+                const lines = csv.split('\n');
+                const newSessions = [];
+                
+                // 헤더 라인 건너뛰기
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue; // 빈 라인 건너뛰기
+                    
+                    const [timestamp, type, duration] = line.split(',');
+                    if (timestamp && type && duration) {
+                        newSessions.push({
+                            timestamp,
+                            type: type === '집중' ? 'focus' : 'break',
+                            duration: parseInt(duration)
+                        });
+                    }
                 }
+                
+                if (newSessions.length > 0) {
+                    sessionHistory = [...sessionHistory, ...newSessions];
+                    chrome.storage.local.set({ sessionHistory }, () => {
+                        // 통계 업데이트
+                        completedSessions = sessionHistory.filter(session => 
+                            session.type === 'focus' && session.duration === settings.focusTime
+                        ).length;
+                        abandonedSessions = sessionHistory.filter(session => 
+                            session.type === 'focus' && session.duration < settings.focusTime
+                        ).length;
+                        
+                        updateStats();
+                        alert('통계 데이터를 성공적으로 가져왔습니다.');
+                    });
+                } else {
+                    alert('가져올 수 있는 통계 데이터가 없습니다.');
+                }
+            } catch (error) {
+                console.error('통계 데이터 가져오기 중 오류 발생:', error);
+                alert('통계 데이터를 가져오는 중 오류가 발생했습니다.');
             }
-            
-            sessionHistory = [...sessionHistory, ...newSessions];
-            chrome.storage.local.set({ sessionHistory });
-            updateStats();
         };
         reader.readAsText(file);
     };
