@@ -11,6 +11,7 @@ const abandonedSessionsDisplay = document.getElementById('abandoned-sessions');
 const exportDataButton = document.getElementById('export-data');
 const importDataButton = document.getElementById('import-data');
 const resetDataButton = document.getElementById('reset-data');
+const testSoundButton = document.getElementById('test-sound');
 
 // 상태 변수
 let timeLeft;
@@ -38,6 +39,7 @@ function setupEventListeners() {
     exportDataButton.addEventListener('click', exportData);
     importDataButton.addEventListener('click', importData);
     resetDataButton.addEventListener('click', resetData);
+    testSoundButton.addEventListener('click', playNotificationSound);
 }
 
 // 타이머 시작
@@ -96,8 +98,21 @@ function updateTimerDisplay() {
 
 // 알림음 재생
 function playNotificationSound() {
+    // Tone.js 초기화
+    if (Tone.context.state !== 'running') {
+        Tone.start();
+    }
+    
+    // 알림음 시퀀스 생성
     const synth = new Tone.Synth().toDestination();
-    synth.triggerAttackRelease("C4", "8n");
+    const now = Tone.now();
+    
+    // 첫 번째 음
+    synth.triggerAttackRelease("C4", "8n", now);
+    // 두 번째 음 (약간의 지연 후)
+    synth.triggerAttackRelease("E4", "8n", now + 0.2);
+    // 세 번째 음 (약간의 지연 후)
+    synth.triggerAttackRelease("G4", "8n", now + 0.4);
 }
 
 // 통계 저장

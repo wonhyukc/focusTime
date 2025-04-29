@@ -28,4 +28,25 @@ build/
 .env.local
 
 # 크롬 확장 프로그램 관련
-*.pem 
+*.pem
+
+# npm 관련
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Node.js 관련
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 테스트 관련
+coverage/
+.nyc_output/
+
+# 캐시
+.npm
+.eslintcache 

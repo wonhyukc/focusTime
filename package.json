@@ -1,0 +1,11 @@
+{
+  "name": "pomodoro-timer-chrome-extension",
+  "version": "1.0.0",
+  "description": "포모도로 타이머 크롬 확장 프로그램",
+  "scripts": {
+    "generate-icons": "node generate-icons.js"
+  },
+  "dependencies": {
+    "sharp": "^0.32.1"
+  }
+} 
