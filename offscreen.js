@@ -27,19 +27,19 @@ function playNotificationSound() {
 
         // 오실레이터 설정
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 음
+        oscillator.frequency.setValueAtTime(350, audioContext.currentTime); // 350Hz 음
         
-        // 게인(볼륨) 설정
-        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime); // 시작 볼륨
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5); // 페이드아웃
+        // 게인(볼륨) 설정 - 더 낮은 볼륨으로 설정
+        gainNode.gain.setValueAtTime(0.05, audioContext.currentTime); // 시작 볼륨 (0.05 = 5%)
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.0); // 1초 동안 페이드아웃
 
         // 연결
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
 
-        // 재생
+        // 재생 - 1초 동안
         oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
+        oscillator.stop(audioContext.currentTime + 1.0);
 
         console.log("Offscreen: 알림음 재생 시작됨");
 
@@ -51,7 +51,7 @@ function playNotificationSound() {
                 console.log("Offscreen: 문서 종료");
                 window.close();
             }, 100);
-        }, 1000);
+        }, 1500); // 1.5초 후 정리 (1초 재생 + 0.5초 여유)
 
     } catch (error) {
         console.error('Offscreen: 알림음 재생 중 오류 발생:', error);

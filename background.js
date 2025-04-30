@@ -1,11 +1,36 @@
 // 기본 설정값
 const DEFAULT_SETTINGS = {
     version: "1.0",
-    focusTime: 25,
-    breakTime: 5,
-    longBreakTime: 15,
-    setsBeforeLongBreak: 4,
-    soundEnabled: true
+    focus: {
+        duration: 25,
+        sound: "beep",
+        soundVolume: 50,
+        soundType: "low-short-beep",
+        desktopNotification: true,
+        tabNotification: true
+    },
+    shortBreak: {
+        duration: 5,
+        sound: "beep",
+        soundVolume: 50,
+        soundType: "low-short-beep",
+        desktopNotification: true,
+        tabNotification: true
+    },
+    longBreak: {
+        duration: 15,
+        startAfter: 4,
+        sound: "beep",
+        soundVolume: 50,
+        soundType: "low-short-beep",
+        desktopNotification: true,
+        tabNotification: true
+    },
+    general: {
+        soundEnabled: true,
+        autoStartBreaks: false,
+        autoStartPomodoros: false
+    }
 };
 
 // 타이머 상태
@@ -67,9 +92,10 @@ function createInitialMenus() {
 // 실행 중일 때의 메뉴 생성
 function createRunningMenus() {
     chrome.contextMenus.removeAll(() => {
+        // 일시정지/재개 메뉴 (타이머 상태에 따라 다르게 표시)
         chrome.contextMenus.create({
-            id: 'pause',
-            title: '일시정지',
+            id: 'togglePause',
+            title: timerState.isRunning ? '일시정지' : '재개',
             contexts: ['action']
         });
 
@@ -86,16 +112,30 @@ function createRunningMenus() {
         });
 
         chrome.contextMenus.create({
-            id: 'restartCurrent',
+            id: 'restartFocus',
             parentId: 'restart',
-            title: '현재 타이머 재시작',
+            title: '집중',
             contexts: ['action']
         });
 
         chrome.contextMenus.create({
-            id: 'cycleRestart',
+            id: 'restartShortBreak',
             parentId: 'restart',
-            title: '사이클 재시작',
+            title: '휴식',
+            contexts: ['action']
+        });
+
+        chrome.contextMenus.create({
+            id: 'restartLongBreak',
+            parentId: 'restart',
+            title: '긴휴식',
+            contexts: ['action']
+        });
+
+        chrome.contextMenus.create({
+            id: 'restartCycle',
+            parentId: 'restart',
+            title: '싸이클',
             contexts: ['action']
         });
 
@@ -118,15 +158,12 @@ function createRunningMenus() {
 // 초기 설정
 chrome.runtime.onInstalled.addListener(() => {
     // 기본 설정 초기화
-    chrome.storage.local.get(['settings'], (result) => {
-        const settings = result.settings || DEFAULT_SETTINGS;
-        chrome.storage.local.set({
-            timeLeft: settings.focusTime * 60,
-            isRunning: false,
-            isBreak: false,
-            sessionComplete: false,
-            settings: settings
-        });
+    chrome.storage.sync.get(['settings'], (result) => {
+        if (!result.settings) {
+            chrome.storage.sync.set({ settings: DEFAULT_SETTINGS }, () => {
+                console.log('기본 설정이 초기화되었습니다.');
+            });
+        }
     });
 
     // 초기 메뉴 생성
@@ -167,7 +204,7 @@ function startNextSession() {
     chrome.storage.local.get(['isBreak', 'settings'], (result) => {
         const isBreak = !result.isBreak;
         const settings = result.settings || DEFAULT_SETTINGS;
-        const newTimeLeft = isBreak ? settings.breakTime * 60 : settings.focusTime * 60;
+        const newTimeLeft = isBreak ? settings.shortBreak.duration * 60 : settings.focus.duration * 60;
         
         // 상태를 업데이트
         chrome.storage.local.set({
@@ -185,16 +222,24 @@ function startNextSession() {
     });
 }
 
-// 타이머 시작/일시정지
-function toggleTimer(start) {
-    if (start) {
+// 타이머 시작/일시정지/재개
+function toggleTimer() {
+    timerState.isRunning = !timerState.isRunning;
+    
+    if (timerState.isRunning) {
+        // 타이머 재개
         chrome.alarms.create(timerState.alarmName, {
             periodInMinutes: 1/60  // 1초마다 실행
         });
     } else {
+        // 타이머 일시정지
         chrome.alarms.clear(timerState.alarmName);
     }
-    chrome.storage.local.set({ isRunning: start });
+    
+    // 상태 저장
+    chrome.storage.local.set({ isRunning: timerState.isRunning });
+    // 메뉴 업데이트
+    createRunningMenus();
 }
 
 // 뱃지 업데이트 함수
@@ -212,15 +257,15 @@ function updateBadge(timeLeft, isBreak) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     switch (request.action) {
         case 'startTimer':
-            toggleTimer(true);
+            toggleTimer();
             break;
         case 'pauseTimer':
-            toggleTimer(false);
+            toggleTimer();
             break;
         case 'resetTimer':
             chrome.storage.local.get(['settings', 'isBreak'], (result) => {
                 const settings = result.settings || DEFAULT_SETTINGS;
-                const newTime = result.isBreak ? settings.breakTime * 60 : settings.focusTime * 60;
+                const newTime = result.isBreak ? settings.shortBreak.duration * 60 : settings.focus.duration * 60;
                 chrome.storage.local.set({
                     timeLeft: newTime,
                     isRunning: false,
@@ -318,18 +363,26 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
             await startTimer('longBreak');
             createRunningMenus();
             break;
-        case 'pause':
-            pauseTimer();
+        case 'togglePause':
+            toggleTimer();
             break;
         case 'stop':
             stopTimer();
             createInitialMenus();
             break;
-        case 'restartCurrent':
-            await startTimer(timerState.type);
+        case 'restartFocus':
+            await startTimer('focus');
             createRunningMenus();
             break;
-        case 'cycleRestart':
+        case 'restartShortBreak':
+            await startTimer('shortBreak');
+            createRunningMenus();
+            break;
+        case 'restartLongBreak':
+            await startTimer('longBreak');
+            createRunningMenus();
+            break;
+        case 'restartCycle':
             await startNewCycle();
             createRunningMenus();
             break;
@@ -354,31 +407,23 @@ function getSettings() {
 
 // 타이머 시작
 async function startTimer(type) {
-    const settings = await chrome.storage.local.get('settings');
-    const defaultSettings = {
-        focusTime: 25,
-        breakTime: 5,
-        longBreakTime: 15,
-        setsBeforeLongBreak: 4,
-        soundEnabled: true
-    };
-    
-    const currentSettings = settings.settings || defaultSettings;
+    const settings = await chrome.storage.sync.get('settings');
+    const currentSettings = settings.settings || DEFAULT_SETTINGS;
     timerState.type = type;
     timerState.isRunning = true;
     timerState.sessionComplete = false;
     
     switch (type) {
         case 'focus':
-            timerState.timeLeft = currentSettings.focusTime * 60;
+            timerState.timeLeft = currentSettings.focus.duration * 60;
             timerState.isBreak = false;
             break;
         case 'shortBreak':
-            timerState.timeLeft = currentSettings.breakTime * 60;
+            timerState.timeLeft = currentSettings.shortBreak.duration * 60;
             timerState.isBreak = true;
             break;
         case 'longBreak':
-            timerState.timeLeft = currentSettings.longBreakTime * 60;
+            timerState.timeLeft = currentSettings.longBreak.duration * 60;
             timerState.isBreak = true;
             break;
     }
@@ -411,12 +456,6 @@ function stopTimer() {
     timerState.timeLeft = 0;
     timerState.type = 'focus';
     timerState.pomodoroCount = 0;
-    updateBadge();
-}
-
-// 타이머 일시정지
-function pauseTimer() {
-    timerState.isRunning = false;
     updateBadge();
 }
 

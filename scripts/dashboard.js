@@ -53,29 +53,39 @@ document.addEventListener('DOMContentLoaded', function() {
 function saveSettings() {
     const settings = {
         focus: {
-            duration: document.getElementById('focus-duration').value,
-            sound: document.getElementById('focus-sound').value,
+            duration: parseInt(document.getElementById('focus-duration').value),
+            sound: "beep",
+            soundVolume: 50,
+            soundType: "short",
             desktopNotification: document.getElementById('focus-desktop-notification').checked,
-            tabNotification: document.getElementById('focus-tab-notification').checked,
-            soundType: document.getElementById('focus-sound-type').value
+            tabNotification: document.getElementById('focus-tab-notification').checked
         },
         shortBreak: {
-            duration: document.getElementById('short-break-duration').value,
+            duration: parseInt(document.getElementById('short-break-duration').value),
+            sound: "beep",
+            soundVolume: 50,
+            soundType: "short",
             desktopNotification: document.getElementById('short-break-desktop-notification').checked,
-            tabNotification: document.getElementById('short-break-tab-notification').checked,
-            soundType: document.getElementById('short-break-sound-type').value
+            tabNotification: document.getElementById('short-break-tab-notification').checked
         },
         longBreak: {
-            startAfter: document.getElementById('long-break-start').value,
-            duration: document.getElementById('long-break-duration').value,
+            duration: parseInt(document.getElementById('long-break-duration').value),
+            startAfter: parseInt(document.getElementById('long-break-start').value),
+            sound: "beep",
+            soundVolume: 50,
+            soundType: "short",
             desktopNotification: document.getElementById('long-break-desktop-notification').checked,
-            tabNotification: document.getElementById('long-break-tab-notification').checked,
-            soundType: document.getElementById('long-break-sound-type').value
+            tabNotification: document.getElementById('long-break-tab-notification').checked
+        },
+        general: {
+            soundEnabled: true,
+            autoStartBreaks: false,
+            autoStartPomodoros: false
         }
     };
 
     chrome.storage.sync.set({ settings }, () => {
-        console.log('설정이 저장되었습니다.');
+        showToast('설정이 저장되었습니다.');
     });
 }
 
@@ -87,32 +97,29 @@ function loadSettings() {
 
             // 집중 시간 설정
             document.getElementById('focus-duration').value = focus.duration;
-            document.getElementById('focus-sound').value = focus.sound;
             document.getElementById('focus-desktop-notification').checked = focus.desktopNotification;
             document.getElementById('focus-tab-notification').checked = focus.tabNotification;
-            document.getElementById('focus-sound-type').value = focus.soundType;
 
             // 짧은 휴식 설정
             document.getElementById('short-break-duration').value = shortBreak.duration;
             document.getElementById('short-break-desktop-notification').checked = shortBreak.desktopNotification;
             document.getElementById('short-break-tab-notification').checked = shortBreak.tabNotification;
-            document.getElementById('short-break-sound-type').value = shortBreak.soundType;
 
             // 긴 휴식 설정
             document.getElementById('long-break-start').value = longBreak.startAfter;
             document.getElementById('long-break-duration').value = longBreak.duration;
             document.getElementById('long-break-desktop-notification').checked = longBreak.desktopNotification;
             document.getElementById('long-break-tab-notification').checked = longBreak.tabNotification;
-            document.getElementById('long-break-sound-type').value = longBreak.soundType;
         }
     });
 }
 
 // 소리 미리듣기
-document.querySelector('.preview-sound').addEventListener('click', () => {
-    const soundType = document.getElementById('focus-sound').value;
-    // 여기에 소리 재생 로직 추가
-    console.log(`${soundType} 소리 재생`);
+document.querySelectorAll('.preview-sound').forEach(button => {
+    button.addEventListener('click', () => {
+        // 낮고 짧은 beep 소리 재생
+        chrome.runtime.sendMessage({ action: 'playSound' });
+    });
 });
 
 // 차트 초기화
@@ -214,6 +221,7 @@ function exportSettings() {
             link.href = URL.createObjectURL(blob);
             link.download = 'focus_timer_settings.json';
             link.click();
+            showToast('설정을 내보냈습니다.');
         }
     });
 }
@@ -226,49 +234,69 @@ function importSettings(event) {
         reader.onload = function(e) {
             try {
                 const settings = JSON.parse(e.target.result);
-                chrome.storage.sync.set({ settings }, () => {
-                    loadSettings();
-                    alert('설정을 성공적으로 가져왔습니다.');
-                });
+                // 설정 유효성 검사
+                if (validateSettings(settings)) {
+                    chrome.storage.sync.set({ settings }, () => {
+                        loadSettings();
+                        showToast('설정을 가져왔습니다.');
+                    });
+                } else {
+                    showToast('올바르지 않은 설정 파일입니다.', 'error');
+                }
             } catch (error) {
-                alert('올바르지 않은 설정 파일입니다.');
+                showToast('설정 파일을 읽는 중 오류가 발생했습니다.', 'error');
             }
         };
         reader.readAsText(file);
     }
-    event.target.value = ''; // 파일 입력 초기화
+    event.target.value = '';
 }
 
 // 설정 초기화
 function resetSettings() {
-    if (confirm('모든 설정을 초기화하시겠습니까?')) {
-        const defaultSettings = {
-            focus: {
-                duration: 25,
-                sound: 'Brown Noise',
-                desktopNotification: true,
-                tabNotification: true,
-                soundType: 'Dong'
-            },
-            shortBreak: {
-                duration: 5,
-                desktopNotification: true,
-                tabNotification: true,
-                soundType: 'Gong 1'
-            },
-            longBreak: {
-                startAfter: 4,
-                duration: 15,
-                desktopNotification: true,
-                tabNotification: true,
-                soundType: 'Ding Dong'
-            }
-        };
-        chrome.storage.sync.set({ settings: defaultSettings }, () => {
+    if (confirm('모든 설정을 초기값으로 되돌리시겠습니까?')) {
+        chrome.storage.sync.set({ settings: DEFAULT_SETTINGS }, () => {
             loadSettings();
-            alert('설정이 초기화되었습니다.');
+            showToast('설정이 초기화되었습니다.');
         });
     }
+}
+
+// 설정 유효성 검사
+function validateSettings(settings) {
+    const required = ['focus', 'shortBreak', 'longBreak', 'general'];
+    if (!required.every(key => key in settings)) return false;
+
+    // 각 섹션의 필수 필드 검사
+    const focusRequired = ['duration', 'sound', 'soundVolume', 'soundType', 'desktopNotification', 'tabNotification'];
+    const breakRequired = ['duration', 'sound', 'soundVolume', 'soundType', 'desktopNotification', 'tabNotification'];
+    const longBreakRequired = [...breakRequired, 'startAfter'];
+    const generalRequired = ['soundEnabled', 'autoStartBreaks', 'autoStartPomodoros'];
+
+    return (
+        focusRequired.every(key => key in settings.focus) &&
+        breakRequired.every(key => key in settings.shortBreak) &&
+        longBreakRequired.every(key => key in settings.longBreak) &&
+        generalRequired.every(key => key in settings.general)
+    );
+}
+
+// 토스트 메시지 표시
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 300);
+        }, 2000);
+    }, 100);
 }
 
 // 통계 내보내기
