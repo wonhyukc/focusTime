@@ -486,4 +486,224 @@ h3 {
 
 .break-mode .secondary-button:hover {
     background-color: #27ae60;
+}
+
+/* Timer styles */
+.timer {
+    font-size: 3rem;
+    font-weight: bold;
+    margin: 1rem 0;
+    text-align: center;
+    color: #333;
+    transition: all 0.3s ease;
+}
+
+.timer.focus {
+    color: white;
+    background-color: #3B82F6;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+}
+
+.timer.break {
+    color: #333;
+    background-color: #14B8A6;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+}
+
+/* Button styles */
+button {
+    padding: 0.5rem 1rem;
+    margin: 0.5rem;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.start-button {
+    background-color: #3B82F6;
+    color: white;
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.2rem;
+}
+
+.start-button:hover:not(:disabled) {
+    background-color: #2563EB;
+}
+
+.next-button {
+    background-color: #14B8A6;
+    color: #333;
+}
+
+.next-button:hover:not(:disabled) {
+    background-color: #0D9488;
+}
+
+.reset-button {
+    background-color: #EF4444;
+    color: white;
+}
+
+.reset-button:hover:not(:disabled) {
+    background-color: #DC2626;
+}
+
+/* Progress bar styles */
+.progress-container {
+    width: 100%;
+    height: 0.5rem;
+    background-color: #E5E7EB;
+    border-radius: 0.25rem;
+    margin: 1rem 0;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: #3B82F6;
+    transition: width 0.3s ease;
+}
+
+.progress-bar.break {
+    background-color: #14B8A6;
+}
+
+/* Session info styles */
+.session-info {
+    margin: 1rem 0;
+    text-align: center;
+    color: #6B7280;
+}
+
+.session-info.focus {
+    color: #3B82F6;
+}
+
+.session-info.break {
+    color: #14B8A6;
+}
+
+/* Settings styles */
+.settings {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #F3F4F6;
+    border-radius: 0.5rem;
+}
+
+.settings h3 {
+    margin-bottom: 0.5rem;
+    color: #374151;
+}
+
+.settings label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #4B5563;
+}
+
+.settings input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #D1D5DB;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.settings button {
+    background-color: #6B7280;
+    color: white;
+}
+
+.settings button:hover {
+    background-color: #4B5563;
+}
+
+/* Sound toggle styles */
+.sound-toggle {
+    display: flex;
+    align-items: center;
+    margin-top: 1rem;
+    padding: 0.5rem;
+    background-color: #F3F4F6;
+    border-radius: 0.5rem;
+}
+
+.sound-toggle label {
+    margin-right: 0.5rem;
+    color: #4B5563;
+}
+
+/* Theme toggle styles */
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    margin-top: 1rem;
+    padding: 0.5rem;
+    background-color: #F3F4F6;
+    border-radius: 0.5rem;
+}
+
+.theme-toggle label {
+    margin-right: 0.5rem;
+    color: #4B5563;
+}
+
+/* Dark mode styles */
+body.dark-mode {
+    background-color: #1F2937;
+    color: #F3F4F6;
+}
+
+body.dark-mode .timer {
+    color: #F3F4F6;
+}
+
+body.dark-mode .settings {
+    background-color: #374151;
+}
+
+body.dark-mode .settings h3 {
+    color: #F3F4F6;
+}
+
+body.dark-mode .settings label {
+    color: #D1D5DB;
+}
+
+body.dark-mode .settings input {
+    background-color: #4B5563;
+    border-color: #6B7280;
+    color: #F3F4F6;
+}
+
+body.dark-mode .sound-toggle,
+body.dark-mode .theme-toggle {
+    background-color: #374151;
+}
+
+body.dark-mode .sound-toggle label,
+body.dark-mode .theme-toggle label {
+    color: #D1D5DB;
+}
+
+/* Responsive styles */
+@media (max-width: 640px) {
+    .timer {
+        font-size: 2.5rem;
+    }
+    
+    .start-button {
+        font-size: 1rem;
+    }
 } 

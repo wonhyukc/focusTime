@@ -16,8 +16,132 @@ let timer = {
     sessionComplete: false
 };
 
-// 타이머 상태 초기화
+// 컨텍스트 메뉴 생성
+function createInitialMenus() {
+    // 기존 메뉴 모두 제거
+    chrome.contextMenus.removeAll(() => {
+        // 초기 상태 메뉴 생성
+        chrome.contextMenus.create({
+            id: 'cycleStart',
+            title: '싸이클 시작',
+            contexts: ['action']
+        });
+
+        chrome.contextMenus.create({
+            id: 'focusStart',
+            title: '집중 시작',
+            contexts: ['action']
+        });
+
+        chrome.contextMenus.create({
+            id: 'shortBreakStart',
+            title: '짧은 휴식 시작',
+            contexts: ['action']
+        });
+
+        chrome.contextMenus.create({
+            id: 'longBreakStart',
+            title: '긴 휴식 시작',
+            contexts: ['action']
+        });
+
+        // 구분선 추가
+        chrome.contextMenus.create({
+            id: 'separator1',
+            type: 'separator',
+            contexts: ['action']
+        });
+
+        // 설정과 통계 메뉴 추가
+        chrome.contextMenus.create({
+            id: 'openSettings',
+            title: '설정',
+            contexts: ['action']
+        });
+
+        chrome.contextMenus.create({
+            id: 'openStats',
+            title: '통계 보기',
+            contexts: ['action']
+        });
+    });
+}
+
+function createRunningMenus() {
+    // 기존 메뉴 모두 제거
+    chrome.contextMenus.removeAll(() => {
+        // 실행 중 상태 메뉴 생성
+        chrome.contextMenus.create({
+            id: 'pause',
+            title: '잠시멈춤',
+            contexts: ['action']
+        });
+
+        chrome.contextMenus.create({
+            id: 'stop',
+            title: '중지',
+            contexts: ['action']
+        });
+
+        // 재시작 메뉴와 서브메뉴
+        chrome.contextMenus.create({
+            id: 'restart',
+            title: '재시작',
+            contexts: ['action']
+        });
+
+        chrome.contextMenus.create({
+            id: 'restartFocus',
+            title: '집중 시작',
+            parentId: 'restart',
+            contexts: ['action']
+        });
+
+        chrome.contextMenus.create({
+            id: 'restartShortBreak',
+            title: '짧은 휴식 시작',
+            parentId: 'restart',
+            contexts: ['action']
+        });
+
+        chrome.contextMenus.create({
+            id: 'restartLongBreak',
+            title: '긴 휴식 시작',
+            parentId: 'restart',
+            contexts: ['action']
+        });
+
+        chrome.contextMenus.create({
+            id: 'cycleRestart',
+            title: '싸이클 재시작',
+            contexts: ['action']
+        });
+
+        // 구분선 추가
+        chrome.contextMenus.create({
+            id: 'separator1',
+            type: 'separator',
+            contexts: ['action']
+        });
+
+        // 설정과 통계 메뉴 추가
+        chrome.contextMenus.create({
+            id: 'openSettings',
+            title: '설정',
+            contexts: ['action']
+        });
+
+        chrome.contextMenus.create({
+            id: 'openStats',
+            title: '통계 보기',
+            contexts: ['action']
+        });
+    });
+}
+
+// 초기 설정
 chrome.runtime.onInstalled.addListener(() => {
+    // 기본 설정 초기화
     chrome.storage.local.get(['settings'], (result) => {
         const settings = result.settings || DEFAULT_SETTINGS;
         chrome.storage.local.set({
@@ -28,6 +152,9 @@ chrome.runtime.onInstalled.addListener(() => {
             settings: settings
         });
     });
+
+    // 초기 메뉴 생성
+    createInitialMenus();
 });
 
 // 알람 이벤트 처리
@@ -226,4 +353,182 @@ async function playSound() {
     } catch (error) {
         console.error("소리 재생 중 오류 발생:", error);
     }
+}
+
+// 컨텍스트 메뉴 클릭 처리
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    switch (info.menuItemId) {
+        case 'cycleStart':
+            await startNewCycle();
+            createRunningMenus();
+            break;
+        case 'focusStart':
+        case 'restartFocus':
+            await startTimer('focus');
+            createRunningMenus();
+            break;
+        case 'shortBreakStart':
+        case 'restartShortBreak':
+            await startTimer('shortBreak');
+            createRunningMenus();
+            break;
+        case 'longBreakStart':
+        case 'restartLongBreak':
+            await startTimer('longBreak');
+            createRunningMenus();
+            break;
+        case 'pause':
+            pauseTimer();
+            break;
+        case 'stop':
+            stopTimer();
+            createInitialMenus();
+            break;
+        case 'cycleRestart':
+            await startNewCycle();
+            createRunningMenus();
+            break;
+        case 'openSettings':
+            chrome.tabs.create({ url: 'pages/dashboard.html#settings' });
+            break;
+        case 'openStats':
+            chrome.tabs.create({ url: 'pages/dashboard.html#stats' });
+            break;
+    }
+});
+
+// 타이머 상태
+let timerState = {
+    isRunning: false,
+    timeLeft: 0,
+    type: 'focus', // 'focus' | 'shortBreak' | 'longBreak'
+    pomodoroCount: 0
+};
+
+// 설정 가져오기
+function getSettings() {
+    return new Promise((resolve) => {
+        chrome.storage.sync.get('settings', (data) => {
+            resolve(data.settings || {
+                focus: { duration: 25 },
+                shortBreak: { duration: 5 },
+                longBreak: { duration: 15, startAfter: 4 }
+            });
+        });
+    });
+}
+
+// 타이머 시작
+async function startTimer(type) {
+    const settings = await getSettings();
+    timerState.type = type;
+    timerState.isRunning = true;
+    
+    switch (type) {
+        case 'focus':
+            timerState.timeLeft = settings.focus.duration * 60;
+            break;
+        case 'shortBreak':
+            timerState.timeLeft = settings.shortBreak.duration * 60;
+            break;
+        case 'longBreak':
+            timerState.timeLeft = settings.longBreak.duration * 60;
+            break;
+    }
+    
+    updateTimer();
+    updateBadge();
+}
+
+// 새로운 싸이클 시작
+async function startNewCycle() {
+    timerState.pomodoroCount = 0;
+    await startTimer('focus');
+}
+
+// 타이머 중지
+function stopTimer() {
+    timerState.isRunning = false;
+    timerState.timeLeft = 0;
+    timerState.type = 'focus';
+    timerState.pomodoroCount = 0;
+    updateBadge();
+}
+
+// 타이머 일시정지
+function pauseTimer() {
+    timerState.isRunning = false;
+    updateBadge();
+}
+
+// 타이머 업데이트
+function updateTimer() {
+    if (!timerState.isRunning) return;
+
+    if (timerState.timeLeft > 0) {
+        updateBadge();
+        timerState.timeLeft--;
+        setTimeout(updateTimer, 1000);
+    } else {
+        timerComplete();
+    }
+}
+
+// 타이머 완료
+async function timerComplete() {
+    const settings = await getSettings();
+
+    if (timerState.type === 'focus') {
+        timerState.pomodoroCount++;
+        savePomodoroData();
+
+        if (timerState.pomodoroCount % settings.longBreak.startAfter === 0) {
+            timerState.type = 'longBreak';
+        } else {
+            timerState.type = 'shortBreak';
+        }
+    } else {
+        timerState.type = 'focus';
+    }
+
+    timerState.timeLeft = 0;
+    timerState.isRunning = false;
+    
+    showNotification();
+    updateBadge();
+    createInitialMenus(); // 타이머 완료 시 초기 메뉴로 돌아감
+}
+
+// 알림 표시
+function showNotification() {
+    const title = timerState.type === 'focus' ? 
+        '휴식 시간!' : 
+        '집중 시간!';
+    
+    const message = timerState.type === 'focus' ?
+        '잠시 휴식을 취하세요.' :
+        '다시 집중할 시간입니다.';
+
+    chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: title,
+        message: message
+    });
+}
+
+// 포모도로 데이터 저장
+function savePomodoroData() {
+    const now = new Date();
+    const pomodoroData = {
+        date: now.toISOString(),
+        type: timerState.type,
+        duration: 25 // 기본 포모도로 시간
+    };
+
+    chrome.storage.local.get('pomodoroData', (data) => {
+        const existingData = data.pomodoroData || [];
+        existingData.push(pomodoroData);
+        chrome.storage.local.set({ pomodoroData: existingData });
+    });
 } 

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마리나라: 포모도로 도우미</title>
+    <link rel="stylesheet" href="../styles/dashboard.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <img src="../icons/icon48.png" alt="마리나라 로고">
+            <h1>마리나라: 포모도로 도우미</h1>
+        </div>
+        <nav>
+            <button class="tab-button active" data-tab="settings">설정</button>
+            <button class="tab-button" data-tab="stats">기록</button>
+            <button class="tab-button" data-tab="feedback">피드백</button>
+        </nav>
+    </header>
+
+    <main>
+        <!-- 설정 탭 -->
+        <section id="settings" class="tab-content active">
+            <div class="settings-container">
+                <div class="timer-settings">
+                    <h2>집중</h2>
+                    <div class="setting-group">
+                        <label for="focus-duration">지속 시간:</label>
+                        <input type="number" id="focus-duration" min="1" max="60" value="25"> 분
+                    </div>
+                    <div class="setting-group">
+                        <label>타이머 소리:</label>
+                        <select id="focus-sound">
+                            <option value="Brown Noise">Brown Noise</option>
+                            <option value="White Noise">White Noise</option>
+                            <option value="Pink Noise">Pink Noise</option>
+                        </select>
+                        <button class="preview-sound">▶ 음오버하여 미리보기</button>
+                    </div>
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="focus-desktop-notification">
+                            데스크톱 알림 설정
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="focus-tab-notification">
+                            새로운 탭 알림 설정
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label>재생:</label>
+                        <select id="focus-sound-type">
+                            <option value="Dong">Dong</option>
+                            <option value="Ding">Ding</option>
+                            <option value="Bell">Bell</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="timer-settings">
+                    <h2>짧은 휴식</h2>
+                    <div class="setting-group">
+                        <label for="short-break-duration">지속 시간:</label>
+                        <input type="number" id="short-break-duration" min="1" max="30" value="5"> 분
+                    </div>
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="short-break-desktop-notification">
+                            데스크톱 알림 설정
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="short-break-tab-notification">
+                            새로운 탭 알림 설정
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label>재생:</label>
+                        <select id="short-break-sound-type">
+                            <option value="Gong 1">Gong 1</option>
+                            <option value="Gong 2">Gong 2</option>
+                            <option value="Bell">Bell</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="timer-settings">
+                    <h2>긴 휴식</h2>
+                    <div class="setting-group">
+                        <label>긴 휴식 시작하기:</label>
+                        <select id="long-break-start">
+                            <option value="4">4번째 휴식마다</option>
+                            <option value="6">6번째 휴식마다</option>
+                            <option value="8">8번째 휴식마다</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="long-break-duration">지속 시간:</label>
+                        <input type="number" id="long-break-duration" min="1" max="60" value="15"> 분
+                    </div>
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="long-break-desktop-notification">
+                            데스크톱 알림 설정
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="long-break-tab-notification">
+                            새로운 탭 알림 설정
+                        </label>
+                    </div>
+                    <div class="setting-group">
+                        <label>재생:</label>
+                        <select id="long-break-sound-type">
+                            <option value="Ding Dong">Ding Dong</option>
+                            <option value="Gong">Gong</option>
+                            <option value="Bell">Bell</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 통계 탭 -->
+        <section id="stats" class="tab-content">
+            <div class="stats-container">
+                <div class="stats-summary">
+                    <div class="stat-card">
+                        <h3>오늘</h3>
+                        <div class="stat-value">3</div>
+                        <div class="stat-label">3.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>이번 주</h3>
+                        <div class="stat-value">3</div>
+                        <div class="stat-label">3.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>4월</h3>
+                        <div class="stat-value">3</div>
+                        <div class="stat-label">3.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>총</h3>
+                        <div class="stat-value">3</div>
+                    </div>
+                </div>
+
+                <div class="stats-charts">
+                    <div class="chart-container">
+                        <h3>일 단위 분포</h3>
+                        <div class="time-filter">
+                            <button class="time-button active">15분</button>
+                            <button class="time-button">30분</button>
+                            <button class="time-button">1시간</button>
+                            <button class="time-button">2시간</button>
+                        </div>
+                        <div id="daily-chart" class="chart"></div>
+                    </div>
+
+                    <div class="chart-container">
+                        <h3>주 단위 분포</h3>
+                        <div id="weekly-chart" class="chart"></div>
+                    </div>
+
+                    <div class="chart-container">
+                        <h3>최근 9개월간 3 포모도로</h3>
+                        <div id="monthly-chart" class="chart"></div>
+                    </div>
+                </div>
+
+                <div class="data-management">
+                    <button id="export-csv" class="data-button">CSV로 저장</button>
+                    <button id="export-data" class="data-button">데이터 내보내기</button>
+                    <p class="data-description">For backup or for importing on another computer.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 피드백 탭 -->
+        <section id="feedback" class="tab-content">
+            <div class="feedback-container">
+                <h2>피드백</h2>
+                <p>여러분의 소중한 의견을 들려주세요!</p>
+                <form id="feedback-form">
+                    <textarea id="feedback-text" rows="5" placeholder="의견을 작성해주세요..."></textarea>
+                    <button type="submit" class="submit-feedback">보내기</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <script src="../scripts/dashboard.js"></script>
+</body>
+</html> 
