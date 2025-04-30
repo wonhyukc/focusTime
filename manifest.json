@@ -2,9 +2,8 @@
   "manifest_version": 3,
   "name": "집중 시간 도우미 (Focus Time Helper)",
   "version": "1.0",
-  "description": "집중과 휴식 시간을 관리하는 타이머 확장프로그램",
+  "description": "집중 시간을 관리하고 생산성을 높이는 도우미",
   "action": {
-    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -12,13 +11,15 @@
     }
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "permissions": [
     "storage",
     "alarms",
     "notifications",
-    "contextMenus"
+    "contextMenus",
+    "offscreen"
   ],
   "icons": {
     "16": "icons/icon16.png",

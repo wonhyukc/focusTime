@@ -191,20 +191,11 @@
                     </div>
                 </div>
 
-                <div class="data-management">
-                    <button id="export-csv" class="data-button">CSV로 저장</button>
-                    <button id="export-data" class="data-button">데이터 내보내기</button>
-                    <p class="data-description">For backup or for importing on another computer.</p>
-                </div>
                 <div class="stats-bottom-menu">
                     <div class="bottom-menu-buttons">
-                        <button id="export-stats-json" class="menu-button">
+                        <button id="export-stats" class="menu-button">
                             <span class="icon">⬇️</span>
-                            JSON 내보내기
-                        </button>
-                        <button id="export-stats-csv" class="menu-button">
-                            <span class="icon">📊</span>
-                            CSV 내보내기
+                            통계 내보내기
                         </button>
                         <button id="import-stats" class="menu-button">
                             <span class="icon">⬆️</span>
@@ -215,7 +206,7 @@
                             통계 초기화
                         </button>
                     </div>
-                    <input type="file" id="stats-file-input" accept=".json,.csv" style="display: none;">
+                    <input type="file" id="stats-file-input" accept=".json" style="display: none;">
                 </div>
             </div>
         </section>
