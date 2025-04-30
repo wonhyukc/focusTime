@@ -195,27 +195,65 @@ chrome.notifications.onClicked.addListener((notificationId) => {
 
 // 다음 세션 시작
 function startNextSession() {
-    chrome.storage.local.get(['isBreak', 'settings'], (result) => {
-        const isBreak = !result.isBreak;
+    chrome.storage.sync.get(['settings'], (result) => {
         const settings = result.settings || DEFAULT_SETTINGS;
-        const newTimeLeft = isBreak ? settings.shortBreak.duration * 60 : settings.focus.duration * 60;
+        const isBreak = !timerState.isBreak;
         
-        // 상태를 업데이트
+        // 다음 세션의 시간 설정
+        let newTimeLeft;
+        if (isBreak) {
+            // 긴 휴식 조건 확인
+            if (timerState.pomodoroCount > 0 && timerState.pomodoroCount % settings.longBreak.startAfter === 0) {
+                newTimeLeft = settings.longBreak.duration * 60;
+                timerState.type = 'longBreak';
+            } else {
+                newTimeLeft = settings.shortBreak.duration * 60;
+                timerState.type = 'shortBreak';
+            }
+        } else {
+            newTimeLeft = settings.focus.duration * 60;
+            timerState.type = 'focus';
+        }
+
+        // 상태 업데이트
+        timerState.timeLeft = newTimeLeft;
+        timerState.isBreak = isBreak;
+        timerState.isRunning = true;
+        timerState.sessionComplete = false;
+
+        // 상태 저장 및 타이머 시작
         chrome.storage.local.set({
             timeLeft: newTimeLeft,
             isBreak: isBreak,
             isRunning: true,
-            sessionComplete: false
+            sessionComplete: false,
+            type: timerState.type
         }, () => {
-            // 타이머 시작
+            // 알람 생성
             chrome.alarms.create(timerState.alarmName, {
                 periodInMinutes: 1/60  // 1초마다 실행
             });
+            
+            // 뱃지 업데이트
             updateBadge(newTimeLeft, isBreak);
-            createRunningMenus(); // 실행 중 메뉴로 변경
+            
+            // 메뉴 업데이트
+            createRunningMenus();
         });
     });
 }
+
+// 아이콘 클릭 이벤트 처리
+chrome.action.onClicked.addListener(async () => {
+    if (!timerState.timeLeft || timerState.timeLeft === 0) {
+        // 타이머가 실행되지 않은 상태: 집중 시간 시작
+        await startTimer('focus');
+        createRunningMenus();
+    } else {
+        // 타이머가 이미 존재하는 경우: 일시정지/재개 토글
+        toggleTimer();
+    }
+});
 
 // 타이머 시작/일시정지/재개
 function toggleTimer() {
@@ -232,20 +270,52 @@ function toggleTimer() {
     }
     
     // 상태 저장
-    chrome.storage.local.set({ isRunning: timerState.isRunning });
+    chrome.storage.local.set({ 
+        isRunning: timerState.isRunning,
+        timeLeft: timerState.timeLeft 
+    });
+
     // 메뉴 업데이트
     createRunningMenus();
+
+    // 뱃지 색상 업데이트 (일시정지 상태 표시)
+    updateBadgeForPauseState();
 }
 
-// 뱃지 업데이트 함수
+// 일시정지 상태에 따른 뱃지 색상 업데이트
+function updateBadgeForPauseState() {
+    const color = timerState.isRunning ? 
+        (timerState.isBreak ? '#2ecc71' : '#3498db') :  // 실행 중: 휴식-초록색, 집중-파란색
+        '#95a5a6';  // 일시정지: 회색
+
+    chrome.action.setBadgeBackgroundColor({ color: color });
+    updateBadge(timerState.timeLeft, timerState.isBreak);
+}
+
+// 기존 updateBadge 함수 수정
 function updateBadge(timeLeft, isBreak) {
+    // timeLeft가 유효하지 않은 경우 기본 설정값을 사용
+    if (!timeLeft || isNaN(timeLeft)) {
+        chrome.storage.sync.get('settings', (result) => {
+            const settings = result.settings || DEFAULT_SETTINGS;
+            if (isBreak) {
+                timeLeft = settings.shortBreak.duration * 60;
+            } else {
+                timeLeft = settings.focus.duration * 60;
+            }
+            updateBadgeText(timeLeft);
+        });
+        return;
+    }
+    updateBadgeText(timeLeft);
+}
+
+// 뱃지 텍스트 업데이트 헬퍼 함수
+function updateBadgeText(timeLeft) {
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
     const text = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     chrome.action.setBadgeText({ text: text });
-    chrome.action.setBadgeBackgroundColor({ 
-        color: isBreak ? '#2ecc71' : '#3498db'  // 휴식: 초록색, 집중: 파란색
-    });
 }
 
 // 메시지 리스너 설정
@@ -428,6 +498,7 @@ async function startTimer(type) {
         timeLeft: timerState.timeLeft,
         isRunning: timerState.isRunning,
         isBreak: timerState.isBreak,
+        type: timerState.type,
         sessionComplete: timerState.sessionComplete
     });
     
@@ -436,7 +507,7 @@ async function startTimer(type) {
         periodInMinutes: 1/60  // 1초마다 실행
     });
     
-    updateBadge(timerState.timeLeft, timerState.isBreak);
+    updateBadgeForPauseState();
 }
 
 // 새로운 싸이클 시작
@@ -469,31 +540,45 @@ function updateTimer() {
 
 // 타이머 완료
 async function timerComplete() {
-    const settings = await getSettings();
-
-    if (timerState.type === 'focus') {
-        timerState.pomodoroCount++;
-        savePomodoroData();
-
-        if (timerState.pomodoroCount % settings.longBreak.startAfter === 0) {
-            timerState.type = 'longBreak';
-        } else {
-            timerState.type = 'shortBreak';
-        }
-    } else {
-        timerState.type = 'focus';
-    }
-
-    timerState.timeLeft = 0;
-    timerState.isRunning = false;
+    // 알람 중지
+    chrome.alarms.clear(timerState.alarmName);
     
     // 알림음 재생
     await playSound();
     
     // 알림 표시
     showNotification();
-    updateBadge();
-    createInitialMenus(); // 타이머 완료 시 초기 메뉴로 돌아감
+    
+    // 상태 업데이트
+    timerState.isRunning = false;
+    timerState.sessionComplete = true;
+    
+    if (timerState.type === 'focus') {
+        timerState.pomodoroCount++;
+        savePomodoroData();
+    }
+    
+    // 현재 설정 가져와서 다음 세션 시간 표시
+    chrome.storage.sync.get(['settings'], (result) => {
+        const settings = result.settings || DEFAULT_SETTINGS;
+        let nextTimeLeft;
+        
+        if (timerState.type === 'focus') {
+            if (timerState.pomodoroCount % settings.longBreak.startAfter === 0) {
+                nextTimeLeft = settings.longBreak.duration * 60;
+            } else {
+                nextTimeLeft = settings.shortBreak.duration * 60;
+            }
+        } else {
+            nextTimeLeft = settings.focus.duration * 60;
+        }
+        
+        // 다음 세션 시간을 뱃지에 표시
+        updateBadge(nextTimeLeft, !timerState.isBreak);
+    });
+    
+    // 메뉴 초기화
+    createInitialMenus();
 }
 
 // 알림 표시
@@ -530,10 +615,4 @@ function savePomodoroData() {
         existingData.push(pomodoroData);
         chrome.storage.local.set({ pomodoroData: existingData });
     });
-}
-
-// 아이콘 오른쪽 클릭 이벤트 처리
-chrome.action.onClicked.addListener(async () => {
-    await startTimer('focus');
-    createRunningMenus();
-}); 
+} 
