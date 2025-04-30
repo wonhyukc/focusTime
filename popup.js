@@ -420,11 +420,13 @@ function updateProgress() {
     const progress = ((totalTime - timeLeft) / totalTime) * 100;
     
     // 프로그레스 링 업데이트
-    if (progressRing) {
-        const circumference = 2 * Math.PI * 90;
+    const progressCircle = document.querySelector('.progress-ring__progress');
+    if (progressCircle) {
+        const radius = progressCircle.r.baseVal.value;
+        const circumference = 2 * Math.PI * radius;
+        progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
         const offset = circumference - (progress / 100) * circumference;
-        progressRing.style.strokeDasharray = `${circumference} ${circumference}`;
-        progressRing.style.strokeDashoffset = offset;
+        progressCircle.style.strokeDashoffset = offset;
     }
 }
 
@@ -441,54 +443,8 @@ function updateModeStyles() {
 
 // 알림음 재생
 function playNotificationSound() {
-    try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-
-        // 오실레이터 설정
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 음
-        
-        // 게인(볼륨) 설정
-        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime); // 시작 볼륨
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5); // 페이드아웃
-
-        // 연결
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-
-        // 재생
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
-
-        // 상태 표시
-        soundInfo.textContent = '알림음 재생 중';
-        soundInfo.style.opacity = '1';
-
-        // 0.5초 후 상태 표시 제거
-        setTimeout(() => {
-            soundInfo.style.opacity = '0';
-            setTimeout(() => {
-                soundInfo.textContent = '';
-            }, 300);
-        }, 500);
-
-        // 1초 후 컨텍스트 정리
-        setTimeout(() => {
-            audioContext.close();
-        }, 1000);
-
-    } catch (error) {
-        console.error('알림음 재생 중 오류 발생:', error);
-        soundInfo.textContent = '알림음 재생 실패';
-        soundInfo.style.opacity = '1';
-        setTimeout(() => {
-            soundInfo.style.opacity = '0';
-            setTimeout(() => {
-                soundInfo.textContent = '';
-            }, 300);
-        }, 2000);
+    if (settings.soundEnabled) {
+        chrome.runtime.sendMessage({ action: 'playSound' });
     }
 }
 
