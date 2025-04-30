@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "마리나라: 포모도로 도우미",
+  "name": "집중 시간 도우미 (Focus Time Helper)",
   "version": "1.0",
-  "description": "포모도로 타이머 확장프로그램",
+  "description": "집중과 휴식 시간을 관리하는 타이머 확장프로그램",
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

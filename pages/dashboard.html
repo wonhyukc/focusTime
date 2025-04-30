@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>마리나라: 포모도로 도우미</title>
+    <title>집중 시간 도우미 (Focus Time Helper)</title>
     <link rel="stylesheet" href="../styles/dashboard.css">
 </head>
 <body>
     <header>
         <div class="logo">
-            <img src="../icons/icon48.png" alt="마리나라 로고">
-            <h1>마리나라: 포모도로 도우미</h1>
+            <img src="../icons/icon48.png" alt="집중 시간 도우미 로고">
+            <h1>집중 시간 도우미 (Focus Time Helper)</h1>
         </div>
         <nav>
             <button class="tab-button active" data-tab="settings">설정</button>
@@ -123,6 +123,23 @@
                         </select>
                     </div>
                 </div>
+                <div class="settings-bottom-menu">
+                    <div class="bottom-menu-buttons">
+                        <button id="export-settings" class="menu-button">
+                            <span class="icon">⬇️</span>
+                            설정 내보내기
+                        </button>
+                        <button id="import-settings" class="menu-button">
+                            <span class="icon">⬆️</span>
+                            설정 가져오기
+                        </button>
+                        <button id="reset-settings" class="menu-button warning">
+                            <span class="icon">🔄</span>
+                            설정 초기화
+                        </button>
+                    </div>
+                    <input type="file" id="settings-file-input" accept=".json" style="display: none;">
+                </div>
             </div>
         </section>
 
@@ -178,6 +195,27 @@
                     <button id="export-csv" class="data-button">CSV로 저장</button>
                     <button id="export-data" class="data-button">데이터 내보내기</button>
                     <p class="data-description">For backup or for importing on another computer.</p>
+                </div>
+                <div class="stats-bottom-menu">
+                    <div class="bottom-menu-buttons">
+                        <button id="export-stats-json" class="menu-button">
+                            <span class="icon">⬇️</span>
+                            JSON 내보내기
+                        </button>
+                        <button id="export-stats-csv" class="menu-button">
+                            <span class="icon">📊</span>
+                            CSV 내보내기
+                        </button>
+                        <button id="import-stats" class="menu-button">
+                            <span class="icon">⬆️</span>
+                            통계 가져오기
+                        </button>
+                        <button id="reset-stats" class="menu-button warning">
+                            <span class="icon">🔄</span>
+                            통계 초기화
+                        </button>
+                    </div>
+                    <input type="file" id="stats-file-input" accept=".json,.csv" style="display: none;">
                 </div>
             </div>
         </section>

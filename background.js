@@ -54,14 +54,8 @@ function createInitialMenus() {
 
         // 설정과 통계 메뉴 추가
         chrome.contextMenus.create({
-            id: 'openSettings',
-            title: '설정',
-            contexts: ['action']
-        });
-
-        chrome.contextMenus.create({
-            id: 'openStats',
-            title: '통계 보기',
+            id: 'openDashboard',
+            title: '설정과 통계',
             contexts: ['action']
         });
     });
@@ -126,14 +120,8 @@ function createRunningMenus() {
 
         // 설정과 통계 메뉴 추가
         chrome.contextMenus.create({
-            id: 'openSettings',
-            title: '설정',
-            contexts: ['action']
-        });
-
-        chrome.contextMenus.create({
-            id: 'openStats',
-            title: '통계 보기',
+            id: 'openDashboard',
+            title: '설정과 통계',
             contexts: ['action']
         });
     });
@@ -388,11 +376,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
             await startNewCycle();
             createRunningMenus();
             break;
-        case 'openSettings':
-            chrome.tabs.create({ url: 'pages/dashboard.html#settings' });
-            break;
-        case 'openStats':
-            chrome.tabs.create({ url: 'pages/dashboard.html#stats' });
+        case 'openDashboard':
+            chrome.tabs.create({ url: 'pages/dashboard.html' });
             break;
     }
 });
@@ -502,18 +487,20 @@ async function timerComplete() {
 // 알림 표시
 function showNotification() {
     const title = timerState.type === 'focus' ? 
-        '휴식 시간!' : 
-        '집중 시간!';
+        '휴식 시간입니다!' : 
+        '집중 시간입니다!';
     
     const message = timerState.type === 'focus' ?
-        '잠시 휴식을 취하세요.' :
-        '다시 집중할 시간입니다.';
+        '잠시 휴식을 취하고 기분 전환을 해보세요.' :
+        '이제 집중할 시간입니다. 목표를 향해 화이팅!';
 
     chrome.notifications.create({
         type: 'basic',
         iconUrl: 'icons/icon128.png',
         title: title,
-        message: message
+        message: message,
+        requireInteraction: true,
+        silent: true
     });
 }
 
