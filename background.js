@@ -186,16 +186,10 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 // 알림 클릭 이벤트 처리
 chrome.notifications.onClicked.addListener((notificationId) => {
     if (notificationId === 'pomodoroNotification') {
-        // 알림 업데이트로 클릭 피드백 표시
-        chrome.notifications.update(notificationId, {
-            message: '다음 세션으로 전환 중...'
-        }, () => {
-            // 잠시 후 알림 제거
-            setTimeout(() => {
-                chrome.notifications.clear(notificationId);
-                startNextSession();
-            }, 1000);
-        });
+        // 알림 제거
+        chrome.notifications.clear(notificationId);
+        // 다음 세션 시작
+        startNextSession();
     }
 });
 
@@ -218,6 +212,7 @@ function startNextSession() {
                 periodInMinutes: 1/60  // 1초마다 실행
             });
             updateBadge(newTimeLeft, isBreak);
+            createRunningMenus(); // 실행 중 메뉴로 변경
         });
     });
 }
@@ -492,6 +487,10 @@ async function timerComplete() {
     timerState.timeLeft = 0;
     timerState.isRunning = false;
     
+    // 알림음 재생
+    await playSound();
+    
+    // 알림 표시
     showNotification();
     updateBadge();
     createInitialMenus(); // 타이머 완료 시 초기 메뉴로 돌아감
@@ -507,7 +506,7 @@ function showNotification() {
         '잠시 휴식을 취하고 기분 전환을 해보세요.' :
         '이제 집중할 시간입니다. 목표를 향해 화이팅!';
 
-    chrome.notifications.create({
+    chrome.notifications.create('pomodoroNotification', {
         type: 'basic',
         iconUrl: 'icons/icon128.png',
         title: title,
