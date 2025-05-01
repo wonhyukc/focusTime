@@ -2,15 +2,25 @@
 .monthly-heatmap {
     overflow-x: auto; /* 가로 스크롤 가능하도록 */
     padding-bottom: 10px;
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    margin-top: 10px;
 }
 
 .heatmap-grid {
-    display: inline-grid; /* 내용을 줄바꿈 없이 옆으로 나열 */
-    grid-auto-flow: column; /* 열 우선 배치 */
-    grid-template-rows: repeat(7, 12px); /* 7일(행), 각 셀 높이 */
+    display: flex; /* 세로로 나열된 주 표시 */
+    gap: 4px; /* 주간 간격 */
+    margin-top: 5px;
+    direction: ltr; /* 왼쪽부터 채우기 */
+}
+
+.heatmap-week {
+    display: flex;
+    flex-direction: column;
     gap: 2px; /* 셀 간격 */
-    margin-top: 10px;
-    direction: rtl; /* 오른쪽부터 채우기 (최신 달이 오른쪽) */
 }
 
 .heatmap-cell {
@@ -19,35 +29,144 @@
     background-color: #ebedf0; /* 기본 배경색 (활동 없음) */
     border-radius: 2px;
     position: relative; /* 툴팁 기준점 */
+    transition: transform 0.1s ease-in-out;
 }
 
-/* 활동 레벨에 따른 색상 (GitHub 스타일 예시) */
+.heatmap-cell:hover {
+    transform: scale(1.2);
+    z-index: 5;
+}
+
+/* 활동 레벨에 따른 색상 (초록 톤) */
 .heatmap-cell[data-level="1"] { background-color: #9be9a8; }
 .heatmap-cell[data-level="2"] { background-color: #40c463; }
 .heatmap-cell[data-level="3"] { background-color: #30a14e; }
 .heatmap-cell[data-level="4"] { background-color: #216e39; }
 
-/* 간단한 툴팁 스타일 */
-.heatmap-cell .tooltip {
+/* 월 경계 표시 */
+.heatmap-cell.month-end {
+    margin-right: 2px;
+    border-right: 1px dashed #d0d7de;
+}
+
+/* 오늘 표시 */
+.heatmap-cell.today {
+    border: 1.5px solid #0969da;
+}
+
+/* 요일 레이블 */
+.day-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 20px;
+    margin-right: 4px;
+    margin-top: 25px; /* 월 헤더와 정렬 */
+}
+
+.day-label {
+    height: 12px;
+    font-size: 9px;
+    color: #57606a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 월 헤더 */
+.month-header {
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    margin-bottom: 4px;
+    margin-left: 24px; /* 요일 레이블 너비 + 간격 */
+}
+
+.month-label {
+    width: 30px; /* 한 달에 약 4주 * 셀 너비 */
+    font-size: 10px;
+    color: #57606a;
+    text-align: center;
+}
+
+/* 툴팁 스타일 */
+.heatmap-tooltip {
     visibility: hidden;
-    width: 120px;
-    background-color: black;
+    width: 160px;
+    background-color: rgba(0, 0, 0, 0.8);
     color: #fff;
     text-align: center;
     border-radius: 6px;
-    padding: 5px 0;
+    padding: 6px 8px;
     position: absolute;
-    z-index: 1;
+    z-index: 10;
     bottom: 125%; /* 셀 위에 위치 */
     left: 50%;
-    margin-left: -60px; /* 중앙 정렬 */
+    margin-left: -80px; /* 중앙 정렬 */
     opacity: 0;
-    transition: opacity 0.3s;
-    font-size: 12px;
+    transition: opacity 0.2s, visibility 0.2s;
+    font-size: 11px;
     pointer-events: none; /* 툴팁 자체는 이벤트 방해 안함 */
+    line-height: 1.4;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-.heatmap-cell:hover .tooltip {
+.heatmap-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+}
+
+.heatmap-cell:hover .heatmap-tooltip {
     visibility: visible;
     opacity: 1;
+}
+
+/* 차트 컨테이너 스타일 강화 */
+.chart-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.chart-container h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 16px;
+    color: #24292f;
+}
+
+/* 시간 필터 버튼 스타일 개선 */
+.time-filter {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.time-button {
+    background-color: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #24292f;
+    transition: all 0.2s;
+}
+
+.time-button:hover {
+    background-color: #f0f3f9;
+}
+
+.time-button.active {
+    background-color: #0969da;
+    color: white;
+    border-color: #0969da;
 } 

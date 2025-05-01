@@ -179,26 +179,86 @@ main {
     background-color: white;
     padding: 1.5rem;
     border-radius: 0.5rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background-color: var(--primary-color);
+}
+
+.stat-card:nth-child(1)::before {
+    background-color: #3B82F6; /* 파란색 */
+}
+
+.stat-card:nth-child(2)::before {
+    background-color: #10B981; /* 초록색 */
+}
+
+.stat-card:nth-child(3)::before {
+    background-color: #F59E0B; /* 노란색/주황색 */
+}
+
+.stat-card:nth-child(4)::before {
+    background-color: #8B5CF6; /* 보라색 */
 }
 
 .stat-card h3 {
     color: var(--text-color);
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
 }
 
 .stat-value {
-    font-size: 2rem;
+    font-size: 2.25rem;
     font-weight: bold;
     color: var(--primary-color);
+    line-height: 1.2;
+}
+
+.stat-card:nth-child(1) .stat-value {
+    color: #3B82F6;
+}
+
+.stat-card:nth-child(2) .stat-value {
+    color: #10B981;
+}
+
+.stat-card:nth-child(3) .stat-value {
+    color: #F59E0B;
+}
+
+.stat-card:nth-child(4) .stat-value {
+    color: #8B5CF6;
 }
 
 .stat-label {
+    margin-top: 0.25rem;
     color: var(--text-color);
     font-size: 0.875rem;
     opacity: 0.8;
+}
+
+.stat-label::after {
+    content: '시간';
+    font-size: 0.75rem;
+    margin-left: 2px;
+    opacity: 0.7;
 }
 
 .stats-charts {
@@ -211,40 +271,34 @@ main {
     background-color: white;
     padding: 1.5rem;
     border-radius: 0.5rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .chart-container h3 {
     margin-bottom: 1rem;
     color: var(--text-color);
+    font-size: 1.1rem;
+    font-weight: 600;
+    position: relative;
+    padding-left: 12px;
 }
 
-.time-filter {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-.time-button {
-    padding: 0.25rem 0.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: 0.25rem;
-    background-color: white;
-    color: var(--text-color);
-    cursor: pointer;
-}
-
-.time-button.active {
+.chart-container h3::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 16px;
     background-color: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
+    border-radius: 2px;
 }
 
-.chart {
-    width: 100%;
-    height: 300px;
-    background-color: var(--background-color);
-    border-radius: 0.25rem;
+canvas {
+    width: 100% !important;
+    height: 300px !important;
+    max-height: 300px;
 }
 
 /* 데이터 관리 스타일 */

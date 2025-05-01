@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>집중 시간 도우미 (Focus Time Helper)</title>
     <link rel="stylesheet" href="../styles/dashboard.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@^3"></script>
+    <script src="../scripts/Chart.min.js"></script>
     <link rel="stylesheet" href="../styles/heatmap.css">
 </head>
 <body>
@@ -238,6 +238,9 @@
         </section>
     </main>
 
+    <!-- Chrome API Mock for standalone usage -->
+    <script src="../scripts/chrome-api-mock.js"></script>
+    <!-- Then load our application scripts -->
     <script src="../scripts/dashboard.js"></script>
     <script src="../scripts/settings.js"></script>
     <script src="../scripts/stats-display.js"></script>

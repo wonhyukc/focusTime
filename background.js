@@ -184,9 +184,9 @@ chrome.alarms.onAlarm.addListener((alarm) => {
             timerState.timeLeft--;
             chrome.storage.local.set({ timeLeft: timerState.timeLeft });
             updateBadge(timerState.timeLeft, timerState.isBreak);
-        } else {
+                } else {
             timerComplete();
-        }
+            }
     }
 });
 
@@ -194,7 +194,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 chrome.notifications.onClicked.addListener(async (notificationId) => {
     if (notificationId === 'pomodoroNotification') {
         // 알림 제거
-        chrome.notifications.clear(notificationId);
+                chrome.notifications.clear(notificationId);
 
         // 다음 세션 시작
         await startNextSession();
@@ -392,9 +392,9 @@ async function startNextSession() {
 
     // 상태 저장 및 타이머 시작
     await chrome.storage.local.set({
-        timeLeft: newTimeLeft,
-        isBreak: isBreak,
-        isRunning: true,
+            timeLeft: newTimeLeft,
+            isBreak: isBreak,
+            isRunning: true,
         sessionComplete: false,
         type: timerState.type
     });
@@ -497,8 +497,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         let response; // 응답 변수 선언
         console.log("Received message:", request); // 메시지 수신 로그 추가
 
-        switch (request.action) {
-            case 'startTimer':
+    switch (request.action) {
+        case 'startTimer':
             case 'pauseTimer':
                 toggleTimer();
                 response = { success: true };
@@ -933,6 +933,7 @@ async function exportStats() {
 
 // 파싱된 통계 데이터 가져오기 (신규 함수)
 async function importParsedStats(historyArray) {
+    console.log("[Background] Received data for importParsedStats:", JSON.stringify(historyArray?.slice(0, 5))); // 수신 데이터 로그 추가
     try {
         // 간단한 유효성 검사
         if (!Array.isArray(historyArray)) {

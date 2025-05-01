@@ -29,8 +29,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // 설정 로드
     loadSettings();
 
-    // 차트 초기화
-    initializeCharts();
+    // Let stats-display.js handle chart initialization
+    // Use window.dashboardChartInitialized to avoid duplicate initialization
+    if (!window.statsDisplayLoaded) {
+        console.log("Initializing charts from dashboard.js");
+        setTimeout(initializeCharts, 500); // Give Chart.js more time to load
+    } else {
+        console.log("Charts will be initialized by stats-display.js");
+    }
 
     // 설정 내보내기/가져오기/초기화 기능
     document.getElementById('export-settings').addEventListener('click', exportSettings);
@@ -46,7 +52,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('stats-file-input').click();
     });
     document.getElementById('reset-stats').addEventListener('click', resetStats);
-    document.getElementById('stats-file-input').addEventListener('change', importStats);
+    // 통계 파일 입력 변경 이벤트 리스너 등록
+    document.getElementById('stats-file-input').addEventListener('change', handleStatsFileImport);
 });
 
 // 설정 저장
@@ -124,81 +131,69 @@ document.querySelectorAll('.preview-sound').forEach(button => {
 
 // 차트 초기화
 function initializeCharts() {
-    // Chart.js를 사용하여 차트 구현
-    // 일간 차트
-    const dailyCtx = document.getElementById('daily-chart').getContext('2d');
-    new Chart(dailyCtx, {
-        type: 'bar',
-        data: {
-            labels: Array.from({length: 24}, (_, i) => `${i}:00`),
-            datasets: [{
-                label: '포모도로 수',
-                data: Array(24).fill(0),
-                backgroundColor: '#3B82F6'
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
+    // Check if Chart is defined before using it
+    if (typeof Chart === 'undefined') {
+        console.error("Chart.js library not loaded yet. Charts will not be initialized.");
+        // Try again after a short delay
+        setTimeout(initializeCharts, 500);
+        return;
+    }
+    
+    console.log("Initializing charts with Chart.js version:", Chart.version);
+    
+    try {
+        // 일간 차트
+        const dailyCtx = document.getElementById('daily-chart').getContext('2d');
+        new Chart(dailyCtx, {
+            type: 'bar',
+            data: {
+                labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                datasets: [{
+                    label: '포모도로 수',
+                    data: Array(24).fill(0),
+                    backgroundColor: '#3B82F6'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
                     }
                 }
             }
-        }
-    });
+        });
 
-    // 주간 차트
-    const weeklyCtx = document.getElementById('weekly-chart').getContext('2d');
-    new Chart(weeklyCtx, {
-        type: 'bar',
-        data: {
-            labels: ['일', '월', '화', '수', '목', '금', '토'],
-            datasets: [{
-                label: '포모도로 수',
-                data: Array(7).fill(0),
-                backgroundColor: '#3B82F6'
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
+        // 주간 차트
+        const weeklyCtx = document.getElementById('weekly-chart').getContext('2d');
+        new Chart(weeklyCtx, {
+            type: 'bar',
+            data: {
+                labels: ['일', '월', '화', '수', '목', '금', '토'],
+                datasets: [{
+                    label: '포모도로 수',
+                    data: Array(7).fill(0),
+                    backgroundColor: '#3B82F6'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
                     }
                 }
             }
-        }
-    });
-
-    // 월간 차트
-    const monthlyCtx = document.getElementById('monthly-chart').getContext('2d');
-    new Chart(monthlyCtx, {
-        type: 'bar',
-        data: {
-            labels: Array.from({length: 12}, (_, i) => `${i + 1}월`),
-            datasets: [{
-                label: '포모도로 수',
-                data: Array(12).fill(0),
-                backgroundColor: '#3B82F6'
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
-                    }
-                }
-            }
-        }
-    });
+        });
+    } catch (error) {
+        console.error("Error initializing charts:", error);
+    }
 }
 
 // 피드백 제출
@@ -337,6 +332,13 @@ function parseCsvToHistory(csvText) {
         throw new Error("CSV 헤더에 필요한 열('시작시각(년월일시분)', '세션', '지속시간', '프로젝트')이 없습니다.");
     }
 
+    // 세션 타입 매핑 테이블
+    const sessionTypeMap = {
+        '집중': 'focus',
+        '휴식': 'shortBreak',
+        '긴휴식': 'longBreak'
+    };
+
     const history = [];
     for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
@@ -346,66 +348,72 @@ function parseCsvToHistory(csvText) {
         // TODO: 필요시 더 강력한 CSV 파서 라이브러리 사용 고려
         const values = line.split(',');
 
-        if (values.length < headers.length) {
-             console.warn(`Skipping incomplete CSV row ${i + 1}: ${line}`);
+        if (values.length < Math.max(startIndex, sessionIndex, durationIndex, projectIndex) + 1) {
+            console.warn(`Skipping incomplete CSV row ${i + 1}: ${line}`);
             continue;
         }
 
-         // 값에서 앞뒤 공백 제거
-         const startTime = values[startIndex]?.trim();
-         const sessionCsv = values[sessionIndex]?.trim();
-         const durationStr = values[durationIndex]?.trim();
-         const projectName = values[projectIndex]?.trim() || "N/A"; // 프로젝트 이름 없으면 N/A
+        // 값에서 앞뒤 공백 제거
+        const startTime = values[startIndex]?.trim();
+        const sessionCsv = values[sessionIndex]?.trim();
+        const durationStr = values[durationIndex]?.trim();
+        const projectName = values[projectIndex]?.trim() || "N/A"; // 프로젝트 이름 없으면 N/A
 
-         // 데이터 변환 및 유효성 검사
-        const sessionType = sessionCsv === '집중' ? 'focus' : (sessionCsv === '휴식' ? 'shortBreak' : null); // 휴식은 shortBreak로 가정
-         const durationMinutes = parseInt(durationStr);
+        // 데이터 변환 및 유효성 검사
+        const sessionType = sessionTypeMap[sessionCsv] || null; // 매핑 테이블 사용
+        const durationMinutes = parseInt(durationStr);
 
-         if (!startTime || !sessionType || isNaN(durationMinutes)) {
-             console.warn(`Skipping invalid data in CSV row ${i + 1}: ${line}`);
-             continue;
-         }
+        if (!startTime || !sessionType || isNaN(durationMinutes)) {
+            console.warn(`Skipping invalid data in CSV row ${i + 1}: ${line}, sessionType=${sessionCsv}->${sessionType}, duration=${durationStr}->${durationMinutes}`);
+            continue;
+        }
 
-         // 내부 데이터 형식으로 변환
-         history.push({
-             startTime: startTime, // ISO 문자열로 가정
-             type: sessionType,
-             durationMinutes: durationMinutes,
-             projectName: projectName
-             // endTime은 CSV에 없으므로 생략
-         });
+        // 내부 데이터 형식으로 변환
+        history.push({
+            startTime: startTime,
+            type: sessionType,
+            durationMinutes: durationMinutes,
+            projectName: projectName
+        });
     }
     return history;
 }
 
-// 통계 가져오기
-function importStats(event) {
+// 통계 가져오기 (중복 함수 제거: importStats 대신 handleStatsFileImport 사용)
+function handleStatsFileImport(event) {
     if (event.target.files && event.target.files.length > 0) {
         const file = event.target.files[0];
         const reader = new FileReader();
         reader.onload = async (event) => {
             try {
                 const fileContent = event.target.result;
-                // CSV 파싱
-                const parsedHistory = parseCsvToHistory(fileContent);
+                const parsedHistory = parseCsvToHistory(fileContent); // CSV 파싱
+                console.log("[Dashboard] Parsed History:", JSON.stringify(parsedHistory.slice(0, 5))); // 파싱 결과 샘플 로그 추가
 
                 if (parsedHistory.length === 0) {
                      showToast('CSV 파일에서 유효한 데이터를 찾을 수 없습니다.', 'warning');
                      return;
                 }
 
-                // 파싱된 데이터를 background로 전송 (새 action 사용)
                 const response = await chrome.runtime.sendMessage({ action: 'importParsedStats', data: parsedHistory });
                 console.log("Import parsed stats response:", response);
 
                 if (response?.success) {
                     showToast(response.message || '통계가 성공적으로 가져오기되었습니다.', 'success');
-                    // 통계 UI 갱신
-                    if (typeof loadAndProcessStats === 'function') {
-                        loadAndProcessStats(); // stats-display.js의 함수 호출
-                    } else {
-                         console.warn("loadAndProcessStats function not found for UI update.");
-                    }
+                    console.log("[Dashboard] Import successful, attempting chart update shortly..."); // 로그 추가
+
+                    // --- 차트 업데이트 로직 호출 (setTimeout 추가) ---
+                    setTimeout(() => {
+                        if (typeof loadAndProcessStats === 'function') {
+                            console.log("[Dashboard] Calling loadAndProcessStats via setTimeout..."); // 로그 추가
+                            loadAndProcessStats(); // stats-display.js의 함수 호출
+                        } else {
+                             console.warn("[Dashboard] loadAndProcessStats function not found for UI update.");
+                             showToast('통계 UI를 업데이트하려면 페이지를 새로고침하세요.', 'info');
+                        }
+                    }, 500); // 500ms (0.5초) 지연 후 호출
+                    // --- 차트 업데이트 로직 끝 ---
+
                 } else {
                     showToast(response?.message || '통계 가져오기 실패', 'error');
                 }
@@ -441,8 +449,6 @@ function resetStats() {
     }
 }
 
-// --- 통계 탭 기능 ---
-
 // 내보내기 버튼 클릭
 document.getElementById('export-stats')?.addEventListener('click', async () => {
     try {
@@ -466,75 +472,7 @@ document.getElementById('export-stats')?.addEventListener('click', async () => {
     }
 });
 
-// 가져오기 버튼 클릭
-document.getElementById('import-stats')?.addEventListener('click', () => {
-    document.getElementById('stats-file-input')?.click();
-});
-
-// 통계 파일 입력 변경
-document.getElementById('stats-file-input')?.addEventListener('change', (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                const fileContent = event.target.result;
-                // CSV 파싱
-                const parsedHistory = parseCsvToHistory(fileContent);
-
-                if (parsedHistory.length === 0) {
-                     showToast('CSV 파일에서 유효한 데이터를 찾을 수 없습니다.', 'warning');
-                     return;
-                }
-
-                // 파싱된 데이터를 background로 전송 (새 action 사용)
-                const response = await chrome.runtime.sendMessage({ action: 'importParsedStats', data: parsedHistory });
-                console.log("Import parsed stats response:", response);
-
-                if (response?.success) {
-                    showToast(response.message || '통계가 성공적으로 가져오기되었습니다.', 'success');
-                    // 통계 UI 갱신
-                    if (typeof loadAndProcessStats === 'function') {
-                        loadAndProcessStats(); // stats-display.js의 함수 호출
-                    } else {
-                         console.warn("loadAndProcessStats function not found for UI update.");
-                    }
-                } else {
-                    showToast(response?.message || '통계 가져오기 실패', 'error');
-                }
-            } catch (error) {
-                console.error("Error parsing or importing CSV stats file:", error);
-                showToast(`파일 처리 오류: ${error.message}`, 'error');
-            }
-        };
-        reader.onerror = (event) => {
-            console.error("File reading error:", event);
-            showToast('파일을 읽는 중 오류가 발생했습니다.', 'error');
-        };
-        reader.readAsText(file); // 파일을 텍스트로 읽기
-        e.target.value = ''; // 입력 필드 초기화
-    }
-});
-
-// 초기화 버튼 클릭
-document.getElementById('reset-stats')?.addEventListener('click', () => {
-    if (confirm('정말로 모든 통계 기록을 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
-        chrome.runtime.sendMessage({ action: 'resetStats' }, (response) => {
-            console.log("Reset response:", response); // 응답 로그 추가
-            if (response?.success) {
-                showToast('통계가 초기화되었습니다.', 'success');
-                // 통계 UI 갱신 로직 호출 (화면 비우기)
-                if (typeof clearStatsDisplay === 'function') {
-                     clearStatsDisplay(); // stats-display.js의 함수 호출
-                }
-            } else {
-                 showToast(response?.message || '통계 초기화 실패', 'error');
-            }
-        });
-    }
-});
-
-// 백그라운드에서 통계 업데이트 메시지 수신 (선택 사항)
+// 백그라운드에서 통계 업데이트 메시지 수신
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "statsUpdated") {
         console.log("Stats updated message received from background.");
@@ -545,11 +483,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // 다른 메시지 처리 로직...
     // return true; // 다른 비동기 리스너가 없다면 불필요
 });
-
-// TODO: 통계 UI 로드 및 표시 함수 (예: loadAndDisplayStats)
-// TODO: 통계 UI 초기화 함수 (예: clearStatsDisplay)
-// 페이지 로드 시 통계 표시 함수 호출 필요
-// document.addEventListener('DOMContentLoaded', loadAndDisplayStats);
 
 // showToast 함수 정의 (settings.js와 중복 방지를 위해 필요시 여기에만 두거나 공통 파일로 분리)
 if (typeof showToast === 'undefined') { // 이미 정의되지 않았을 경우에만 정의
