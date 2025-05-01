@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>집중 시간 도우미 (Focus Time Helper)</title>
     <link rel="stylesheet" href="../styles/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@^3"></script>
+    <link rel="stylesheet" href="../styles/heatmap.css">
 </head>
 <body>
     <header>
@@ -181,22 +183,25 @@
                     <div class="chart-container">
                         <h3>일 단위 분포</h3>
                         <div class="time-filter">
-                            <button class="time-button active">15분</button>
-                            <button class="time-button">30분</button>
-                            <button class="time-button">1시간</button>
-                            <button class="time-button">2시간</button>
+                            <button class="time-button" data-duration="15">15분</button>
+                            <button class="time-button active" data-duration="25">25분</button>
+                            <button class="time-button" data-duration="30">30분</button>
+                            <button class="time-button" data-duration="45">45분</button>
+                            <button class="time-button" data-duration="60">1시간</button>
                         </div>
-                        <div id="daily-chart" class="chart"></div>
+                        <canvas id="daily-chart"></canvas>
                     </div>
 
                     <div class="chart-container">
                         <h3>주 단위 분포</h3>
-                        <div id="weekly-chart" class="chart"></div>
+                        <canvas id="weekly-chart"></canvas>
                     </div>
 
                     <div class="chart-container">
-                        <h3>최근 9개월간 3 포모도로</h3>
-                        <div id="monthly-chart" class="chart"></div>
+                        <h3>최근 9개월간 포모도로</h3>
+                        <div id="monthly-heatmap" class="monthly-heatmap">
+                            <!-- JS로 내용 생성 -->
+                        </div>
                     </div>
                 </div>
 
@@ -215,7 +220,7 @@
                             통계 초기화
                         </button>
                     </div>
-                    <input type="file" id="stats-file-input" accept=".json" style="display: none;">
+                    <input type="file" id="stats-file-input" accept=".csv" style="display: none;">
                 </div>
             </div>
         </section>
@@ -235,5 +240,6 @@
 
     <script src="../scripts/dashboard.js"></script>
     <script src="../scripts/settings.js"></script>
+    <script src="../scripts/stats-display.js"></script>
 </body>
 </html> 

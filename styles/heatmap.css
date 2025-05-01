@@ -1,0 +1,53 @@
+/* styles/heatmap.css */
+.monthly-heatmap {
+    overflow-x: auto; /* 가로 스크롤 가능하도록 */
+    padding-bottom: 10px;
+}
+
+.heatmap-grid {
+    display: inline-grid; /* 내용을 줄바꿈 없이 옆으로 나열 */
+    grid-auto-flow: column; /* 열 우선 배치 */
+    grid-template-rows: repeat(7, 12px); /* 7일(행), 각 셀 높이 */
+    gap: 2px; /* 셀 간격 */
+    margin-top: 10px;
+    direction: rtl; /* 오른쪽부터 채우기 (최신 달이 오른쪽) */
+}
+
+.heatmap-cell {
+    width: 12px; /* 셀 너비 */
+    height: 12px; /* 셀 높이 */
+    background-color: #ebedf0; /* 기본 배경색 (활동 없음) */
+    border-radius: 2px;
+    position: relative; /* 툴팁 기준점 */
+}
+
+/* 활동 레벨에 따른 색상 (GitHub 스타일 예시) */
+.heatmap-cell[data-level="1"] { background-color: #9be9a8; }
+.heatmap-cell[data-level="2"] { background-color: #40c463; }
+.heatmap-cell[data-level="3"] { background-color: #30a14e; }
+.heatmap-cell[data-level="4"] { background-color: #216e39; }
+
+/* 간단한 툴팁 스타일 */
+.heatmap-cell .tooltip {
+    visibility: hidden;
+    width: 120px;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%; /* 셀 위에 위치 */
+    left: 50%;
+    margin-left: -60px; /* 중앙 정렬 */
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 12px;
+    pointer-events: none; /* 툴팁 자체는 이벤트 방해 안함 */
+}
+
+.heatmap-cell:hover .tooltip {
+    visibility: visible;
+    opacity: 1;
+} 

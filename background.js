@@ -2,16 +2,17 @@
 const PROJECT_HISTORY_KEY = 'projectHistory';
 const MAX_HISTORY_SIZE = 10; // 기록 최대 개수 (선택 사항)
 
-// 기본 설정값
-const DEFAULT_SETTINGS = {
-    version: "1.0",
+// 기본 설정값 (background용 - settings.js와 동기화 필요)
+const DEFAULT_SETTINGS_BG = {
+    projectName: "집중 시간 도우미 설정", // 기본 프로젝트 이름 변경
+    version: "1.0", // 버전 정보 추가
     focus: {
         duration: 25,
         sound: "beep",
         soundVolume: 50,
         soundType: "low-short-beep",
         desktopNotification: true,
-        tabNotification: true
+        tabNotification: true // background 기본값은 true 유지할 수 있음
     },
     shortBreak: {
         duration: 5,
@@ -42,10 +43,12 @@ let timerState = {
     timeLeft: 0,
     isRunning: false,
     isBreak: false,
-    type: 'focus', // 'focus' | 'shortBreak' | 'longBreak'
+    type: 'focus',
     pomodoroCount: 0,
     alarmName: 'pomodoroTimer',
-    sessionComplete: false
+    sessionComplete: false,
+    sessionStartTime: null, // 세션 시작 시간 추가
+    currentProjectName: null // 현재 세션의 프로젝트 이름 추가
 };
 
 // 컨텍스트 메뉴 생성
@@ -164,7 +167,7 @@ chrome.runtime.onInstalled.addListener(() => {
     // 기본 설정 초기화
     chrome.storage.sync.get(['settings'], (result) => {
         if (!result.settings) {
-            chrome.storage.sync.set({ settings: DEFAULT_SETTINGS }, () => {
+            chrome.storage.sync.set({ settings: DEFAULT_SETTINGS_BG }, () => {
                 console.log('기본 설정이 초기화되었습니다.');
             });
         }
@@ -201,7 +204,7 @@ chrome.notifications.onClicked.addListener(async (notificationId) => {
 // 확장 프로그램 아이콘 클릭 이벤트 처리
 chrome.action.onClicked.addListener((tab) => {
     chrome.storage.sync.get('settings', async (result) => {
-        const settings = result.settings || DEFAULT_SETTINGS;
+        const settings = result.settings || DEFAULT_SETTINGS_BG;
         const projectName = settings.projectName || '';
 
         if (projectName) {
@@ -256,43 +259,51 @@ async function getCurrentSettings() {
     try {
         const result = await chrome.storage.sync.get('settings');
         let settings = result.settings;
-        
-        // 설정이 없거나 버전이 다르면 기본값으로 병합
-        if (!settings || settings.version !== DEFAULT_SETTINGS.version) {
-            console.log('저장된 설정이 없거나 버전이 달라 기본 설정과 병합합니다.');
-            settings = { ...DEFAULT_SETTINGS, ...(settings || {}) };
-            // settings.version = DEFAULT_SETTINGS.version; // 필요한 경우 버전 업데이트
+
+        // 설정이 없거나 버전이 다르면 기본값(BG용)으로 병합
+        if (!settings || settings.version !== DEFAULT_SETTINGS_BG.version) {
+            console.log('[BG] 저장된 설정이 없거나 버전이 달라 기본 설정과 병합합니다.');
+            // settings.js의 DEFAULT_SETTINGS와 구조 맞추기 (general 제외 가능성)
+             const baseSettings = { // settings.js의 DEFAULT_SETTINGS 구조와 유사하게
+                projectName: DEFAULT_SETTINGS_BG.projectName,
+                focus: DEFAULT_SETTINGS_BG.focus,
+                shortBreak: DEFAULT_SETTINGS_BG.shortBreak,
+                longBreak: DEFAULT_SETTINGS_BG.longBreak,
+                // general은 기존 로직 유지 또는 BG 기본값 사용
+                 general: DEFAULT_SETTINGS_BG.general
+            };
+            settings = { ...baseSettings, ...(settings || {}) };
+            settings.version = DEFAULT_SETTINGS_BG.version; // 버전 업데이트
             await chrome.storage.sync.set({ settings }); // 병합된 설정 저장
         }
 
-        // 프로젝트 이름 처리 (없으면 기본값 사용)
-        const projectName = settings.projectName !== undefined ? settings.projectName : DEFAULT_SETTINGS.projectName;
-        
+        // 프로젝트 이름 처리 (없으면 BG 기본값 사용)
+        const projectName = settings.projectName !== undefined ? settings.projectName : DEFAULT_SETTINGS_BG.projectName;
+
         // 설정값 유효성 검사 및 보정
         return {
             projectName: projectName,
             focus: {
-                ...DEFAULT_SETTINGS.focus, // 기본값으로 시작
-                ...(settings.focus || {}), // 저장된 값으로 덮어쓰기
-                duration: validateDuration(settings.focus?.duration, DEFAULT_SETTINGS.focus.duration)
+                ...DEFAULT_SETTINGS_BG.focus,
+                ...(settings.focus || {}),
+                duration: validateDuration(settings.focus?.duration, DEFAULT_SETTINGS_BG.focus.duration)
             },
             shortBreak: {
-                 ...DEFAULT_SETTINGS.shortBreak,
+                 ...DEFAULT_SETTINGS_BG.shortBreak,
                 ...(settings.shortBreak || {}),
-                duration: validateDuration(settings.shortBreak?.duration, DEFAULT_SETTINGS.shortBreak.duration)
+                duration: validateDuration(settings.shortBreak?.duration, DEFAULT_SETTINGS_BG.shortBreak.duration)
             },
             longBreak: {
-                 ...DEFAULT_SETTINGS.longBreak,
+                 ...DEFAULT_SETTINGS_BG.longBreak,
                 ...(settings.longBreak || {}),
-                duration: validateDuration(settings.longBreak?.duration, DEFAULT_SETTINGS.longBreak.duration),
-                startAfter: validateDuration(settings.longBreak?.startAfter, DEFAULT_SETTINGS.longBreak.startAfter)
+                duration: validateDuration(settings.longBreak?.duration, DEFAULT_SETTINGS_BG.longBreak.duration),
+                startAfter: validateDuration(settings.longBreak?.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter)
             },
-            // general 설정은 DEFAULT_SETTINGS에서 가져오지 않으므로 삭제 또는 유지
-             general: settings.general || DEFAULT_SETTINGS.general
+             general: settings.general || DEFAULT_SETTINGS_BG.general
         };
     } catch (error) {
-        console.error('설정 로드 중 오류:', error);
-        return { ...DEFAULT_SETTINGS }; // 오류 발생 시 기본 설정 반환
+        console.error('[BG] 설정 로드 중 오류:', error);
+        return { ...DEFAULT_SETTINGS_BG }; // 오류 발생 시 BG 기본 설정 반환
     }
 }
 
@@ -302,45 +313,51 @@ async function startTimer(type) {
     timerState.type = type;
     timerState.isRunning = true;
     timerState.sessionComplete = false;
-    
-    // 프로젝트 이름 기록에 추가 (focus 시작 시)
+    timerState.sessionStartTime = new Date().toISOString(); // 세션 시작 시간 기록
+    timerState.currentProjectName = settings.projectName || "N/A"; // 현재 프로젝트 이름 기록
+
+    // 타입에 따른 시간 설정
+    let durationMinutes;
+    switch (type) {
+        case 'focus':
+            durationMinutes = validateDuration(settings.focus.duration, DEFAULT_SETTINGS_BG.focus.duration);
+            timerState.isBreak = false;
+            break;
+        case 'shortBreak':
+             durationMinutes = validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS_BG.shortBreak.duration);
+            timerState.isBreak = true;
+            break;
+        case 'longBreak':
+             durationMinutes = validateDuration(settings.longBreak.duration, DEFAULT_SETTINGS_BG.longBreak.duration);
+            timerState.isBreak = true;
+            break;
+        default:
+            durationMinutes = DEFAULT_SETTINGS_BG.focus.duration; // Fallback
+             timerState.isBreak = false;
+    }
+    timerState.timeLeft = durationMinutes * 60;
+
+    // 프로젝트 이름 기록에 추가 (focus 시작 시 - 기존 로직 유지 가능, 단 저장 시점 변경됨)
     if (type === 'focus' && settings.projectName) {
         await addProjectToHistoryBackground(settings.projectName);
     }
 
-    // 타입에 따른 시간 설정 (유효성 검사 포함)
-    switch (type) {
-        case 'focus':
-            timerState.timeLeft = validateDuration(settings.focus.duration, DEFAULT_SETTINGS.focus.duration) * 60;
-            timerState.isBreak = false;
-            break;
-        case 'shortBreak':
-            timerState.timeLeft = validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS.shortBreak.duration) * 60;
-            timerState.isBreak = true;
-            break;
-        case 'longBreak':
-            timerState.timeLeft = validateDuration(settings.longBreak.duration, DEFAULT_SETTINGS.longBreak.duration) * 60;
-            timerState.isBreak = true;
-            break;
-    }
-    
-    // 상태 저장
+    // 상태 저장 (sessionStartTime, currentProjectName 포함)
     await chrome.storage.local.set({
         timeLeft: timerState.timeLeft,
         isRunning: timerState.isRunning,
         isBreak: timerState.isBreak,
         type: timerState.type,
         sessionComplete: timerState.sessionComplete,
-        pomodoroCount: timerState.pomodoroCount // pomodoroCount도 저장
+        pomodoroCount: timerState.pomodoroCount,
+        sessionStartTime: timerState.sessionStartTime,
+        currentProjectName: timerState.currentProjectName
     });
-    
-    // 알람 생성
-    chrome.alarms.create(timerState.alarmName, {
-        periodInMinutes: 1/60  // 1초마다 실행
-    });
-    
+
+    // 알람 생성 & UI 업데이트
+    chrome.alarms.create(timerState.alarmName, { periodInMinutes: 1/60 });
     updateBadgeForPauseState();
-    createRunningMenus(); // 메뉴 업데이트 추가
+    createRunningMenus();
 }
 
 // 다음 세션 시작
@@ -355,15 +372,15 @@ async function startNextSession() {
     let newTimeLeft;
     if (isBreak) {
         if (timerState.pomodoroCount > 0 && 
-            timerState.pomodoroCount % validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS.longBreak.startAfter) === 0) {
-            newTimeLeft = validateDuration(settings.longBreak.duration, DEFAULT_SETTINGS.longBreak.duration) * 60;
+            timerState.pomodoroCount % validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter) === 0) {
+            newTimeLeft = validateDuration(settings.longBreak.duration, DEFAULT_SETTINGS_BG.longBreak.duration) * 60;
             timerState.type = 'longBreak';
         } else {
-            newTimeLeft = validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS.shortBreak.duration) * 60;
+            newTimeLeft = validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS_BG.shortBreak.duration) * 60;
             timerState.type = 'shortBreak';
         }
     } else {
-        newTimeLeft = validateDuration(settings.focus.duration, DEFAULT_SETTINGS.focus.duration) * 60;
+        newTimeLeft = validateDuration(settings.focus.duration, DEFAULT_SETTINGS_BG.focus.duration) * 60;
         timerState.type = 'focus';
     }
 
@@ -448,7 +465,7 @@ function updateBadge(timeLeft, isBreak) {
     // timeLeft가 유효하지 않은 경우 기본 설정값을 사용
     if (!timeLeft || isNaN(timeLeft)) {
         chrome.storage.sync.get('settings', (result) => {
-            const settings = result.settings || DEFAULT_SETTINGS;
+            const settings = result.settings || DEFAULT_SETTINGS_BG;
             if (isBreak) {
                 timeLeft = settings.shortBreak.duration * 60;
             } else {
@@ -476,35 +493,52 @@ function updateBadgeText(timeLeft) {
 
 // 메시지 리스너 설정
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    switch (request.action) {
-        case 'startTimer':
-            toggleTimer();
-            break;
-        case 'pauseTimer':
-            toggleTimer();
-            break;
-        case 'resetTimer':
-            chrome.storage.local.get(['settings', 'isBreak'], (result) => {
-                const settings = result.settings || DEFAULT_SETTINGS;
-                const newTime = result.isBreak ? settings.shortBreak.duration * 60 : settings.focus.duration * 60;
-                chrome.storage.local.set({
-                    timeLeft: newTime,
-                    isRunning: false,
-                    sessionComplete: false
-                });
-                toggleTimer(false);
-                updateBadge(newTime, result.isBreak);
-            });
-            break;
-        case 'startNextSession':
-            startNextSession();
-            break;
-        case 'playSound':
-            playSound();
-            break;
-    }
-    sendResponse({ success: true });
-    return true;
+    (async () => { // 비동기 즉시 실행 함수 사용
+        let response; // 응답 변수 선언
+        console.log("Received message:", request); // 메시지 수신 로그 추가
+
+        switch (request.action) {
+            case 'startTimer':
+            case 'pauseTimer':
+                toggleTimer();
+                response = { success: true };
+                break;
+            case 'resetTimer': // 이 부분은 기존 로직 확인 필요
+                console.warn("resetTimer action needs async handling adjustment");
+                 response = { success: false, message: "resetTimer needs implementation update" };
+                break;
+            case 'startNextSession':
+                await startNextSession();
+                response = { success: true };
+                break;
+            case 'playSound':
+                await playSound();
+                response = { success: true };
+                break;
+            case 'exportStats':
+                response = await exportStats();
+                break;
+            case 'importParsedStats': // 새 액션 처리
+                 response = await importParsedStats(request.data);
+                 break;
+            case 'resetStats':
+                response = await resetStats();
+                break;
+            default:
+                console.log("Unknown action received:", request.action);
+                response = { success: false, message: 'Unknown action' };
+                break;
+        }
+        console.log("Sending response:", response);
+        if (response) { // response가 정의된 경우에만 전송
+            sendResponse(response);
+        } else {
+            console.error("Response was not set for action:", request.action);
+            sendResponse({ success: false, message: "No response generated" });
+        }
+    })(); // 즉시 실행
+
+    return true; // 비동기 응답을 위해 항상 true 반환
 });
 
 // Offscreen Document를 통해 소리를 재생하는 함수
@@ -666,125 +700,145 @@ function updateTimer() {
 async function timerComplete() {
     // 알람 중지
     chrome.alarms.clear(timerState.alarmName);
-    
+
     // 알림음 재생
     await playSound();
-    
-    // 포모도로 카운트 업데이트 (focus 세션이 끝났을 때만)
-    if (timerState.type === 'focus') {
-        timerState.pomodoroCount++;
-        savePomodoroData();
-    }
 
-    // 설정 가져오기
-    const settings = await getCurrentSettings();
-    
+     // --- 완료된 세션 정보 저장 ---
+     const settings = await getCurrentSettings();
+     let completedDuration;
+     switch (timerState.type) { // 완료된 세션의 타입 사용
+         case 'focus':
+             completedDuration = settings.focus.duration;
+             // 포모도로 카운트 업데이트
+             timerState.pomodoroCount++;
+             await chrome.storage.local.set({ pomodoroCount: timerState.pomodoroCount }); // 카운트 저장
+             break;
+         case 'shortBreak':
+             completedDuration = settings.shortBreak.duration;
+             break;
+         case 'longBreak':
+             completedDuration = settings.longBreak.duration;
+             break;
+         default:
+             completedDuration = 0;
+     }
+
+     const completedSessionData = {
+         startTime: timerState.sessionStartTime,
+         type: timerState.type,
+         durationMinutes: completedDuration,
+         projectName: timerState.currentProjectName
+     };
+     await saveSessionData(completedSessionData); // 세션 데이터 저장 함수 호출
+     // --- 저장 로직 끝 ---
+
     // 다음 세션 타입 결정
     const isBreak = !timerState.isBreak;
     let nextType;
-    let nextTimeLeft;
+    let nextDurationMinutes;
 
     if (isBreak) {
         // 집중 -> 휴식 전환
-        if (timerState.pomodoroCount > 0 && 
-            timerState.pomodoroCount % validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS.longBreak.startAfter) === 0) {
+        if (timerState.pomodoroCount > 0 &&
+            timerState.pomodoroCount % validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter) === 0) {
             nextType = 'longBreak';
-            nextTimeLeft = validateDuration(settings.longBreak.duration, DEFAULT_SETTINGS.longBreak.duration) * 60;
+            nextDurationMinutes = validateDuration(settings.longBreak.duration, DEFAULT_SETTINGS_BG.longBreak.duration);
         } else {
             nextType = 'shortBreak';
-            nextTimeLeft = validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS.shortBreak.duration) * 60;
+            nextDurationMinutes = validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS_BG.shortBreak.duration);
         }
     } else {
         // 휴식 -> 집중 전환
         nextType = 'focus';
-        nextTimeLeft = validateDuration(settings.focus.duration, DEFAULT_SETTINGS.focus.duration) * 60;
+        nextDurationMinutes = validateDuration(settings.focus.duration, DEFAULT_SETTINGS_BG.focus.duration);
     }
 
-    // 상태 업데이트
+    // 다음 세션 상태 준비
     timerState.type = nextType;
-    timerState.timeLeft = nextTimeLeft;
+    timerState.timeLeft = nextDurationMinutes * 60;
     timerState.isBreak = isBreak;
+    timerState.sessionStartTime = new Date().toISOString(); // 다음 세션 시작 시간 설정
+    // 다음 세션의 프로젝트 이름은 현재 설정 따름 (집중 시작 시 업데이트됨)
+    timerState.currentProjectName = settings.projectName || "N/A";
 
     // 자동 시작 설정 확인
-    const shouldAutoStart = isBreak ? 
-        settings.general.autoStartBreaks : 
+    const shouldAutoStart = isBreak ?
+        settings.general.autoStartBreaks :
         settings.general.autoStartPomodoros;
 
+    let newState = {}; // 저장할 상태 모음
+
     if (shouldAutoStart) {
-        // 자동 시작이 설정된 경우 바로 다음 세션 시작
         timerState.isRunning = true;
         timerState.sessionComplete = false;
-
-        // 상태 저장
-        await chrome.storage.local.set({
-            timeLeft: nextTimeLeft,
-            isBreak: isBreak,
-            isRunning: true,
-            sessionComplete: false,
-            type: nextType
-        });
-
         // 알람 생성
-        chrome.alarms.create(timerState.alarmName, {
-            periodInMinutes: 1/60
-        });
-
-        // 뱃지 업데이트
-        updateBadgeForPauseState();
-        
+        chrome.alarms.create(timerState.alarmName, { periodInMinutes: 1/60 });
         // 메뉴 업데이트
         createRunningMenus();
     } else {
-        // 자동 시작이 설정되지 않은 경우 대기 상태로 전환
         timerState.isRunning = false;
         timerState.sessionComplete = true;
-
-        // 상태 저장
-        await chrome.storage.local.set({
-            timeLeft: nextTimeLeft,
-            isBreak: isBreak,
-            isRunning: false,
-            sessionComplete: true,
-            type: nextType
-        });
-
-        // 뱃지 업데이트
-        updateBadgeForPauseState();
-        
-        // 메뉴 초기화
+         // 메뉴 초기화
         createInitialMenus();
     }
 
-    // 알림 표시 (자동 시작 여부와 관계없이 항상 표시)
-    const title = isBreak ? '휴식 시간입니다!' : '집중 시간입니다!';
-    const message = isBreak ?
-        '잠시 휴식을 취하고 기분 전환을 해보세요.' :
-        '이제 집중할 시간입니다. 목표를 향해 화이팅!';
+     // 공통 상태 업데이트 및 저장
+     newState = {
+        timeLeft: timerState.timeLeft,
+        isBreak: timerState.isBreak,
+        isRunning: timerState.isRunning,
+        sessionComplete: timerState.sessionComplete,
+        type: timerState.type,
+        sessionStartTime: timerState.sessionStartTime,
+        currentProjectName: timerState.currentProjectName
+        // pomodoroCount는 focus 완료 시 이미 저장됨
+     };
+     await chrome.storage.local.set(newState);
 
-    chrome.notifications.create('pomodoroNotification', {
-        type: 'basic',
-        iconUrl: 'icons/icon128.png',
-        title: title,
-        message: message,
-        requireInteraction: true,
-        silent: true
-    });
+     // 뱃지 업데이트
+     updateBadgeForPauseState();
+
+    // 알림 표시
+     const title = isBreak ? '휴식 시간입니다!' : '집중 시간입니다!';
+     const message = isBreak ?
+         '잠시 휴식을 취하고 기분 전환을 해보세요.' :
+         '이제 집중할 시간입니다. 목표를 향해 화이팅!';
+
+     chrome.notifications.create('pomodoroNotification', {
+         type: 'basic',
+         iconUrl: 'icons/icon128.png',
+         title: title,
+         message: message,
+         requireInteraction: true,
+         silent: true // 소리는 playSound로 제어하므로 알림 자체는 조용히
+     });
 }
 
-// 포모도로 데이터 저장
-function savePomodoroData() {
-    const now = new Date();
-    const pomodoroData = {
-        date: now.toISOString(),
-        type: timerState.type,
-        duration: 25 // 기본 포모도로 시간
-    };
+// 세션 데이터 저장 (신규 함수)
+async function saveSessionData(completedSession) {
+    // completedSession: { startTime, type, durationMinutes, projectName }
+   if (!completedSession || !completedSession.startTime || !completedSession.type) {
+       console.error("Invalid session data for saving:", completedSession);
+       return;
+   }
+   const pomodoroEntry = {
+       startTime: completedSession.startTime,
+       endTime: new Date().toISOString(), // 완료 시각 기록
+       type: completedSession.type,
+       durationMinutes: completedSession.durationMinutes,
+       projectName: completedSession.projectName || "N/A"
+   };
 
-    chrome.storage.local.get('pomodoroData', (data) => {
-        const existingData = data.pomodoroData || [];
-        existingData.push(pomodoroData);
-        chrome.storage.local.set({ pomodoroData: existingData });
-    });
+   try {
+       const result = await chrome.storage.local.get('pomodoroHistory');
+       const history = result.pomodoroHistory || [];
+       history.push(pomodoroEntry);
+       await chrome.storage.local.set({ pomodoroHistory: history });
+       console.log("Session history saved:", pomodoroEntry);
+   } catch (error) {
+       console.error("Error saving session history:", error);
+   }
 }
 
 // 설정 변경 감지 및 현재 세션 업데이트
@@ -820,4 +874,106 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
             updateBadgeForPauseState();
         }
     }
-}); 
+});
+
+// --- 통계 관련 함수들 --- 
+
+// CSV 특수 문자 처리 함수
+function escapeCsvField(field) {
+    if (field === null || field === undefined) {
+        return '';
+    }
+    const str = String(field);
+    // 필드에 쉼표, 큰따옴표, 또는 줄바꿈 문자가 포함된 경우 큰따옴표로 묶고 내부 큰따옴표는 두 번 씁니다.
+    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+}
+
+// 통계 데이터 내보내기 (CSV 형식으로 수정)
+async function exportStats() {
+    try {
+        const result = await chrome.storage.local.get('pomodoroHistory');
+        const history = result.pomodoroHistory || [];
+        if (history.length === 0) {
+            return { success: false, message: '내보낼 통계 데이터가 없습니다.' };
+        }
+
+        // CSV 헤더
+        const header = ['시작시각', '세션', '지속시간(분)', '프로젝트'];
+        // 데이터 행 생성
+        const rows = history.map(entry => {
+            const startTime = entry.startTime; // ISO 형식 유지 또는 원하는 형식으로 변경 가능
+            const sessionType = entry.type === 'focus' ? '집중' : '휴식'; // short/long break 모두 '휴식'으로
+            const duration = entry.durationMinutes;
+            const projectName = entry.projectName;
+
+            return [
+                escapeCsvField(startTime),
+                escapeCsvField(sessionType),
+                escapeCsvField(duration),
+                escapeCsvField(projectName)
+            ].join(','); // 쉼표로 필드 결합
+        });
+
+        // CSV 내용 결합 (헤더 + 데이터)
+        const csvContent = [header.join(','), ...rows].join('\r\n'); // 줄바꿈 문자로 행 결합
+
+        // 데이터 URI 생성
+        const dataUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+
+        return { success: true, dataUri: dataUri, filename: 'pomodoro_stats.csv' }; // 파일 확장자 .csv로 변경
+
+    } catch (error) {
+        console.error("Error exporting stats:", error);
+        return { success: false, message: '통계 내보내기 중 오류 발생' };
+    }
+}
+
+// 파싱된 통계 데이터 가져오기 (신규 함수)
+async function importParsedStats(historyArray) {
+    try {
+        // 간단한 유효성 검사
+        if (!Array.isArray(historyArray)) {
+            throw new Error('Imported data is not an array.');
+        }
+        // 첫 번째 항목의 구조 검사 (선택적)
+        if (historyArray.length > 0 && (
+            !historyArray[0].startTime ||
+            !historyArray[0].type ||
+            historyArray[0].durationMinutes === undefined ||
+            historyArray[0].projectName === undefined)
+        ) {
+             console.warn("Imported data structure mismatch:", historyArray[0]);
+            // throw new Error('Imported data structure mismatch.'); // 필요시 더 엄격하게
+        }
+
+        // 기존 기록을 덮어쓰기
+        await chrome.storage.local.set({ pomodoroHistory: historyArray });
+        console.log("Parsed pomodoro history imported successfully. Count:", historyArray.length);
+
+        // 통계 업데이트 알림
+        chrome.runtime.sendMessage({ action: "statsUpdated" });
+        return { success: true, message: `통계 ${historyArray.length}건 가져오기 완료` };
+
+    } catch (error) {
+        console.error("Error importing parsed stats:", error);
+        return { success: false, message: `통계 가져오기 실패: ${error.message}` };
+    }
+}
+
+// 통계 데이터 초기화
+async function resetStats() {
+    try {
+        // 사용자 확인은 dashboard에서 처리 가정
+        await chrome.storage.local.remove('pomodoroHistory');
+        console.log("Pomodoro history reset.");
+        // 통계 업데이트 알림
+        chrome.runtime.sendMessage({ action: "statsUpdated" });
+        return { success: true, message: '통계 초기화 완료' };
+    } catch (error) {
+        console.error("Error resetting stats:", error);
+        return { success: false, message: '통계 초기화 중 오류 발생' };
+    }
+} 

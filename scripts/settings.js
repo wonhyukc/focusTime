@@ -4,7 +4,7 @@ const MAX_HISTORY_SIZE = 10; // 기록 최대 개수 (선택 사항)
 
 // 기본 설정값 정의
 const DEFAULT_SETTINGS = {
-    projectName: "",
+    projectName: "집중 시간 도우미 설정",
     focus: {
         duration: 25,
         sound: "beep",
@@ -230,51 +230,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         let initialSettings;
         if (result.settings) {
             initialSettings = result.settings;
-             // applySettings를 여기서 바로 호출하지 않고, 초기값만 설정
-             document.getElementById('project-name').value = initialSettings.projectName || DEFAULT_SETTINGS.projectName;
-             document.getElementById('focus-duration').value = initialSettings.focus.duration;
-             document.getElementById('focus-sound').value = initialSettings.focus.sound;
-             document.getElementById('focus-sound-type').value = initialSettings.focus.soundType;
-             document.getElementById('focus-desktop-notification').checked = initialSettings.focus.desktopNotification;
-             document.getElementById('focus-tab-notification').checked = initialSettings.focus.tabNotification;
-             document.getElementById('short-break-duration').value = initialSettings.shortBreak.duration;
-             document.getElementById('short-break-sound-type').value = initialSettings.shortBreak.soundType;
-             document.getElementById('short-break-desktop-notification').checked = initialSettings.shortBreak.desktopNotification;
-             document.getElementById('short-break-tab-notification').checked = initialSettings.shortBreak.tabNotification;
-             document.getElementById('long-break-duration').value = initialSettings.longBreak.duration;
-             document.getElementById('long-break-start').value = initialSettings.longBreak.startAfter;
-             document.getElementById('long-break-sound-type').value = initialSettings.longBreak.soundType;
-             document.getElementById('long-break-desktop-notification').checked = initialSettings.longBreak.desktopNotification;
-             document.getElementById('long-break-tab-notification').checked = initialSettings.longBreak.tabNotification;
-
+             // 저장된 설정 적용 (프로젝트 이름 포함)
+             applySettings(initialSettings); // applySettings가 필드 채우도록 변경
         } else {
-            initialSettings = DEFAULT_SETTINGS;
-             // applySettings를 여기서 바로 호출하지 않고, 초기값만 설정
-             document.getElementById('project-name').value = initialSettings.projectName;
-             document.getElementById('focus-duration').value = initialSettings.focus.duration;
-             document.getElementById('focus-sound').value = initialSettings.focus.sound;
-             document.getElementById('focus-sound-type').value = initialSettings.focus.soundType;
-             document.getElementById('focus-desktop-notification').checked = initialSettings.focus.desktopNotification;
-             document.getElementById('focus-tab-notification').checked = initialSettings.focus.tabNotification;
-             document.getElementById('short-break-duration').value = initialSettings.shortBreak.duration;
-             document.getElementById('short-break-sound-type').value = initialSettings.shortBreak.soundType;
-             document.getElementById('short-break-desktop-notification').checked = initialSettings.shortBreak.desktopNotification;
-             document.getElementById('short-break-tab-notification').checked = initialSettings.shortBreak.tabNotification;
-             document.getElementById('long-break-duration').value = initialSettings.longBreak.duration;
-             document.getElementById('long-break-start').value = initialSettings.longBreak.startAfter;
-             document.getElementById('long-break-sound-type').value = initialSettings.longBreak.soundType;
-             document.getElementById('long-break-desktop-notification').checked = initialSettings.longBreak.desktopNotification;
-             document.getElementById('long-break-tab-notification').checked = initialSettings.longBreak.tabNotification;
+            initialSettings = DEFAULT_SETTINGS; // 저장된 설정 없으면 새 기본값 사용
+             applySettings(initialSettings); // 기본 설정 적용
         }
 
-        // 프로젝트 이름이 없으면 포커스 설정
-        if (!initialSettings.projectName) {
-            const projectNameInput = document.getElementById('project-name');
-            if (projectNameInput) {
-                projectNameInput.focus();
-                console.log('Project name input focused.');
-            }
-        }
+        // 프로젝트 이름이 없거나 기본값과 다를 때 포커스 제거 (기본값이 있으므로)
+        // if (!initialSettings.projectName) {
+        //     const projectNameInput = document.getElementById('project-name');
+        //     if (projectNameInput) {
+        //         projectNameInput.focus();
+        //         console.log('Project name input focused.');
+        //     }
+        // }
     });
 
     // 내보내기 버튼
