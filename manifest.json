@@ -19,7 +19,8 @@
     "alarms",
     "notifications",
     "contextMenus",
-    "offscreen"
+    "offscreen",
+    "downloads"
   ],
   "icons": {
     "16": "icons/icon16.png",
