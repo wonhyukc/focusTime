@@ -1,3 +1,7 @@
+// 프로젝트 기록 저장 키
+const PROJECT_HISTORY_KEY = 'projectHistory';
+const MAX_HISTORY_SIZE = 10; // 기록 최대 개수 (선택 사항)
+
 // 기본 설정값 정의
 const DEFAULT_SETTINGS = {
     projectName: "",
@@ -60,7 +64,7 @@ function getCurrentSettings() {
 }
 
 // 설정 적용하기
-function applySettings(settings) {
+async function applySettings(settings) {
     try {
         // 프로젝트 이름 설정
         document.getElementById('project-name').value = settings.projectName || DEFAULT_SETTINGS.projectName;
@@ -86,19 +90,73 @@ function applySettings(settings) {
         document.getElementById('long-break-tab-notification').checked = settings.longBreak.tabNotification;
 
         // 설정을 Chrome storage에 저장
-        chrome.storage.sync.set({ settings }, () => {
+        chrome.storage.sync.set({ settings }, async () => {
             if (chrome.runtime.lastError) {
                 console.error('Error saving settings:', chrome.runtime.lastError);
                 showToast('설정 저장 중 오류 발생', 'error');
             } else {
                 console.log('Settings saved successfully');
-                showToast('설정이 저장되었습니다.', 'success');
+                // 프로젝트 이름이 있으면 기록에 추가
+                if (settings.projectName) {
+                    await addProjectToHistory(settings.projectName);
+                }
             }
         });
     } catch (error) {
         console.error("Error applying settings:", error);
         showToast('설정 적용 중 오류 발생', 'error');
     }
+}
+
+// 프로젝트 기록에 이름 추가
+async function addProjectToHistory(projectName) {
+    if (!projectName) return; // 빈 이름은 추가하지 않음
+
+    try {
+        const result = await chrome.storage.local.get([PROJECT_HISTORY_KEY]);
+        let history = result[PROJECT_HISTORY_KEY] || [];
+
+        // 중복 제거 및 최신화 (기존 이름이 있으면 맨 앞으로)
+        history = history.filter(item => item !== projectName);
+        history.unshift(projectName);
+
+        // 최대 크기 제한
+        if (history.length > MAX_HISTORY_SIZE) {
+            history = history.slice(0, MAX_HISTORY_SIZE);
+        }
+
+        await chrome.storage.local.set({ [PROJECT_HISTORY_KEY]: history });
+        console.log('Project history updated:', history);
+        // datalist 업데이트
+        populateDataList(history);
+
+    } catch (error) {
+        console.error("Error adding project to history:", error);
+    }
+}
+
+// 프로젝트 기록 불러와서 datalist 채우기
+async function loadProjectHistory() {
+    try {
+        const result = await chrome.storage.local.get([PROJECT_HISTORY_KEY]);
+        const history = result[PROJECT_HISTORY_KEY] || [];
+        populateDataList(history);
+    } catch (error) {
+        console.error("Error loading project history:", error);
+    }
+}
+
+// datalist 채우는 헬퍼 함수
+function populateDataList(history) {
+    const dataList = document.getElementById('project-history-list');
+    if (!dataList) return;
+
+    dataList.innerHTML = ''; // 기존 옵션 제거
+    history.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item;
+        dataList.appendChild(option);
+    });
 }
 
 // 설정 내보내기
@@ -164,13 +222,58 @@ function showToast(message, type = 'success') {
 }
 
 // 이벤트 리스너 등록
-document.addEventListener('DOMContentLoaded', () => {
-    // 초기 설정 로드
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadProjectHistory(); // 프로젝트 기록 로드 먼저
+
+    // 초기 설정 로드 및 적용
     chrome.storage.sync.get('settings', (result) => {
+        let initialSettings;
         if (result.settings) {
-            applySettings(result.settings);
+            initialSettings = result.settings;
+             // applySettings를 여기서 바로 호출하지 않고, 초기값만 설정
+             document.getElementById('project-name').value = initialSettings.projectName || DEFAULT_SETTINGS.projectName;
+             document.getElementById('focus-duration').value = initialSettings.focus.duration;
+             document.getElementById('focus-sound').value = initialSettings.focus.sound;
+             document.getElementById('focus-sound-type').value = initialSettings.focus.soundType;
+             document.getElementById('focus-desktop-notification').checked = initialSettings.focus.desktopNotification;
+             document.getElementById('focus-tab-notification').checked = initialSettings.focus.tabNotification;
+             document.getElementById('short-break-duration').value = initialSettings.shortBreak.duration;
+             document.getElementById('short-break-sound-type').value = initialSettings.shortBreak.soundType;
+             document.getElementById('short-break-desktop-notification').checked = initialSettings.shortBreak.desktopNotification;
+             document.getElementById('short-break-tab-notification').checked = initialSettings.shortBreak.tabNotification;
+             document.getElementById('long-break-duration').value = initialSettings.longBreak.duration;
+             document.getElementById('long-break-start').value = initialSettings.longBreak.startAfter;
+             document.getElementById('long-break-sound-type').value = initialSettings.longBreak.soundType;
+             document.getElementById('long-break-desktop-notification').checked = initialSettings.longBreak.desktopNotification;
+             document.getElementById('long-break-tab-notification').checked = initialSettings.longBreak.tabNotification;
+
         } else {
-            applySettings(DEFAULT_SETTINGS);
+            initialSettings = DEFAULT_SETTINGS;
+             // applySettings를 여기서 바로 호출하지 않고, 초기값만 설정
+             document.getElementById('project-name').value = initialSettings.projectName;
+             document.getElementById('focus-duration').value = initialSettings.focus.duration;
+             document.getElementById('focus-sound').value = initialSettings.focus.sound;
+             document.getElementById('focus-sound-type').value = initialSettings.focus.soundType;
+             document.getElementById('focus-desktop-notification').checked = initialSettings.focus.desktopNotification;
+             document.getElementById('focus-tab-notification').checked = initialSettings.focus.tabNotification;
+             document.getElementById('short-break-duration').value = initialSettings.shortBreak.duration;
+             document.getElementById('short-break-sound-type').value = initialSettings.shortBreak.soundType;
+             document.getElementById('short-break-desktop-notification').checked = initialSettings.shortBreak.desktopNotification;
+             document.getElementById('short-break-tab-notification').checked = initialSettings.shortBreak.tabNotification;
+             document.getElementById('long-break-duration').value = initialSettings.longBreak.duration;
+             document.getElementById('long-break-start').value = initialSettings.longBreak.startAfter;
+             document.getElementById('long-break-sound-type').value = initialSettings.longBreak.soundType;
+             document.getElementById('long-break-desktop-notification').checked = initialSettings.longBreak.desktopNotification;
+             document.getElementById('long-break-tab-notification').checked = initialSettings.longBreak.tabNotification;
+        }
+
+        // 프로젝트 이름이 없으면 포커스 설정
+        if (!initialSettings.projectName) {
+            const projectNameInput = document.getElementById('project-name');
+            if (projectNameInput) {
+                projectNameInput.focus();
+                console.log('Project name input focused.');
+            }
         }
     });
 
@@ -193,11 +296,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // 초기화 버튼
     document.getElementById('reset-settings').addEventListener('click', resetSettings);
 
-    // 설정 변경 시 자동 저장
+    // 설정 변경 시 자동 저장 (applySettings 호출로 변경)
     document.querySelectorAll('input, select').forEach(element => {
         element.addEventListener('change', () => {
             const settings = getCurrentSettings();
-            applySettings(settings);
+            applySettings(settings); // 변경 시 applySettings 호출 (내부에서 저장 및 기록 추가)
         });
     });
 }); 

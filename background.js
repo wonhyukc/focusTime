@@ -1,3 +1,7 @@
+// 프로젝트 기록 저장 키 (settings.js와 동일하게 사용)
+const PROJECT_HISTORY_KEY = 'projectHistory';
+const MAX_HISTORY_SIZE = 10; // 기록 최대 개수 (선택 사항)
+
 // 기본 설정값
 const DEFAULT_SETTINGS = {
     version: "1.0",
@@ -222,6 +226,25 @@ chrome.action.onClicked.addListener((tab) => {
     });
 });
 
+// 프로젝트 기록에 이름 추가 (background용)
+async function addProjectToHistoryBackground(projectName) {
+    if (!projectName) return;
+
+    try {
+        const result = await chrome.storage.local.get([PROJECT_HISTORY_KEY]);
+        let history = result[PROJECT_HISTORY_KEY] || [];
+        history = history.filter(item => item !== projectName);
+        history.unshift(projectName);
+        if (history.length > MAX_HISTORY_SIZE) {
+            history = history.slice(0, MAX_HISTORY_SIZE);
+        }
+        await chrome.storage.local.set({ [PROJECT_HISTORY_KEY]: history });
+        console.log('[Background] Project history updated:', history);
+    } catch (error) {
+        console.error("[Background] Error adding project to history:", error);
+    }
+}
+
 // 설정값 유효성 검사 함수 추가
 function validateDuration(duration, defaultValue) {
     const num = parseInt(duration);
@@ -280,6 +303,11 @@ async function startTimer(type) {
     timerState.isRunning = true;
     timerState.sessionComplete = false;
     
+    // 프로젝트 이름 기록에 추가 (focus 시작 시)
+    if (type === 'focus' && settings.projectName) {
+        await addProjectToHistoryBackground(settings.projectName);
+    }
+
     // 타입에 따른 시간 설정 (유효성 검사 포함)
     switch (type) {
         case 'focus':
@@ -302,7 +330,8 @@ async function startTimer(type) {
         isRunning: timerState.isRunning,
         isBreak: timerState.isBreak,
         type: timerState.type,
-        sessionComplete: timerState.sessionComplete
+        sessionComplete: timerState.sessionComplete,
+        pomodoroCount: timerState.pomodoroCount // pomodoroCount도 저장
     });
     
     // 알람 생성
@@ -311,6 +340,7 @@ async function startTimer(type) {
     });
     
     updateBadgeForPauseState();
+    createRunningMenus(); // 메뉴 업데이트 추가
 }
 
 // 다음 세션 시작

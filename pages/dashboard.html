@@ -26,7 +26,10 @@
                 <h2>프로젝트</h2>
                 <div class="setting-group">
                     <label for="project-name">현재 프로젝트 이름:</label>
-                    <input type="text" id="project-name" placeholder="프로젝트 이름을 입력하세요">
+                    <input type="text" id="project-name" placeholder="프로젝트 이름을 입력하세요" list="project-history-list">
+                    <datalist id="project-history-list">
+                        <!-- 이전 프로젝트 이름들이 여기에 동적으로 추가됩니다 -->
+                    </datalist>
                 </div>
             </div>
 
