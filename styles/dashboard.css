@@ -87,6 +87,26 @@ main {
     display: block;
 }
 
+/* 프로젝트 설정 스타일 */
+.project-settings {
+    margin-bottom: 2rem; /* 타이머 설정과 간격 추가 */
+}
+
+.project-settings h2 {
+    margin-bottom: 1rem;
+    color: var(--text-color);
+    font-size: 1.25rem;
+}
+
+#project-name {
+    width: 100%; /* 전체 너비 사용 */
+    padding: 0.75rem 0.5rem; /* 상하 패딩 늘려서 높이 증가 (기존 0.5rem) */
+    border: 1px solid var(--border-color);
+    border-radius: 0.25rem;
+    font-size: 1rem; /* 필요시 폰트 크기 조정 */
+    margin-bottom: 1rem; /* 아래 요소와 간격 추가 */
+}
+
 /* 설정 스타일 */
 .settings-container {
     display: grid;

@@ -194,6 +194,34 @@ chrome.notifications.onClicked.addListener(async (notificationId) => {
     }
 });
 
+// 확장 프로그램 아이콘 클릭 이벤트 처리
+chrome.action.onClicked.addListener((tab) => {
+    chrome.storage.sync.get('settings', async (result) => {
+        const settings = result.settings || DEFAULT_SETTINGS;
+        const projectName = settings.projectName || '';
+
+        if (projectName) {
+            // 사용자에게 확인 요청
+            // 백그라운드 스크립트에서는 confirm 사용 불가, 다른 방식 필요
+            // 예를 들어, 팝업을 띄우거나 content script를 통해 확인
+            // 여기서는 임시로 바로 시작하거나 설정 페이지를 여는 방식으로 구현
+            console.log(`프로젝트 "${projectName}" 타이머를 시작합니다.`);
+            // TODO: 사용자 확인 로직 추가 (예: 팝업 또는 content script 사용)
+            // 현재는 바로 시작
+            if (!timerState.isRunning) {
+                await startTimer('focus'); // 기본적으로 focus 시작
+            } else {
+                // 이미 실행 중이면 토글
+                 toggleTimer();
+            }
+
+        } else {
+            // 설정 페이지 열기
+            chrome.runtime.openOptionsPage();
+        }
+    });
+});
+
 // 설정값 유효성 검사 함수 추가
 function validateDuration(duration, defaultValue) {
     const num = parseInt(duration);
@@ -204,28 +232,44 @@ function validateDuration(duration, defaultValue) {
 async function getCurrentSettings() {
     try {
         const result = await chrome.storage.sync.get('settings');
-        const settings = result.settings || DEFAULT_SETTINGS;
+        let settings = result.settings;
+        
+        // 설정이 없거나 버전이 다르면 기본값으로 병합
+        if (!settings || settings.version !== DEFAULT_SETTINGS.version) {
+            console.log('저장된 설정이 없거나 버전이 달라 기본 설정과 병합합니다.');
+            settings = { ...DEFAULT_SETTINGS, ...(settings || {}) };
+            // settings.version = DEFAULT_SETTINGS.version; // 필요한 경우 버전 업데이트
+            await chrome.storage.sync.set({ settings }); // 병합된 설정 저장
+        }
+
+        // 프로젝트 이름 처리 (없으면 기본값 사용)
+        const projectName = settings.projectName !== undefined ? settings.projectName : DEFAULT_SETTINGS.projectName;
         
         // 설정값 유효성 검사 및 보정
         return {
+            projectName: projectName,
             focus: {
-                ...settings.focus,
-                duration: validateDuration(settings.focus.duration, DEFAULT_SETTINGS.focus.duration)
+                ...DEFAULT_SETTINGS.focus, // 기본값으로 시작
+                ...(settings.focus || {}), // 저장된 값으로 덮어쓰기
+                duration: validateDuration(settings.focus?.duration, DEFAULT_SETTINGS.focus.duration)
             },
             shortBreak: {
-                ...settings.shortBreak,
-                duration: validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS.shortBreak.duration)
+                 ...DEFAULT_SETTINGS.shortBreak,
+                ...(settings.shortBreak || {}),
+                duration: validateDuration(settings.shortBreak?.duration, DEFAULT_SETTINGS.shortBreak.duration)
             },
             longBreak: {
-                ...settings.longBreak,
-                duration: validateDuration(settings.longBreak.duration, DEFAULT_SETTINGS.longBreak.duration),
-                startAfter: validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS.longBreak.startAfter)
+                 ...DEFAULT_SETTINGS.longBreak,
+                ...(settings.longBreak || {}),
+                duration: validateDuration(settings.longBreak?.duration, DEFAULT_SETTINGS.longBreak.duration),
+                startAfter: validateDuration(settings.longBreak?.startAfter, DEFAULT_SETTINGS.longBreak.startAfter)
             },
-            general: settings.general || DEFAULT_SETTINGS.general
+            // general 설정은 DEFAULT_SETTINGS에서 가져오지 않으므로 삭제 또는 유지
+             general: settings.general || DEFAULT_SETTINGS.general
         };
     } catch (error) {
         console.error('설정 로드 중 오류:', error);
-        return DEFAULT_SETTINGS;
+        return { ...DEFAULT_SETTINGS }; // 오류 발생 시 기본 설정 반환
     }
 }
 

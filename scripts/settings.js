@@ -1,5 +1,6 @@
 // 기본 설정값 정의
 const DEFAULT_SETTINGS = {
+    projectName: "",
     focus: {
         duration: 25,
         sound: "beep",
@@ -31,6 +32,7 @@ const DEFAULT_SETTINGS = {
 // 현재 설정 가져오기
 function getCurrentSettings() {
     const settings = {
+        projectName: document.getElementById('project-name').value || DEFAULT_SETTINGS.projectName,
         focus: {
             duration: parseInt(document.getElementById('focus-duration').value) || DEFAULT_SETTINGS.focus.duration,
             sound: document.getElementById('focus-sound').value,
@@ -60,6 +62,9 @@ function getCurrentSettings() {
 // 설정 적용하기
 function applySettings(settings) {
     try {
+        // 프로젝트 이름 설정
+        document.getElementById('project-name').value = settings.projectName || DEFAULT_SETTINGS.projectName;
+
         // Focus 설정
         document.getElementById('focus-duration').value = settings.focus.duration;
         document.getElementById('focus-sound').value = settings.focus.sound;

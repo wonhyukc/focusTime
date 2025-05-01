@@ -22,6 +22,14 @@
     <main>
         <!-- 설정 탭 -->
         <section id="settings" class="tab-content active">
+            <div class="project-settings">
+                <h2>프로젝트</h2>
+                <div class="setting-group">
+                    <label for="project-name">현재 프로젝트 이름:</label>
+                    <input type="text" id="project-name" placeholder="프로젝트 이름을 입력하세요">
+                </div>
+            </div>
+
             <div class="settings-container">
                 <div class="timer-settings">
                     <h2>집중</h2>
@@ -32,6 +40,7 @@
                     <div class="setting-group">
                         <label>타이머 소리:</label>
                         <select id="focus-sound">
+                            <option value="beep">짧은 beep</option>
                             <option value="Brown Noise">Brown Noise</option>
                             <option value="White Noise">White Noise</option>
                             <option value="Pink Noise">Pink Noise</option>
@@ -120,23 +129,23 @@
                         <button class="preview-sound">▶ 미리듣기</button>
                     </div>
                 </div>
-                <div class="settings-bottom-menu">
-                    <div class="bottom-menu-buttons">
-                        <button id="export-settings" class="menu-button">
-                            <span class="icon">⬇️</span>
-                            설정 내보내기
-                        </button>
-                        <button id="import-settings" class="menu-button">
-                            <span class="icon">⬆️</span>
-                            설정 가져오기
-                        </button>
-                        <button id="reset-settings" class="menu-button warning">
-                            <span class="icon">🔄</span>
-                            설정 초기화
-                        </button>
-                    </div>
-                    <input type="file" id="settings-file-input" accept=".json" style="display: none;">
+            </div>
+            <div class="settings-bottom-menu">
+                <div class="bottom-menu-buttons">
+                    <button id="export-settings" class="menu-button">
+                        <span class="icon">⬇️</span>
+                        설정 내보내기
+                    </button>
+                    <button id="import-settings" class="menu-button">
+                        <span class="icon">⬆️</span>
+                        설정 가져오기
+                    </button>
+                    <button id="reset-settings" class="menu-button warning">
+                        <span class="icon">🔄</span>
+                        설정 초기화
+                    </button>
                 </div>
+                <input type="file" id="settings-file-input" accept=".json" style="display: none;">
             </div>
         </section>
 
