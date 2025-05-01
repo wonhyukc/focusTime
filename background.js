@@ -10,7 +10,7 @@ const DEFAULT_SETTINGS_BG = {
         duration: 25,
         sound: "beep",
         soundVolume: 50,
-        soundType: "low-short-beep",
+        soundType: "low-short-beep", // 기본 소리 타입
         desktopNotification: true,
         tabNotification: true // background 기본값은 true 유지할 수 있음
     },
@@ -34,7 +34,14 @@ const DEFAULT_SETTINGS_BG = {
     general: {
         soundEnabled: true,
         autoStartBreaks: false,
-        autoStartPomodoros: false
+        autoStartPomodoros: false,
+        availableSounds: [
+            { name: "기본 비프음", value: "low-short-beep" },
+            { name: "공(Gong)", value: "gong" },
+            { name: "Brown Noise", value: "brown_noise" },
+            { name: "Rainy Day", value: "rainy_birds" },
+            { name: "Clock Ticking", value: "clock_ticking" }
+        ]
     }
 };
 
@@ -512,7 +519,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 response = { success: true };
                 break;
             case 'playSound':
-                await playSound();
+                await playSound(request.soundType);
                 response = { success: true };
                 break;
             case 'exportStats':
@@ -542,9 +549,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // Offscreen Document를 통해 소리를 재생하는 함수
-async function playSound() {
-    console.log("playSound 함수 호출됨");
+async function playSound(soundType) {
+    console.log("playSound 함수 호출됨", soundType);
     try {
+        // 소리 타입 가져오기 - 인자로 전달 받거나 현재 설정에서 가져오기
+        let currentSoundType = soundType;
+        
+        if (!currentSoundType) {
+            // 인자로 전달된 소리 타입이 없으면 현재 설정에서 가져오기
+            const settings = await getCurrentSettings();
+            const currentSession = timerState.type || 'focus';
+            currentSoundType = settings[currentSession]?.soundType || 'low-short-beep';
+        }
+        
+        console.log("Current sound type:", currentSoundType);
+        
         // 이미 존재하는 Offscreen Document 확인
         const existingContexts = await chrome.runtime.getContexts({
             contextTypes: ['OFFSCREEN_DOCUMENT'],
@@ -555,7 +574,7 @@ async function playSound() {
         if (existingContexts.length > 0) {
             console.log("기존 Offscreen Document에 메시지 전송");
             // 이미 존재하면 메시지만 전송
-            chrome.runtime.sendMessage({ command: "playSound" });
+            chrome.runtime.sendMessage({ command: "playSound", soundType: currentSoundType });
             return;
         }
 
@@ -591,8 +610,8 @@ async function playSound() {
         });
 
         console.log("소리 재생 메시지 전송");
-        // 소리 재생 메시지 전송
-        chrome.runtime.sendMessage({ command: "playSound" });
+        // 소리 재생 메시지 전송 (소리 타입 포함)
+        chrome.runtime.sendMessage({ command: "playSound", soundType: currentSoundType });
 
     } catch (error) {
         console.error("소리 재생 중 오류 발생:", error);

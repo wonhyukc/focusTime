@@ -1,0 +1,23 @@
+{
+  "focus": {
+    "duration": 1,
+    "sound": "",
+    "soundType": "low-short-beep",
+    "desktopNotification": true,
+    "tabNotification": false,
+    "playSound": false
+  },
+  "shortBreak": {
+    "duration": 1,
+    "soundType": "low-short-beep",
+    "desktopNotification": true,
+    "tabNotification": false
+  },
+  "longBreak": {
+    "duration": 2,
+    "startAfter": 2,
+    "soundType": "low-short-beep",
+    "desktopNotification": true,
+    "tabNotification": false
+  }
+}

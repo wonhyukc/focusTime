@@ -509,4 +509,38 @@ button:hover {
 
 .menu-button.warning:hover {
     background-color: #d32f2f !important;
+}
+
+/* 크레딧 섹션 스타일 */
+.credits-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.credits-section h3 {
+    font-size: 1.1rem;
+    color: var(--text-color);
+    margin-bottom: 1rem;
+}
+
+.credits-section ul {
+    list-style: none;
+    padding: 0;
+}
+
+.credits-section li {
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    color: #555;
+    line-height: 1.4;
+}
+
+.credits-section a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.credits-section a:hover {
+    text-decoration: underline;
 } 

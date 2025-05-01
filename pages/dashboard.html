@@ -46,9 +46,10 @@
                         <label>타이머 소리:</label>
                         <select id="focus-sound">
                             <option value="beep">짧은 beep</option>
-                            <option value="Brown Noise">Brown Noise</option>
-                            <option value="White Noise">White Noise</option>
-                            <option value="Pink Noise">Pink Noise</option>
+                            <option value="gong">공(Gong)</option>
+                            <option value="brown_noise">Brown Noise</option>
+                            <option value="rainy_birds">Rainy Day</option>
+                            <option value="clock_ticking">Clock Ticking</option>
                         </select>
                         <button class="preview-sound">▶ 미리듣기</button>
                     </div>
@@ -68,6 +69,10 @@
                         <label>재생:</label>
                         <select id="focus-sound-type">
                             <option value="low-short-beep" selected>낮고 짧은 beep</option>
+                            <option value="gong">공(Gong)</option>
+                            <option value="brown_noise">Brown Noise</option>
+                            <option value="rainy_birds">Rainy Day</option>
+                            <option value="clock_ticking">Clock Ticking</option>
                         </select>
                         <button class="preview-sound">▶ 미리듣기</button>
                     </div>
@@ -78,6 +83,17 @@
                     <div class="setting-group">
                         <label for="short-break-duration">지속 시간:</label>
                         <input type="number" id="short-break-duration" min="1" max="30" value="5"> 분
+                    </div>
+                    <div class="setting-group">
+                        <label>타이머 소리:</label>
+                        <select id="short-break-sound">
+                            <option value="beep">짧은 beep</option>
+                            <option value="gong">공(Gong)</option>
+                            <option value="brown_noise">Brown Noise</option>
+                            <option value="rainy_birds">Rainy Day</option>
+                            <option value="clock_ticking">Clock Ticking</option>
+                        </select>
+                        <button class="preview-sound">▶ 미리듣기</button>
                     </div>
                     <div class="setting-group">
                         <label>
@@ -95,6 +111,10 @@
                         <label>재생:</label>
                         <select id="short-break-sound-type">
                             <option value="low-short-beep" selected>낮고 짧은 beep</option>
+                            <option value="gong">공(Gong)</option>
+                            <option value="brown_noise">Brown Noise</option>
+                            <option value="rainy_birds">Rainy Day</option>
+                            <option value="clock_ticking">Clock Ticking</option>
                         </select>
                         <button class="preview-sound">▶ 미리듣기</button>
                     </div>
@@ -115,6 +135,17 @@
                         <input type="number" id="long-break-duration" min="1" max="60" value="15"> 분
                     </div>
                     <div class="setting-group">
+                        <label>타이머 소리:</label>
+                        <select id="long-break-sound">
+                            <option value="beep">짧은 beep</option>
+                            <option value="gong">공(Gong)</option>
+                            <option value="brown_noise">Brown Noise</option>
+                            <option value="rainy_birds">Rainy Day</option>
+                            <option value="clock_ticking">Clock Ticking</option>
+                        </select>
+                        <button class="preview-sound">▶ 미리듣기</button>
+                    </div>
+                    <div class="setting-group">
                         <label>
                             <input type="checkbox" id="long-break-desktop-notification">
                             데스크톱 알림 설정
@@ -130,6 +161,10 @@
                         <label>재생:</label>
                         <select id="long-break-sound-type">
                             <option value="low-short-beep" selected>낮고 짧은 beep</option>
+                            <option value="gong">공(Gong)</option>
+                            <option value="brown_noise">Brown Noise</option>
+                            <option value="rainy_birds">Rainy Day</option>
+                            <option value="clock_ticking">Clock Ticking</option>
                         </select>
                         <button class="preview-sound">▶ 미리듣기</button>
                     </div>
@@ -234,6 +269,16 @@
                     <textarea id="feedback-text" rows="5" placeholder="의견을 작성해주세요..."></textarea>
                     <button type="submit" class="submit-feedback">보내기</button>
                 </form>
+                
+                <div class="credits-section">
+                    <h3>사운드 크레딧</h3>
+                    <ul>
+                        <li>Gong 002.wav by tec_studio -- <a href="https://freesound.org/s/361494/" target="_blank">https://freesound.org/s/361494/</a> -- License: Creative Commons 0</li>
+                        <li>Brown Noise 2 minutes by Jagadamba -- <a href="https://freesound.org/s/253922/" target="_blank">https://freesound.org/s/253922/</a> -- License: Attribution NonCommercial 4.0</li>
+                        <li>Rainy Day with Various Birds by toonothing -- <a href="https://freesound.org/s/201534/" target="_blank">https://freesound.org/s/201534/</a> -- License: Creative Commons 0</li>
+                        <li>ticking of the clock 01.wav by blukotek -- <a href="https://freesound.org/s/412751/" target="_blank">https://freesound.org/s/412751/</a> -- License: Creative Commons 0</li>
+                    </ul>
+                </div>
             </div>
         </section>
     </main>

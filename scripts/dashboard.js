@@ -61,26 +61,26 @@ function saveSettings() {
     const settings = {
         focus: {
             duration: parseInt(document.getElementById('focus-duration').value),
-            sound: "beep",
+            sound: document.getElementById('focus-sound').value,
             soundVolume: 50,
-            soundType: "short",
+            soundType: document.getElementById('focus-sound-type').value,
             desktopNotification: document.getElementById('focus-desktop-notification').checked,
             tabNotification: document.getElementById('focus-tab-notification').checked
         },
         shortBreak: {
             duration: parseInt(document.getElementById('short-break-duration').value),
-            sound: "beep",
+            sound: document.getElementById('short-break-sound').value,
             soundVolume: 50,
-            soundType: "short",
+            soundType: document.getElementById('short-break-sound-type').value,
             desktopNotification: document.getElementById('short-break-desktop-notification').checked,
             tabNotification: document.getElementById('short-break-tab-notification').checked
         },
         longBreak: {
             duration: parseInt(document.getElementById('long-break-duration').value),
             startAfter: parseInt(document.getElementById('long-break-start').value),
-            sound: "beep",
+            sound: document.getElementById('long-break-sound').value,
             soundVolume: 50,
-            soundType: "short",
+            soundType: document.getElementById('long-break-sound-type').value,
             desktopNotification: document.getElementById('long-break-desktop-notification').checked,
             tabNotification: document.getElementById('long-break-tab-notification').checked
         },
@@ -104,17 +104,35 @@ function loadSettings() {
 
             // 집중 시간 설정
             document.getElementById('focus-duration').value = focus.duration;
+            if (focus.sound) {
+                document.getElementById('focus-sound').value = focus.sound;
+            }
+            if (focus.soundType) {
+                document.getElementById('focus-sound-type').value = focus.soundType;
+            }
             document.getElementById('focus-desktop-notification').checked = focus.desktopNotification;
             document.getElementById('focus-tab-notification').checked = focus.tabNotification;
 
             // 짧은 휴식 설정
             document.getElementById('short-break-duration').value = shortBreak.duration;
+            if (shortBreak.sound) {
+                document.getElementById('short-break-sound').value = shortBreak.sound;
+            }
+            if (shortBreak.soundType) {
+                document.getElementById('short-break-sound-type').value = shortBreak.soundType;
+            }
             document.getElementById('short-break-desktop-notification').checked = shortBreak.desktopNotification;
             document.getElementById('short-break-tab-notification').checked = shortBreak.tabNotification;
 
             // 긴 휴식 설정
             document.getElementById('long-break-start').value = longBreak.startAfter;
             document.getElementById('long-break-duration').value = longBreak.duration;
+            if (longBreak.sound) {
+                document.getElementById('long-break-sound').value = longBreak.sound;
+            }
+            if (longBreak.soundType) {
+                document.getElementById('long-break-sound-type').value = longBreak.soundType;
+            }
             document.getElementById('long-break-desktop-notification').checked = longBreak.desktopNotification;
             document.getElementById('long-break-tab-notification').checked = longBreak.tabNotification;
         }
@@ -124,8 +142,17 @@ function loadSettings() {
 // 소리 미리듣기
 document.querySelectorAll('.preview-sound').forEach(button => {
     button.addEventListener('click', () => {
-        // 낮고 짧은 beep 소리 재생
-        chrome.runtime.sendMessage({ action: 'playSound' });
+        // 버튼 근처의 sound-type 셀렉트 가져오기
+        const soundTypeSelect = button.parentElement.querySelector('select');
+        const soundType = soundTypeSelect ? soundTypeSelect.value : 'low-short-beep';
+        
+        console.log('미리듣기 요청:', soundType);
+        
+        // 선택된 소리 타입과 함께 메시지 전송
+        chrome.runtime.sendMessage({ 
+            action: 'playSound',
+            soundType: soundType
+        });
     });
 });
 
