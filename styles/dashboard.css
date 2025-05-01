@@ -324,6 +324,10 @@ main {
         width: 100%;
         text-align: center;
     }
+
+    .bottom-menu-buttons {
+        flex-direction: column !important;
+    }
 }
 
 /* 토스트 메시지 스타일 */
@@ -352,4 +356,83 @@ main {
 
 .toast.error {
     background-color: #e74c3c;
+}
+
+/* 버튼 기본 스타일 */
+button {
+    background-color: var(--primary-color) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    padding: 8px !important;
+    font-size: 12px !important;
+    cursor: pointer !important;
+    text-align: center !important;
+    display: inline-block !important;
+    box-sizing: border-box !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    border-radius: 4px !important;
+}
+
+button:hover {
+    background-color: var(--secondary-color) !important;
+}
+
+/* 미리듣기 버튼 스타일 */
+.preview-sound {
+    background-color: var(--primary-color) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    padding: 5px 10px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    text-align: center !important;
+    display: inline-block !important;
+    box-sizing: border-box !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+}
+
+.preview-sound:hover {
+    background-color: var(--secondary-color) !important;
+}
+
+/* 버튼 컨테이너 스타일 */
+.bottom-menu-buttons {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    width: 100% !important;
+}
+
+/* 메뉴 버튼 스타일 */
+.menu-button {
+    flex: 1 !important;
+    background-color: var(--primary-color) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    padding: 8px !important;
+    font-size: 12px !important;
+    cursor: pointer !important;
+    text-align: center !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    border-radius: 4px !important;
+}
+
+.menu-button:hover {
+    background-color: var(--secondary-color) !important;
+}
+
+.menu-button.warning {
+    background-color: var(--error-color) !important;
+}
+
+.menu-button.warning:hover {
+    background-color: #d32f2f !important;
 } 

@@ -152,16 +152,71 @@ body {
     }
 }
 
+/* 버튼 기본 스타일 완전 리셋 */
 button {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
-    color: white;
+    all: unset;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+/* 설정 메뉴 버튼 컨테이너 */
+.settings-bottom-menu .bottom-menu-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+
+/* 설정 메뉴 버튼 공통 스타일 */
+.settings-bottom-menu .bottom-menu-buttons button {
+    all: unset;
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    padding: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: center;
     cursor: pointer;
-    font-weight: bold;
-    transition: all 0.3s ease;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    background: var(--primary-color);
+    color: rgb(255, 255, 255);
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+/* 설정 메뉴 버튼 호버 효과 */
+.settings-bottom-menu .bottom-menu-buttons button:hover {
+    background: var(--secondary-color);
+}
+
+/* 경고 버튼 스타일 */
+.settings-bottom-menu .bottom-menu-buttons button.warning {
+    background: var(--error-color);
+}
+
+.settings-bottom-menu .bottom-menu-buttons button.warning:hover {
+    background: #d32f2f;
+}
+
+/* 미리듣기 버튼 스타일 */
+.preview-sound {
+    all: unset;
+    box-sizing: border-box;
+    display: inline-block;
+    padding: 5px 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: center;
+    cursor: pointer;
+    background: var(--primary-color);
+    color: rgb(255, 255, 255);
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.preview-sound:hover {
+    background: var(--secondary-color);
 }
 
 .start-button {
@@ -238,12 +293,33 @@ button {
     gap: 5px;
 }
 
+.data-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.data-buttons button {
+    width: 100%;
+    font-size: 12px;
+    padding: 8px;
+    background-color: var(--primary-color);
+    color: #FFFFFF;
+    border: none;
+}
+
+.data-buttons button:hover {
+    background-color: var(--secondary-color);
+}
+
 #export-data, #import-data, #reset-data {
-    background-color: #666;
+    background-color: var(--primary-color);
+    color: #FFFFFF;
+    border: none;
 }
 
 #export-data:hover, #import-data:hover, #reset-data:hover {
-    background-color: #444;
+    background-color: var(--secondary-color);
 }
 
 /* 세션 타입에 따른 색상 변경 */
@@ -327,21 +403,30 @@ button {
     font-size: 16px;
 }
 
-.data-buttons {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-}
-
-.data-buttons button {
-    width: 100%;
+.data-section button,
+.stats-data-section button,
+.data-buttons button,
+#export-data,
+#import-data,
+#reset-data,
+.preview-sound {
+    background-color: var(--primary-color) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    padding: 8px !important;
     font-size: 12px;
-    padding: 8px;
-    background-color: #666;
+    width: 100%;
+    cursor: pointer;
 }
 
-.data-buttons button:hover {
-    background-color: #444;
+.data-section button:hover,
+.stats-data-section button:hover,
+.data-buttons button:hover,
+#export-data:hover,
+#import-data:hover,
+#reset-data:hover,
+.preview-sound:hover {
+    background-color: var(--secondary-color) !important;
 }
 
 /* 알림음 테스트 섹션 스타일 */
@@ -513,16 +598,6 @@ h3 {
 }
 
 /* Button styles */
-button {
-    padding: 0.5rem 1rem;
-    margin: 0.5rem;
-    border: none;
-    border-radius: 0.5rem;
-    cursor: pointer;
-    font-weight: bold;
-    transition: all 0.3s ease;
-}
-
 button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -706,4 +781,234 @@ body.dark-mode .theme-toggle label {
     .start-button {
         font-size: 1rem;
     }
+}
+
+/* 다크 모드 스타일 */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+    }
+
+    .settings-container {
+        background-color: #2d2d2d;
+    }
+
+    .timer-settings {
+        background-color: #333;
+        border: 1px solid #444;
+    }
+
+    .setting-group {
+        background-color: #383838;
+    }
+
+    .setting-group label {
+        color: #e0e0e0;
+    }
+
+    input[type="number"], select {
+        background-color: #444;
+        color: #e0e0e0;
+        border: 1px solid #555;
+    }
+
+    input[type="number"]:focus, select:focus {
+        border-color: #4a9eff;
+        box-shadow: 0 0 5px rgba(74, 158, 255, 0.3);
+    }
+
+    .preview-sound {
+        background-color: #4a9eff !important;
+        color: #ffffff !important;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    .preview-sound:hover {
+        background-color: #3b7fd9 !important;
+    }
+
+    button {
+        background-color: #4a9eff;
+        color: #ffffff;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+        background-color: #3b7fd9;
+    }
+
+    h2 {
+        color: #4a9eff;
+    }
+
+    .setting-item {
+        background-color: #383838;
+        border: 1px solid #444;
+    }
+
+    .setting-item:hover {
+        background-color: #404040;
+    }
+
+    .setting-item label {
+        color: #e0e0e0;
+    }
+
+    /* 체크박스 스타일 */
+    input[type="checkbox"] {
+        accent-color: #4a9eff;
+    }
+
+    /* 셀렉트 박스 옵션 스타일 */
+    select option {
+        background-color: #333;
+        color: #e0e0e0;
+    }
+}
+
+.menu-button {
+    background: var(--primary-color);
+    color: #FFFFFF;
+}
+
+.menu-button:hover {
+    background: var(--secondary-color);
+}
+
+.menu-button.warning {
+    background: var(--error-color);
+}
+
+.menu-button.warning:hover {
+    background: #d32f2f;
+}
+
+.preview-sound {
+    background: var(--primary-color);
+    color: #FFFFFF;
+}
+
+.preview-sound:hover {
+    background: var(--secondary-color);
+}
+
+button#export-settings.menu-button,
+button#import-settings.menu-button,
+button#reset-settings.menu-button {
+    all: unset;
+    background-color: var(--primary-color) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    padding: 8px !important;
+    font-size: 12px !important;
+    width: 100% !important;
+    cursor: pointer !important;
+    text-align: center !important;
+    display: inline-block !important;
+    box-sizing: border-box !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+}
+
+button#export-settings.menu-button:hover,
+button#import-settings.menu-button:hover,
+button#reset-settings.menu-button:hover {
+    background-color: var(--secondary-color) !important;
+}
+
+button#reset-settings.menu-button.warning {
+    background-color: var(--error-color) !important;
+}
+
+button#reset-settings.menu-button.warning:hover {
+    background-color: #d32f2f !important;
+}
+
+/* 미리듣기 버튼 스타일 */
+.preview-sound {
+    all: unset;
+    background-color: var(--primary-color) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    padding: 5px 10px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    text-align: center !important;
+    display: inline-block !important;
+    box-sizing: border-box !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+}
+
+.preview-sound:hover {
+    background-color: var(--secondary-color) !important;
+}
+
+.settings-container .settings-bottom-menu .bottom-menu-buttons .menu-button {
+    all: unset;
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: center;
+    cursor: pointer;
+    background: var(--primary-color);
+    color: rgb(255, 255, 255);
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    font-family: inherit;
+}
+
+.settings-container .settings-bottom-menu .bottom-menu-buttons .menu-button:hover {
+    background: var(--secondary-color);
+}
+
+.settings-container .settings-bottom-menu .bottom-menu-buttons .menu-button.warning {
+    background: var(--error-color);
+}
+
+.settings-container .settings-bottom-menu .bottom-menu-buttons .menu-button.warning:hover {
+    background: #d32f2f;
+}
+
+/* 미리듣기 버튼 스타일 */
+.preview-sound {
+    all: unset;
+    display: inline-block;
+    box-sizing: border-box;
+    padding: 5px 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: center;
+    cursor: pointer;
+    background: var(--primary-color);
+    color: rgb(255, 255, 255);
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    font-family: inherit;
+}
+
+.preview-sound:hover {
+    background: var(--secondary-color);
+}
+
+/* 버튼 기본 스타일 재정의 */
+button.menu-button {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    color: rgb(255, 255, 255);
 } 
