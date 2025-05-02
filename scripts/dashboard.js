@@ -20,6 +20,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // 타이머 소리 옵션 동적 생성 함수 호출
+    populateTimerSoundOptions('focus-sound');
+    populateTimerSoundOptions('short-break-sound');
+    populateTimerSoundOptions('long-break-sound');
+
     // 설정 저장 기능
     const settingsForm = document.querySelectorAll('.timer-settings input, .timer-settings select');
     settingsForm.forEach(input => {
@@ -56,6 +61,26 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('stats-file-input').addEventListener('change', handleStatsFileImport);
 });
 
+// '타이머 소리' 드롭다운 옵션 생성 함수
+function populateTimerSoundOptions(selectElementId) {
+    const selectElement = document.getElementById(selectElementId);
+    if (!selectElement) return;
+
+    const timerSoundOptions = [
+        { value: 'beep', text: '짧은 beep' },
+        { value: 'gong', text: '공(Gong)' }
+    ];
+
+    selectElement.innerHTML = ''; // 기존 옵션 제거
+
+    timerSoundOptions.forEach(optionData => {
+        const option = document.createElement('option');
+        option.value = optionData.value;
+        option.textContent = optionData.text;
+        selectElement.appendChild(option);
+    });
+}
+
 // 설정 저장
 function saveSettings() {
     const settings = {
@@ -71,7 +96,6 @@ function saveSettings() {
             duration: parseInt(document.getElementById('short-break-duration').value),
             sound: document.getElementById('short-break-sound').value,
             soundVolume: 50,
-            soundType: document.getElementById('short-break-sound-type').value,
             desktopNotification: document.getElementById('short-break-desktop-notification').checked,
             tabNotification: document.getElementById('short-break-tab-notification').checked
         },
@@ -80,7 +104,6 @@ function saveSettings() {
             startAfter: parseInt(document.getElementById('long-break-start').value),
             sound: document.getElementById('long-break-sound').value,
             soundVolume: 50,
-            soundType: document.getElementById('long-break-sound-type').value,
             desktopNotification: document.getElementById('long-break-desktop-notification').checked,
             tabNotification: document.getElementById('long-break-tab-notification').checked
         },
@@ -118,9 +141,6 @@ function loadSettings() {
             if (shortBreak.sound) {
                 document.getElementById('short-break-sound').value = shortBreak.sound;
             }
-            if (shortBreak.soundType) {
-                document.getElementById('short-break-sound-type').value = shortBreak.soundType;
-            }
             document.getElementById('short-break-desktop-notification').checked = shortBreak.desktopNotification;
             document.getElementById('short-break-tab-notification').checked = shortBreak.tabNotification;
 
@@ -129,9 +149,6 @@ function loadSettings() {
             document.getElementById('long-break-duration').value = longBreak.duration;
             if (longBreak.sound) {
                 document.getElementById('long-break-sound').value = longBreak.sound;
-            }
-            if (longBreak.soundType) {
-                document.getElementById('long-break-sound-type').value = longBreak.soundType;
             }
             document.getElementById('long-break-desktop-notification').checked = longBreak.desktopNotification;
             document.getElementById('long-break-tab-notification').checked = longBreak.tabNotification;
@@ -142,17 +159,22 @@ function loadSettings() {
 // 소리 미리듣기
 document.querySelectorAll('.preview-sound').forEach(button => {
     button.addEventListener('click', () => {
-        // 버튼 근처의 sound-type 셀렉트 가져오기
-        const soundTypeSelect = button.parentElement.querySelector('select');
-        const soundType = soundTypeSelect ? soundTypeSelect.value : 'low-short-beep';
+        // 버튼 바로 앞의 select 요소 가져오기
+        const soundSelect = button.previousElementSibling;
         
-        console.log('미리듣기 요청:', soundType);
-        
-        // 선택된 소리 타입과 함께 메시지 전송
-        chrome.runtime.sendMessage({ 
-            action: 'playSound',
-            soundType: soundType
-        });
+        if (soundSelect && soundSelect.tagName === 'SELECT') {
+            const soundType = soundSelect.value;
+            console.log('미리듣기 요청:', soundType);
+            
+            // 선택된 소리 타입과 미리듣기 플래그와 함께 메시지 전송
+            chrome.runtime.sendMessage({ 
+                action: 'playSound',
+                soundType: soundType,
+                isPreview: true // 미리듣기 플래그 추가
+            });
+        } else {
+            console.error('Could not find select element for preview button.');
+        }
     });
 });
 

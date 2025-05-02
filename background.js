@@ -8,26 +8,24 @@ const DEFAULT_SETTINGS_BG = {
     version: "1.0", // 버전 정보 추가
     focus: {
         duration: 25,
-        sound: "beep",
+        sound: "beep", // '타이머 소리' 기본값
         soundVolume: 50,
-        soundType: "low-short-beep", // 기본 소리 타입
+        soundType: "brown_noise", // '재생' 기본값 (이제 beep/gong 제외)
         desktopNotification: true,
-        tabNotification: true // background 기본값은 true 유지할 수 있음
+        tabNotification: true
     },
     shortBreak: {
         duration: 5,
-        sound: "beep",
+        sound: "beep", // '타이머 소리' 기본값
         soundVolume: 50,
-        soundType: "low-short-beep",
         desktopNotification: true,
         tabNotification: true
     },
     longBreak: {
         duration: 15,
         startAfter: 4,
-        sound: "beep",
+        sound: "beep", // '타이머 소리' 기본값
         soundVolume: 50,
-        soundType: "low-short-beep",
         desktopNotification: true,
         tabNotification: true
     },
@@ -36,7 +34,7 @@ const DEFAULT_SETTINGS_BG = {
         autoStartBreaks: false,
         autoStartPomodoros: false,
         availableSounds: [
-            { name: "기본 비프음", value: "low-short-beep" },
+            { name: "기본 비프음", value: "low-short-beep" }, // 이 값은 이제 '재생'에는 없음
             { name: "공(Gong)", value: "gong" },
             { name: "Brown Noise", value: "brown_noise" },
             { name: "Rainy Day", value: "rainy_birds" },
@@ -270,16 +268,18 @@ async function getCurrentSettings() {
         // 설정이 없거나 버전이 다르면 기본값(BG용)으로 병합
         if (!settings || settings.version !== DEFAULT_SETTINGS_BG.version) {
             console.log('[BG] 저장된 설정이 없거나 버전이 달라 기본 설정과 병합합니다.');
-            // settings.js의 DEFAULT_SETTINGS와 구조 맞추기 (general 제외 가능성)
-             const baseSettings = { // settings.js의 DEFAULT_SETTINGS 구조와 유사하게
+            // settings.js의 DEFAULT_SETTINGS와 구조 맞추기 (short/long break의 soundType 제외)
+             const baseSettings = {
                 projectName: DEFAULT_SETTINGS_BG.projectName,
-                focus: DEFAULT_SETTINGS_BG.focus,
-                shortBreak: DEFAULT_SETTINGS_BG.shortBreak,
-                longBreak: DEFAULT_SETTINGS_BG.longBreak,
-                // general은 기존 로직 유지 또는 BG 기본값 사용
-                 general: DEFAULT_SETTINGS_BG.general
+                focus: { ...DEFAULT_SETTINGS_BG.focus },
+                shortBreak: { ...DEFAULT_SETTINGS_BG.shortBreak }, // soundType이 없는 기본값
+                longBreak: { ...DEFAULT_SETTINGS_BG.longBreak },   // soundType이 없는 기본값
+                 general: { ...DEFAULT_SETTINGS_BG.general }
             };
             settings = { ...baseSettings, ...(settings || {}) };
+            // 병합 후에도 short/long break에 soundType이 있다면 제거
+            delete settings.shortBreak?.soundType;
+            delete settings.longBreak?.soundType;
             settings.version = DEFAULT_SETTINGS_BG.version; // 버전 업데이트
             await chrome.storage.sync.set({ settings }); // 병합된 설정 저장
         }
@@ -294,23 +294,30 @@ async function getCurrentSettings() {
                 ...DEFAULT_SETTINGS_BG.focus,
                 ...(settings.focus || {}),
                 duration: validateDuration(settings.focus?.duration, DEFAULT_SETTINGS_BG.focus.duration)
+                // sound, soundType 은 기본값과 병합하여 사용
             },
             shortBreak: {
                  ...DEFAULT_SETTINGS_BG.shortBreak,
                 ...(settings.shortBreak || {}),
                 duration: validateDuration(settings.shortBreak?.duration, DEFAULT_SETTINGS_BG.shortBreak.duration)
+                // sound 는 기본값과 병합하여 사용, soundType은 없음
             },
             longBreak: {
                  ...DEFAULT_SETTINGS_BG.longBreak,
                 ...(settings.longBreak || {}),
                 duration: validateDuration(settings.longBreak?.duration, DEFAULT_SETTINGS_BG.longBreak.duration),
                 startAfter: validateDuration(settings.longBreak?.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter)
+                // sound 는 기본값과 병합하여 사용, soundType은 없음
             },
              general: settings.general || DEFAULT_SETTINGS_BG.general
         };
     } catch (error) {
         console.error('[BG] 설정 로드 중 오류:', error);
-        return { ...DEFAULT_SETTINGS_BG }; // 오류 발생 시 BG 기본 설정 반환
+        // 오류 발생 시 BG 기본 설정 반환 (soundType 없는 버전)
+        const errorDefaults = { ...DEFAULT_SETTINGS_BG };
+        delete errorDefaults.shortBreak?.soundType;
+        delete errorDefaults.longBreak?.soundType;
+        return errorDefaults;
     }
 }
 
@@ -519,7 +526,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 response = { success: true };
                 break;
             case 'playSound':
-                await playSound(request.soundType);
+                // isPreview 플래그도 playSound 함수로 전달
+                await playSound(request.soundType, request.isPreview);
                 response = { success: true };
                 break;
             case 'exportStats':
@@ -549,20 +557,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // Offscreen Document를 통해 소리를 재생하는 함수
-async function playSound(soundType) {
-    console.log("playSound 함수 호출됨", soundType);
+async function playSound(soundType, isPreview = false) { // isPreview 파라미터 추가
+    console.log("playSound 함수 호출됨", { soundType, isPreview });
+    let finalSoundType = 'low-short-beep'; // 최종 재생할 소리 타입, 기본값 설정
+
     try {
-        // 소리 타입 가져오기 - 인자로 전달 받거나 현재 설정에서 가져오기
-        let currentSoundType = soundType;
-        
-        if (!currentSoundType) {
-            // 인자로 전달된 소리 타입이 없으면 현재 설정에서 가져오기
+        if (isPreview) {
+            // 미리듣기 시에는 전달받은 soundType 사용 (없으면 기본값 유지)
+            finalSoundType = soundType || 'low-short-beep'; 
+        } else {
+            // 타이머 완료 시
             const settings = await getCurrentSettings();
-            const currentSession = timerState.type || 'focus';
-            currentSoundType = settings[currentSession]?.soundType || 'low-short-beep';
+            const completedSessionType = timerState.type; // 방금 완료된 세션 타입
+
+            if (completedSessionType === 'focus') {
+                // 집중 완료 시: '재생' 설정 (focus.soundType) 사용
+                finalSoundType = settings.focus?.soundType || DEFAULT_SETTINGS_BG.focus.soundType;
+            } else if (completedSessionType === 'shortBreak' || completedSessionType === 'longBreak') {
+                // 휴식 완료 시: 해당 휴식의 '타이머 소리' 설정 (break.sound) 사용
+                finalSoundType = settings[completedSessionType]?.sound || DEFAULT_SETTINGS_BG[completedSessionType].sound;
+            } else {
+                // 예외 처리: 알 수 없는 세션 타입이면 기본 비프음
+                console.warn(`Unknown session type for sound: ${completedSessionType}`);
+                finalSoundType = 'low-short-beep';
+            }
+            
+            // 'low-short-beep' 값을 'beep'으로 매핑 (offscreen.js는 'beep'을 기대)
+            if (finalSoundType === 'low-short-beep') {
+                finalSoundType = 'beep';
+            }
         }
         
-        console.log("Current sound type:", currentSoundType);
+        console.log("Final sound type to play:", finalSoundType, "Is Preview:", isPreview);
         
         // 이미 존재하는 Offscreen Document 확인
         const existingContexts = await chrome.runtime.getContexts({
@@ -571,10 +597,15 @@ async function playSound(soundType) {
         });
         console.log("existingContexts:", existingContexts);
 
+        const messagePayload = {
+            command: "playSound",
+            soundType: finalSoundType, // 결정된 최종 소리 타입 사용
+            isPreview: isPreview
+        };
+
         if (existingContexts.length > 0) {
             console.log("기존 Offscreen Document에 메시지 전송");
-            // 이미 존재하면 메시지만 전송
-            chrome.runtime.sendMessage({ command: "playSound", soundType: currentSoundType });
+            chrome.runtime.sendMessage(messagePayload);
             return;
         }
 
@@ -591,14 +622,12 @@ async function playSound(soundType) {
                 };
                 chrome.runtime.onMessage.addListener(messageListener);
 
-                // Offscreen Document 생성
                 await chrome.offscreen.createDocument({
                     url: 'offscreen.html',
                     reasons: ['AUDIO_PLAYBACK'],
                     justification: '포모도로 타이머 알림음 재생'
                 });
 
-                // 10초 타임아웃
                 setTimeout(() => {
                     chrome.runtime.onMessage.removeListener(messageListener);
                     reject(new Error('Offscreen Document 로드 타임아웃'));
@@ -610,8 +639,7 @@ async function playSound(soundType) {
         });
 
         console.log("소리 재생 메시지 전송");
-        // 소리 재생 메시지 전송 (소리 타입 포함)
-        chrome.runtime.sendMessage({ command: "playSound", soundType: currentSoundType });
+        chrome.runtime.sendMessage(messagePayload);
 
     } catch (error) {
         console.error("소리 재생 중 오류 발생:", error);
@@ -720,7 +748,7 @@ async function timerComplete() {
     // 알람 중지
     chrome.alarms.clear(timerState.alarmName);
 
-    // 알림음 재생
+    // 알림음 재생 (인자 없이 호출 -> playSound가 완료된 세션 타입 기반으로 소리 결정)
     await playSound();
 
      // --- 완료된 세션 정보 저장 ---
@@ -729,9 +757,8 @@ async function timerComplete() {
      switch (timerState.type) { // 완료된 세션의 타입 사용
          case 'focus':
              completedDuration = settings.focus.duration;
-             // 포모도로 카운트 업데이트
              timerState.pomodoroCount++;
-             await chrome.storage.local.set({ pomodoroCount: timerState.pomodoroCount }); // 카운트 저장
+             await chrome.storage.local.set({ pomodoroCount: timerState.pomodoroCount });
              break;
          case 'shortBreak':
              completedDuration = settings.shortBreak.duration;
