@@ -134,8 +134,8 @@ function loadSettings() {
             if (focus.soundType) {
                 document.getElementById('focus-sound-type').value = focus.soundType;
             }
-            if (typeof focus.soundVolume === 'number') document.getElementById('focus-sound-volume').value = focus.soundVolume;
-            if (typeof focus.soundTypeVolume === 'number') document.getElementById('focus-sound-type-volume').value = focus.soundTypeVolume;
+            document.getElementById('focus-sound-volume').value = (typeof focus.soundVolume === 'number') ? focus.soundVolume : 100;
+            document.getElementById('focus-sound-type-volume').value = (typeof focus.soundTypeVolume === 'number') ? focus.soundTypeVolume : 100;
             document.getElementById('focus-desktop-notification').checked = focus.desktopNotification;
             document.getElementById('focus-tab-notification').checked = focus.tabNotification;
 
@@ -144,7 +144,7 @@ function loadSettings() {
             if (shortBreak.sound) {
                 document.getElementById('short-break-sound').value = shortBreak.sound;
             }
-            if (typeof shortBreak.soundVolume === 'number') document.getElementById('short-break-sound-volume').value = shortBreak.soundVolume;
+            document.getElementById('short-break-sound-volume').value = (typeof shortBreak.soundVolume === 'number') ? shortBreak.soundVolume : 100;
             document.getElementById('short-break-desktop-notification').checked = shortBreak.desktopNotification;
             document.getElementById('short-break-tab-notification').checked = shortBreak.tabNotification;
 
@@ -154,7 +154,7 @@ function loadSettings() {
             if (longBreak.sound) {
                 document.getElementById('long-break-sound').value = longBreak.sound;
             }
-            if (typeof longBreak.soundVolume === 'number') document.getElementById('long-break-sound-volume').value = longBreak.soundVolume;
+            document.getElementById('long-break-sound-volume').value = (typeof longBreak.soundVolume === 'number') ? longBreak.soundVolume : 100;
             document.getElementById('long-break-desktop-notification').checked = longBreak.desktopNotification;
             document.getElementById('long-break-tab-notification').checked = longBreak.tabNotification;
         }
@@ -272,6 +272,11 @@ document.getElementById('feedback-form').addEventListener('submit', (e) => {
 function exportSettings() {
     chrome.storage.sync.get('settings', (data) => {
         if (data.settings) {
+            // 볼륨 값이 없으면 100으로 보정
+            if (typeof data.settings.focus.soundVolume !== 'number') data.settings.focus.soundVolume = 100;
+            if (typeof data.settings.focus.soundTypeVolume !== 'number') data.settings.focus.soundTypeVolume = 100;
+            if (typeof data.settings.shortBreak.soundVolume !== 'number') data.settings.shortBreak.soundVolume = 100;
+            if (typeof data.settings.longBreak.soundVolume !== 'number') data.settings.longBreak.soundVolume = 100;
             const jsonContent = JSON.stringify(data.settings, null, 2);
             const blob = new Blob([jsonContent], { type: 'application/json' });
             const link = document.createElement('a');
@@ -291,6 +296,11 @@ function importSettings(event) {
         reader.onload = function(e) {
             try {
                 const settings = JSON.parse(e.target.result);
+                // 볼륨 값이 없으면 100으로 보정
+                if (typeof settings.focus.soundVolume !== 'number') settings.focus.soundVolume = 100;
+                if (typeof settings.focus.soundTypeVolume !== 'number') settings.focus.soundTypeVolume = 100;
+                if (typeof settings.shortBreak.soundVolume !== 'number') settings.shortBreak.soundVolume = 100;
+                if (typeof settings.longBreak.soundVolume !== 'number') settings.longBreak.soundVolume = 100;
                 // 설정 유효성 검사
                 if (validateSettings(settings)) {
                     chrome.storage.sync.set({ settings }, () => {

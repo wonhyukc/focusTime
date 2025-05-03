@@ -33,6 +33,13 @@ const DEFAULT_SETTINGS = {
     }
 };
 
+function getInputNumberOrDefault(id, defaultValue = 100) {
+    const el = document.getElementById(id);
+    if (!el) return defaultValue;
+    const v = parseInt(el.value);
+    return isNaN(v) ? defaultValue : v;
+}
+
 // 현재 설정 가져오기
 function getCurrentSettings() {
     const settings = {
@@ -40,21 +47,27 @@ function getCurrentSettings() {
         focus: {
             duration: parseInt(document.getElementById('focus-duration').value) || DEFAULT_SETTINGS.focus.duration,
             sound: document.getElementById('focus-sound').value,
+            soundVolume: getInputNumberOrDefault('focus-sound-volume', 100),
             soundType: document.getElementById('focus-sound-type').value,
+            soundTypeVolume: getInputNumberOrDefault('focus-sound-type-volume', 100),
             desktopNotification: document.getElementById('focus-desktop-notification').checked,
             tabNotification: document.getElementById('focus-tab-notification').checked,
             playSound: false
         },
         shortBreak: {
             duration: parseInt(document.getElementById('short-break-duration').value) || DEFAULT_SETTINGS.shortBreak.duration,
-            soundType: document.getElementById('short-break-sound-type').value,
+            sound: document.getElementById('short-break-sound') ? document.getElementById('short-break-sound').value : "",
+            soundType: (document.getElementById('short-break-sound-type') ? document.getElementById('short-break-sound-type').value : ""),
+            soundVolume: getInputNumberOrDefault('short-break-sound-volume', 100),
             desktopNotification: document.getElementById('short-break-desktop-notification').checked,
             tabNotification: document.getElementById('short-break-tab-notification').checked
         },
         longBreak: {
             duration: parseInt(document.getElementById('long-break-duration').value) || DEFAULT_SETTINGS.longBreak.duration,
             startAfter: parseInt(document.getElementById('long-break-start').value) || DEFAULT_SETTINGS.longBreak.startAfter,
-            soundType: document.getElementById('long-break-sound-type').value,
+            sound: document.getElementById('long-break-sound') ? document.getElementById('long-break-sound').value : "",
+            soundType: (document.getElementById('long-break-sound-type') ? document.getElementById('long-break-sound-type').value : ""),
+            soundVolume: getInputNumberOrDefault('long-break-sound-volume', 100),
             desktopNotification: document.getElementById('long-break-desktop-notification').checked,
             tabNotification: document.getElementById('long-break-tab-notification').checked
         }
@@ -78,6 +91,7 @@ async function applySettings(settings) {
 
         // Short Break 설정
         document.getElementById('short-break-duration').value = settings.shortBreak.duration;
+        document.getElementById('short-break-sound').value = settings.shortBreak.sound;
         document.getElementById('short-break-sound-type').value = settings.shortBreak.soundType;
         document.getElementById('short-break-desktop-notification').checked = settings.shortBreak.desktopNotification;
         document.getElementById('short-break-tab-notification').checked = settings.shortBreak.tabNotification;
@@ -85,6 +99,7 @@ async function applySettings(settings) {
         // Long Break 설정
         document.getElementById('long-break-duration').value = settings.longBreak.duration;
         document.getElementById('long-break-start').value = settings.longBreak.startAfter;
+        document.getElementById('long-break-sound').value = settings.longBreak.sound;
         document.getElementById('long-break-sound-type').value = settings.longBreak.soundType;
         document.getElementById('long-break-desktop-notification').checked = settings.longBreak.desktopNotification;
         document.getElementById('long-break-tab-notification').checked = settings.longBreak.tabNotification;
