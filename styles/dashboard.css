@@ -170,9 +170,54 @@ main {
 }
 
 .stats-summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    display: flex;
+    justify-content: space-between;
     gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.focus-duration-summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.focus-duration-summary h3 {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 1rem;
+    color: #1a73e8;
+}
+
+.duration-card {
+    flex: 1;
+    padding: 1rem;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.duration-card h4 {
+    margin: 0;
+    color: #666;
+    font-size: 1rem;
+}
+
+.duration-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #1a73e8;
+    margin: 0.5rem 0;
+}
+
+.duration-label {
+    color: #666;
+    font-size: 0.9rem;
 }
 
 .stat-card {
@@ -376,7 +421,7 @@ canvas {
     }
 
     .stats-summary {
-        grid-template-columns: repeat(2, 1fr);
+        flex-direction: column;
     }
 
     .data-management {
@@ -387,7 +432,7 @@ canvas {
 
 @media (max-width: 480px) {
     .stats-summary {
-        grid-template-columns: 1fr;
+        flex-direction: column;
     }
 
     nav {

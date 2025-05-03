@@ -24,6 +24,9 @@ function isChartJsLoaded() {
 
 // --- 데이터 로드 및 처리 ---
 async function loadAndProcessStats() {
+    // 현재 날짜/시각을 콘솔에 출력
+    const now = new Date();
+    console.log('[loadAndProcessStats] 현재 시스템 날짜/시각:', now, '| ISO:', now.toISOString());
     console.log("[Stats Display] Starting loadAndProcessStats..."); // 시작 로그
     try {
         const result = await chrome.storage.local.get('pomodoroHistory');
@@ -40,6 +43,9 @@ async function loadAndProcessStats() {
         // --- 요약 카드 데이터 처리 ---
         console.log("[Stats Display] Updating summary cards...");
         updateSummaryCards(history);
+
+        // 오늘의 집중 시간(분) 시간대별/프로젝트별 집계 및 콘솔 출력
+        logTodayFocusDetails(history);
 
         // --- 일 단위 분포 데이터 처리 ---
         console.log("[Stats Display] Processing daily data...");
@@ -116,43 +122,58 @@ function updateSummaryCards(history) {
     try {
         // 오늘 카드 업데이트
         const todayFocusSessions = getSessionsToday(history);
-        const todayCount = todayFocusSessions.length;
-        const todayHours = calculateTotalHours(todayFocusSessions);
-        
-        document.querySelector('.stats-summary .stat-card:nth-child(1) .stat-value').textContent = todayCount;
-        document.querySelector('.stats-summary .stat-card:nth-child(1) .stat-label').textContent = 
-            todayHours.toFixed(2);
+        const todayMinutes = calculateTotalFocusMinutes(todayFocusSessions);
+        const todayHours = Math.floor(todayMinutes / 60);
+        const todayRemainMinutes = todayMinutes % 60;
+        let todayLabel = '';
+        if (todayMinutes === 0) {
+            todayLabel = '0.00';
+        } else {
+            todayLabel = todayHours + ':' + String(todayRemainMinutes).padStart(2, '0');
+        }
+        document.querySelector('.stats-summary .stat-card:nth-child(1) .stat-value').textContent = todayMinutes;
+        document.querySelector('.stats-summary .stat-card:nth-child(1) .stat-label').textContent = todayLabel;
         
         // 이번 주 카드 업데이트
         const thisWeekSessions = getSessionsThisWeek(history);
-        const weekCount = thisWeekSessions.length;
-        const weekHours = calculateTotalHours(thisWeekSessions);
+        const weekMinutes = calculateTotalFocusMinutes(thisWeekSessions);
+        const weekHours = weekMinutes / 60;
         
-        document.querySelector('.stats-summary .stat-card:nth-child(2) .stat-value').textContent = weekCount;
+        document.querySelector('.stats-summary .stat-card:nth-child(2) .stat-value').textContent = weekMinutes;
         document.querySelector('.stats-summary .stat-card:nth-child(2) .stat-label').textContent = 
             weekHours.toFixed(2);
         
         // 이번 달 카드 업데이트
         const thisMonthSessions = getSessionsThisMonth(history);
-        const monthCount = thisMonthSessions.length;
-        const monthHours = calculateTotalHours(thisMonthSessions);
+        const monthMinutes = calculateTotalFocusMinutes(thisMonthSessions);
+        const monthHours = monthMinutes / 60;
         
         const currentMonth = new Date().getMonth();
         const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
         
         document.querySelector('.stats-summary .stat-card:nth-child(3) h3').textContent = monthNames[currentMonth];
-        document.querySelector('.stats-summary .stat-card:nth-child(3) .stat-value').textContent = monthCount;
+        document.querySelector('.stats-summary .stat-card:nth-child(3) .stat-value').textContent = monthMinutes;
         document.querySelector('.stats-summary .stat-card:nth-child(3) .stat-label').textContent = 
             monthHours.toFixed(2);
         
         // 총 카드 업데이트
         const totalFocusSessions = history.filter(entry => entry.type === 'focus');
-        const totalCount = totalFocusSessions.length;
+        const totalMinutes = calculateTotalFocusMinutes(totalFocusSessions);
+        const totalHours = totalMinutes / 60;
         
-        document.querySelector('.stats-summary .stat-card:nth-child(4) .stat-value').textContent = totalCount;
+        document.querySelector('.stats-summary .stat-card:nth-child(4) .stat-value').textContent = totalMinutes;
+        document.querySelector('.stats-summary .stat-card:nth-child(4) .stat-label').textContent = 
+            totalHours.toFixed(2);
     } catch (error) {
         console.error("[Stats Display] Error updating summary cards:", error);
     }
+}
+
+// 총 집중 시간 계산 (분 단위)
+function calculateTotalFocusMinutes(sessions) {
+    return sessions.reduce((total, session) => {
+        return total + (session.durationMinutes || 0);
+    }, 0);
 }
 
 // 시작 시간에서 Date 객체 생성
@@ -188,17 +209,25 @@ function getDateFromEntry(entry) {
 // 오늘 세션 가져오기
 function getSessionsToday(history) {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0); // 로컬 자정
     
+    // 디버깅: 오늘 날짜와 각 entry의 날짜 출력 (로컬/UTC 모두)
+    console.log('[getSessionsToday] 오늘(로컬):', today, '| 오늘(UTC):', today.toISOString());
+    history.forEach(entry => {
+        if (entry.type !== 'focus') return;
+        const entryDate = getDateFromEntry(entry);
+        if (!entryDate) return;
+        const entryDay = new Date(entryDate);
+        entryDay.setHours(0, 0, 0, 0); // 로컬 자정
+        console.log('[getSessionsToday] entry.startTime:', entry.startTime, '| entryDay(로컬):', entryDay, '| entryDay(UTC):', entryDay.toISOString());
+    });
+
     return history.filter(entry => {
         if (entry.type !== 'focus') return false;
-        
         const entryDate = getDateFromEntry(entry);
         if (!entryDate) return false;
-        
         const entryDay = new Date(entryDate);
-        entryDay.setHours(0, 0, 0, 0);
-        
+        entryDay.setHours(0, 0, 0, 0); // 로컬 자정
         return entryDay.getTime() === today.getTime();
     });
 }
@@ -234,14 +263,6 @@ function getSessionsThisMonth(history) {
         
         return entryDate >= firstDayOfMonth;
     });
-}
-
-// 총 집중 시간 계산 (시간 단위)
-function calculateTotalHours(sessions) {
-    const totalMinutes = sessions.reduce((total, session) => {
-        return total + (session.durationMinutes || 0);
-    }, 0);
-    return totalMinutes / 60;
 }
 
 function processDailyData(history, durationFilter) {
@@ -698,5 +719,35 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ success: true });
     }
 });
+
+// 오늘의 집중 시간(분) 시간대별/프로젝트별 집계 및 콘솔 출력
+function logTodayFocusDetails(history) {
+    // 오늘 집중 세션만 추출
+    const todayFocusSessions = getSessionsToday(history);
+
+    // 시간대별 합산
+    const hourlyTotals = {};
+    todayFocusSessions.forEach(entry => {
+        const entryDate = getDateFromEntry(entry);
+        if (!entryDate) return;
+        const hour = entryDate.getHours();
+        hourlyTotals[hour] = (hourlyTotals[hour] || 0) + (entry.durationMinutes || 0);
+    });
+
+    // 프로젝트별 합산
+    const projectTotals = {};
+    todayFocusSessions.forEach(entry => {
+        const project = entry.projectName || '(미지정)';
+        projectTotals[project] = (projectTotals[project] || 0) + (entry.durationMinutes || 0);
+    });
+
+    // 전체 합계
+    const total = todayFocusSessions.reduce((sum, entry) => sum + (entry.durationMinutes || 0), 0);
+
+    // 결과 출력
+    console.log('[오늘 집중 시간 합계]', total + '분');
+    console.log('[시간대별 집중 시간(분)]', hourlyTotals);
+    console.log('[프로젝트별 집중 시간(분)]', projectTotals);
+}
 
 // ... (clearStatsDisplay 등) 
