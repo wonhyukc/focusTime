@@ -87,15 +87,16 @@ function saveSettings() {
         focus: {
             duration: parseInt(document.getElementById('focus-duration').value),
             sound: document.getElementById('focus-sound').value,
-            soundVolume: 50,
+            soundVolume: parseInt(document.getElementById('focus-sound-volume').value),
             soundType: document.getElementById('focus-sound-type').value,
+            soundTypeVolume: parseInt(document.getElementById('focus-sound-type-volume').value),
             desktopNotification: document.getElementById('focus-desktop-notification').checked,
             tabNotification: document.getElementById('focus-tab-notification').checked
         },
         shortBreak: {
             duration: parseInt(document.getElementById('short-break-duration').value),
             sound: document.getElementById('short-break-sound').value,
-            soundVolume: 50,
+            soundVolume: parseInt(document.getElementById('short-break-sound-volume').value),
             desktopNotification: document.getElementById('short-break-desktop-notification').checked,
             tabNotification: document.getElementById('short-break-tab-notification').checked
         },
@@ -103,7 +104,7 @@ function saveSettings() {
             duration: parseInt(document.getElementById('long-break-duration').value),
             startAfter: parseInt(document.getElementById('long-break-start').value),
             sound: document.getElementById('long-break-sound').value,
-            soundVolume: 50,
+            soundVolume: parseInt(document.getElementById('long-break-sound-volume').value),
             desktopNotification: document.getElementById('long-break-desktop-notification').checked,
             tabNotification: document.getElementById('long-break-tab-notification').checked
         },
@@ -133,6 +134,8 @@ function loadSettings() {
             if (focus.soundType) {
                 document.getElementById('focus-sound-type').value = focus.soundType;
             }
+            if (typeof focus.soundVolume === 'number') document.getElementById('focus-sound-volume').value = focus.soundVolume;
+            if (typeof focus.soundTypeVolume === 'number') document.getElementById('focus-sound-type-volume').value = focus.soundTypeVolume;
             document.getElementById('focus-desktop-notification').checked = focus.desktopNotification;
             document.getElementById('focus-tab-notification').checked = focus.tabNotification;
 
@@ -141,6 +144,7 @@ function loadSettings() {
             if (shortBreak.sound) {
                 document.getElementById('short-break-sound').value = shortBreak.sound;
             }
+            if (typeof shortBreak.soundVolume === 'number') document.getElementById('short-break-sound-volume').value = shortBreak.soundVolume;
             document.getElementById('short-break-desktop-notification').checked = shortBreak.desktopNotification;
             document.getElementById('short-break-tab-notification').checked = shortBreak.tabNotification;
 
@@ -150,6 +154,7 @@ function loadSettings() {
             if (longBreak.sound) {
                 document.getElementById('long-break-sound').value = longBreak.sound;
             }
+            if (typeof longBreak.soundVolume === 'number') document.getElementById('long-break-sound-volume').value = longBreak.soundVolume;
             document.getElementById('long-break-desktop-notification').checked = longBreak.desktopNotification;
             document.getElementById('long-break-tab-notification').checked = longBreak.tabNotification;
         }
@@ -161,16 +166,24 @@ document.querySelectorAll('.preview-sound').forEach(button => {
     button.addEventListener('click', () => {
         // 버튼 바로 앞의 select 요소 가져오기
         const soundSelect = button.previousElementSibling;
-        
+        let volume = 100;
+        // 볼륨 input은 select 다음 또는 버튼 다음에 위치
         if (soundSelect && soundSelect.tagName === 'SELECT') {
+            // 볼륨 input 찾기 (형제 노드 중 input[type=number])
+            let sibling = button.nextElementSibling;
+            while (sibling) {
+                if (sibling.tagName === 'INPUT' && sibling.type === 'number') {
+                    volume = parseInt(sibling.value) || 100;
+                    break;
+                }
+                sibling = sibling.nextElementSibling;
+            }
             const soundType = soundSelect.value;
-            console.log('미리듣기 요청:', soundType);
-            
-            // 선택된 소리 타입과 미리듣기 플래그와 함께 메시지 전송
             chrome.runtime.sendMessage({ 
                 action: 'playSound',
                 soundType: soundType,
-                isPreview: true // 미리듣기 플래그 추가
+                isPreview: true,
+                volume: volume
             });
         } else {
             console.error('Could not find select element for preview button.');
