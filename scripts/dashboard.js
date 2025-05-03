@@ -45,11 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 설정 내보내기/가져오기/초기화 기능
     document.getElementById('export-settings').addEventListener('click', exportSettings);
-    document.getElementById('import-settings').addEventListener('click', () => {
-        document.getElementById('settings-file-input').click();
-    });
     document.getElementById('reset-settings').addEventListener('click', resetSettings);
-    document.getElementById('settings-file-input').addEventListener('change', importSettings);
 
     // 통계 내보내기/가져오기/초기화 기능
     document.getElementById('export-stats').addEventListener('click', exportStats);
@@ -286,37 +282,6 @@ function exportSettings() {
             showToast('설정을 내보냈습니다.');
         }
     });
-}
-
-// 설정 가져오기
-function importSettings(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const settings = JSON.parse(e.target.result);
-                // 볼륨 값이 없으면 100으로 보정
-                if (typeof settings.focus.soundVolume !== 'number') settings.focus.soundVolume = 100;
-                if (typeof settings.focus.soundTypeVolume !== 'number') settings.focus.soundTypeVolume = 100;
-                if (typeof settings.shortBreak.soundVolume !== 'number') settings.shortBreak.soundVolume = 100;
-                if (typeof settings.longBreak.soundVolume !== 'number') settings.longBreak.soundVolume = 100;
-                // 설정 유효성 검사
-                if (validateSettings(settings)) {
-                    chrome.storage.sync.set({ settings }, () => {
-                        loadSettings();
-                        showToast('설정을 가져왔습니다.');
-                    });
-                } else {
-                    showToast('올바르지 않은 설정 파일입니다.', 'error');
-                }
-            } catch (error) {
-                showToast('설정 파일을 읽는 중 오류가 발생했습니다.', 'error');
-            }
-        };
-        reader.readAsText(file);
-    }
-    event.target.value = '';
 }
 
 // 설정 초기화

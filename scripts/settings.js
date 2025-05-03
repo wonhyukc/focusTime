@@ -91,16 +91,20 @@ async function applySettings(settings) {
 
         // Short Break 설정
         document.getElementById('short-break-duration').value = settings.shortBreak.duration;
-        document.getElementById('short-break-sound').value = settings.shortBreak.sound;
-        document.getElementById('short-break-sound-type').value = settings.shortBreak.soundType;
+        const shortBreakSoundEl = document.getElementById('short-break-sound');
+        if (shortBreakSoundEl) shortBreakSoundEl.value = settings.shortBreak.sound;
+        const shortBreakSoundTypeEl = document.getElementById('short-break-sound-type');
+        if (shortBreakSoundTypeEl) shortBreakSoundTypeEl.value = settings.shortBreak.soundType;
         document.getElementById('short-break-desktop-notification').checked = settings.shortBreak.desktopNotification;
         document.getElementById('short-break-tab-notification').checked = settings.shortBreak.tabNotification;
 
         // Long Break 설정
         document.getElementById('long-break-duration').value = settings.longBreak.duration;
         document.getElementById('long-break-start').value = settings.longBreak.startAfter;
-        document.getElementById('long-break-sound').value = settings.longBreak.sound;
-        document.getElementById('long-break-sound-type').value = settings.longBreak.soundType;
+        const longBreakSoundEl = document.getElementById('long-break-sound');
+        if (longBreakSoundEl) longBreakSoundEl.value = settings.longBreak.sound;
+        const longBreakSoundTypeEl = document.getElementById('long-break-sound-type');
+        if (longBreakSoundTypeEl) longBreakSoundTypeEl.value = settings.longBreak.soundType;
         document.getElementById('long-break-desktop-notification').checked = settings.longBreak.desktopNotification;
         document.getElementById('long-break-tab-notification').checked = settings.longBreak.tabNotification;
 
@@ -195,7 +199,9 @@ function exportSettings() {
 }
 
 // 설정 가져오기
-function importSettings(file) {
+function importSettings(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
@@ -251,32 +257,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             initialSettings = DEFAULT_SETTINGS; // 저장된 설정 없으면 새 기본값 사용
              applySettings(initialSettings); // 기본 설정 적용
         }
-
-        // 프로젝트 이름이 없거나 기본값과 다를 때 포커스 제거 (기본값이 있으므로)
-        // if (!initialSettings.projectName) {
-        //     const projectNameInput = document.getElementById('project-name');
-        //     if (projectNameInput) {
-        //         projectNameInput.focus();
-        //         console.log('Project name input focused.');
-        //     }
-        // }
     });
 
     // 내보내기 버튼
     document.getElementById('export-settings').addEventListener('click', exportSettings);
 
-    // 가져오기 버튼
-    document.getElementById('import-settings').addEventListener('click', () => {
-        document.getElementById('settings-file-input').click();
-    });
-
-    // 파일 입력 변경 이벤트
-    document.getElementById('settings-file-input').addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            importSettings(e.target.files[0]);
-            e.target.value = ''; // 입력 초기화
-        }
-    });
+    // 가져오기 버튼 및 파일 input 이벤트(중복 방지)
+    const importBtn = document.getElementById('import-settings');
+    const fileInput = document.getElementById('settings-file-input');
+    if (importBtn && fileInput) {
+        importBtn.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => {
+            if (e.target.files.length > 0) {
+                importSettings(e); // 반드시 이벤트 객체를 넘김
+                e.target.value = ''; // 입력 초기화
+            }
+        };
+    }
 
     // 초기화 버튼
     document.getElementById('reset-settings').addEventListener('click', resetSettings);
