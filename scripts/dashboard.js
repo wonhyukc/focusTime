@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 통계 내보내기/가져오기/초기화 기능
     document.getElementById('export-stats').addEventListener('click', exportStats);
     document.getElementById('import-stats').addEventListener('click', () => {
-        if (confirm('통계 가져오기에 기존 데이터는 모두 지워집니다. 계속 진행할까요?')) {
+        if (confirm('통계 가져오기에 기존 데이터는 모두 지워집니다. 기존 데이터가 필요하면 먼저 통계 내보내기를 하세요. 계속 진행할까요?')) {
             document.getElementById('stats-file-input').click();
         }
     });
