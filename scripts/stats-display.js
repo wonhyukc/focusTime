@@ -155,15 +155,32 @@ function updateSummaryCards(history) {
         document.querySelector('.stats-summary .stat-card:nth-child(3) .stat-value').textContent = monthMinutes;
         document.querySelector('.stats-summary .stat-card:nth-child(3) .stat-label').textContent = 
             monthHours.toFixed(2);
-        
-        // 총 카드 업데이트
-        const totalFocusSessions = history.filter(entry => entry.type === 'focus');
-        const totalMinutes = calculateTotalFocusMinutes(totalFocusSessions);
-        const totalHours = totalMinutes / 60;
-        
-        document.querySelector('.stats-summary .stat-card:nth-child(4) .stat-value').textContent = totalMinutes;
-        document.querySelector('.stats-summary .stat-card:nth-child(4) .stat-label').textContent = 
-            totalHours.toFixed(2);
+
+        // 올해 카드 업데이트 (4번째 카드)
+        const thisYearSessions = getSessionsThisYear(history);
+        const yearMinutes = calculateTotalFocusMinutes(thisYearSessions);
+        const yearHours = yearMinutes / 60;
+        const yearCard = document.querySelector('.stats-summary .stat-card:nth-child(4)');
+        if (yearCard) {
+            yearCard.querySelector('.stat-value').textContent = yearMinutes;
+            yearCard.querySelector('.stat-label').textContent = yearHours.toFixed(2);
+        } else {
+            console.warn('[Stats Display] 올해 카드(.stat-card:nth-child(4))를 찾을 수 없습니다!');
+        }
+
+        // 총 카드 업데이트 (5번째 카드)
+        const totalCard = document.querySelector('.stats-summary .stat-card:nth-child(5)');
+        if (totalCard) {
+            const totalFocusSessions = history.filter(entry => entry.type === 'focus');
+            const totalMinutes = calculateTotalFocusMinutes(totalFocusSessions);
+            const totalHours = totalMinutes / 60;
+            console.log('[DEBUG] totalMinutes:', totalMinutes, 'totalHours:', totalHours);
+            
+            totalCard.querySelector('.stat-value').textContent = totalMinutes;
+            totalCard.querySelector('.stat-label').textContent = totalHours.toFixed(2);
+        } else {
+            console.warn('[Stats Display] 총 카드(.stat-card:nth-child(5))를 찾을 수 없습니다!');
+        }
     } catch (error) {
         console.error("[Stats Display] Error updating summary cards:", error);
     }
@@ -213,14 +230,6 @@ function getSessionsToday(history) {
     
     // 디버깅: 오늘 날짜와 각 entry의 날짜 출력 (로컬/UTC 모두)
     console.log('[getSessionsToday] 오늘(로컬):', today, '| 오늘(UTC):', today.toISOString());
-    history.forEach(entry => {
-        if (entry.type !== 'focus') return;
-        const entryDate = getDateFromEntry(entry);
-        if (!entryDate) return;
-        const entryDay = new Date(entryDate);
-        entryDay.setHours(0, 0, 0, 0); // 로컬 자정
-        console.log('[getSessionsToday] entry.startTime:', entry.startTime, '| entryDay(로컬):', entryDay, '| entryDay(UTC):', entryDay.toISOString());
-    });
 
     return history.filter(entry => {
         if (entry.type !== 'focus') return false;
@@ -262,6 +271,18 @@ function getSessionsThisMonth(history) {
         if (!entryDate) return false;
         
         return entryDate >= firstDayOfMonth;
+    });
+}
+
+// getSessionsThisYear 함수 추가
+function getSessionsThisYear(history) {
+    const today = new Date();
+    const firstDayOfYear = new Date(today.getFullYear(), 0, 1);
+    return history.filter(entry => {
+        if (entry.type !== 'focus') return false;
+        const entryDate = getDateFromEntry(entry);
+        if (!entryDate) return false;
+        return entryDate >= firstDayOfYear;
     });
 }
 
@@ -518,11 +539,11 @@ function updateWeeklyChart(data) {
 
 // --- 월별 히트맵 렌더링 ---
 function renderMonthlyHeatmap(dailyCounts) {
-     console.log("[Stats Display] Rendering monthly heatmap...");
-     try {
-        const heatmapContainer = document.getElementById('monthly-heatmap');
+    console.log('[Stats Display] Rendering monthly heatmap...');
+    try {
+        const heatmapContainer = document.getElementById('yearly-heatmap');
         if (!heatmapContainer) {
-            console.error("[Stats Display] Monthly heatmap container not found.");
+            console.error('[Stats Display] Could not find stats section to append heatmap');
             return;
         }
 
@@ -646,6 +667,7 @@ function getHeatmapLevel(count) {
 
 // --- 이벤트 리스너 (DOMContentLoaded 사용) ---
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('\n\n---집중시간 앱 시작 ---------------');
     console.log("[Stats Display] DOMContentLoaded event fired.");
     
     // Canvas 요소 확인
