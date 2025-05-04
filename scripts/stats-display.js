@@ -6,6 +6,8 @@ window.statsDisplayLoaded = true;
 // 차트 인스턴스 저장 변수
 let dailyChartInstance = null;
 let weeklyChartInstance = null;
+let monthlyChartInstance = null;
+let yearlyChartInstance = null;
 
 // 선택된 시간 필터 (분 단위) - 변수 선언 및 초기화
 let selectedDurationFilter = 25; // 기본값 (예: 25분)
@@ -64,6 +66,18 @@ async function loadAndProcessStats() {
         const heatmapData = processHeatmapData(history);
         console.log("[Stats Display] Heatmap data (sample):", Object.keys(heatmapData).length > 0 ? heatmapData[Object.keys(heatmapData)[0]] : 'empty');
         renderMonthlyHeatmap(heatmapData);
+
+        // --- 월 단위 분포 데이터 처리 ---
+        console.log("[Stats Display] Processing monthly data...");
+        const monthlyData = processMonthlyData(history);
+        console.log("[Stats Display] Monthly data:", monthlyData);
+        updateMonthlyChart(monthlyData);
+
+        // --- 연 단위 분포 데이터 처리 ---
+        console.log("[Stats Display] Processing yearly data...");
+        const yearlyData = processYearlyData(history);
+        console.log("[Stats Display] Yearly data:", yearlyData);
+        updateYearlyChart(yearlyData);
 
         console.log("[Stats Display] loadAndProcessStats completed successfully."); // 완료 로그
 
@@ -351,6 +365,41 @@ function processHeatmapData(history) {
         console.error("[Stats Display] Error in processHeatmapData:", error);
         return {};
     }
+}
+
+// 월별 데이터 집계 함수 (최근 12개월)
+function processMonthlyData(history) {
+    const now = new Date();
+    const monthlyCounts = Array(12).fill(0); // 최근 12개월
+    const focusHistory = history.filter(entry => entry.type === 'focus');
+    focusHistory.forEach(entry => {
+        const entryDate = getDateFromEntry(entry);
+        if (entryDate && !isNaN(entryDate)) {
+            const diffMonth = (now.getFullYear() - entryDate.getFullYear()) * 12 + (now.getMonth() - entryDate.getMonth());
+            if (diffMonth >= 0 && diffMonth < 12) {
+                monthlyCounts[11 - diffMonth]++;
+            }
+        }
+    });
+    return monthlyCounts;
+}
+
+// 연별 데이터 집계 함수 (최근 5년)
+function processYearlyData(history) {
+    const now = new Date();
+    const startYear = now.getFullYear() - 4;
+    const yearlyCounts = Array(5).fill(0);
+    const focusHistory = history.filter(entry => entry.type === 'focus');
+    focusHistory.forEach(entry => {
+        const entryDate = getDateFromEntry(entry);
+        if (entryDate && !isNaN(entryDate)) {
+            const year = entryDate.getFullYear();
+            if (year >= startYear && year <= now.getFullYear()) {
+                yearlyCounts[year - startYear]++;
+            }
+        }
+    });
+    return yearlyCounts;
 }
 
 // --- 차트 업데이트 ---
@@ -663,6 +712,147 @@ function getHeatmapLevel(count) {
     if (count <= 3) return 2; // 2-3 세션
     if (count <= 5) return 3; // 4-5 세션
     return 4; // 6+ 세션 (레벨 및 기준은 필요에 따라 조정 가능)
+}
+
+// 월별 차트 업데이트 함수
+function updateMonthlyChart(data) {
+    console.log("[Stats Display] Updating monthly chart...");
+    try {
+        const canvas = document.getElementById('monthly-chart');
+        if (!canvas) {
+            console.error("[Stats Display] Monthly chart canvas element not found.");
+            return;
+        }
+        const ctx = canvas.getContext('2d');
+        const now = new Date();
+        const labels = [];
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            labels.push(`${d.getFullYear()}-${d.getMonth() + 1}`);
+        }
+        const chartConfig = {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '집중 세션 수',
+                    data: data,
+                    backgroundColor: '#F59E42',
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            font: { size: 11 }
+                        },
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 12, weight: 'bold' } }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.parsed.y}개 세션`
+                        }
+                    }
+                }
+            }
+        };
+        if (monthlyChartInstance) {
+            monthlyChartInstance.data.labels = labels;
+            monthlyChartInstance.data.datasets[0].data = data;
+            monthlyChartInstance.update();
+        } else {
+            monthlyChartInstance = new Chart(ctx, chartConfig);
+        }
+    } catch (error) {
+        console.error("[Stats Display] Error in monthly chart update function:", error);
+    }
+}
+
+// 연별 차트 업데이트 함수
+function updateYearlyChart(data) {
+    console.log("[Stats Display] Updating yearly chart...");
+    try {
+        const canvas = document.getElementById('yearly-chart');
+        if (!canvas) {
+            console.error("[Stats Display] Yearly chart canvas element not found.");
+            return;
+        }
+        const ctx = canvas.getContext('2d');
+        const now = new Date();
+        const labels = [];
+        for (let i = 4; i >= 0; i--) {
+            labels.push(`${now.getFullYear() - i}년`);
+        }
+        const chartConfig = {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '집중 세션 수',
+                    data: data,
+                    backgroundColor: '#7C3AED',
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            font: { size: 11 }
+                        },
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 12, weight: 'bold' } }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.parsed.y}개 세션`
+                        }
+                    }
+                }
+            }
+        };
+        if (yearlyChartInstance) {
+            yearlyChartInstance.data.labels = labels;
+            yearlyChartInstance.data.datasets[0].data = data;
+            yearlyChartInstance.update();
+        } else {
+            yearlyChartInstance = new Chart(ctx, chartConfig);
+        }
+    } catch (error) {
+        console.error("[Stats Display] Error in yearly chart update function:", error);
+    }
 }
 
 // --- 이벤트 리스너 (DOMContentLoaded 사용) ---
