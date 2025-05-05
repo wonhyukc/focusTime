@@ -56,9 +56,12 @@ let timerState = {
     currentProjectName: null // 현재 세션의 프로젝트 이름 추가
 };
 
+let isCreatingMenus = false;
+
 // 컨텍스트 메뉴 생성
 async function createInitialMenus() {
-    // 기존 메뉴 모두 제거 후 새로 생성
+    if (isCreatingMenus) return;
+    isCreatingMenus = true;
     await new Promise(resolve => chrome.contextMenus.removeAll(resolve));
     // 초기 상태 메뉴 생성
     chrome.contextMenus.create({
@@ -98,10 +101,13 @@ async function createInitialMenus() {
         title: '설정 및 통계',
         contexts: ['action']
     });
+    isCreatingMenus = false;
 }
 
 // 실행 중일 때의 메뉴 생성
 async function createRunningMenus() {
+    if (isCreatingMenus) return;
+    isCreatingMenus = true;
     await new Promise(resolve => chrome.contextMenus.removeAll(resolve));
     // 일시정지/재개 메뉴 (타이머 상태에 따라 다르게 표시)
     chrome.contextMenus.create({
@@ -163,6 +169,7 @@ async function createRunningMenus() {
         title: '설정 및 통계',
         contexts: ['action']
     });
+    isCreatingMenus = false;
 }
 
 function openDashboardPage() {
@@ -328,6 +335,14 @@ async function getCurrentSettings() {
 
 // 타이머 시작
 async function startTimer(type) {
+    console.log('=== Background startTimer called ===');
+    console.log('Parameters:', { type });
+    console.log('State before start:', {
+        isRunning: timerState.isRunning,
+        isBreak: timerState.isBreak,
+        currentSession: timerState.type
+    });
+
     const settings = await getCurrentSettings();
     timerState.type = type;
     timerState.isRunning = true;
@@ -378,6 +393,13 @@ async function startTimer(type) {
     chrome.alarms.create(timerState.alarmName, { periodInMinutes: 1/60 });
     updateBadgeForPauseState();
     await createRunningMenus();
+
+    console.log('State after start:', {
+        isRunning: timerState.isRunning,
+        isBreak: timerState.isBreak,
+        currentSession: timerState.type,
+        remainingTime: timerState.timeLeft
+    });
 }
 
 // 다음 세션 시작
@@ -445,6 +467,13 @@ chrome.action.onClicked.addListener(async () => {
 
 // 타이머 시작/일시정지/재개
 async function toggleTimer() {
+    console.log('=== Background toggleTimer called ===');
+    console.log('State before toggle:', {
+        isRunning: timerState.isRunning,
+        isBreak: timerState.isBreak,
+        currentSession: timerState.type
+    });
+
     timerState.isRunning = !timerState.isRunning;
     
     if (timerState.isRunning) {
@@ -468,6 +497,12 @@ async function toggleTimer() {
 
     // 뱃지 색상 업데이트 (일시정지 상태 표시)
     updateBadgeForPauseState();
+
+    console.log('State after toggle:', {
+        isRunning: timerState.isRunning,
+        isBreak: timerState.isBreak,
+        currentSession: timerState.type
+    });
 }
 
 // 일시정지 상태에 따른 뱃지 색상 업데이트
@@ -512,48 +547,54 @@ function updateBadgeText(timeLeft) {
 }
 
 // 메시지 리스너 설정
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    (async () => { // 비동기 즉시 실행 함수 사용
-        let response; // 응답 변수 선언
-        console.log("Received message:", request); // 메시지 수신 로그 추가
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log('=== Background message received ===');
+    console.log('Message:', message);
+    console.log('Current timer state:', {
+        isRunning: timerState.isRunning,
+        isBreak: timerState.isBreak,
+        currentSession: timerState.type
+    });
 
-    switch (request.action) {
+    switch (message.action) {
         case 'startTimer':
-            case 'pauseTimer':
-                await toggleTimer();
-                response = { success: true };
-                break;
-            case 'resetTimer': // 이 부분은 기존 로직 확인 필요
-                console.warn("resetTimer action needs async handling adjustment");
-                 response = { success: false, message: "resetTimer needs implementation update" };
-                break;
-            case 'startNextSession':
-                await startNextSession();
-                response = { success: true };
-                break;
-            case 'playSound':
-                // isPreview 플래그와 volume도 playSound 함수로 전달
-                await playSound(request.soundType, request.isPreview, request.volume);
-                response = { success: true };
-                break;
-            case 'exportStats':
-                response = await exportStats();
-                break;
-            case 'importParsedStats': // 새 액션 처리
-                 response = await importParsedStats(request.data);
-                 break;
-            case 'resetStats':
-                response = await resetStats();
+            console.log('Starting timer for session:', message.sessionType);
+            startTimer(message.sessionType);
             break;
-            default:
-                console.log("Unknown action received:", request.action);
-                response = { success: false, message: 'Unknown action' };
+        case 'toggleTimer':
+            console.log('Toggling timer (pause/resume)');
+            toggleTimer();
             break;
-        }
-        console.log("Sending response:", response);
-        if (sendResponse) sendResponse(response);
-    })();
-    return true;
+        case 'stopTimer':
+            console.log('Stopping timer');
+            stopTimer();
+            break;
+        case 'startNextSession':
+            startNextSession();
+            break;
+        case 'playSound':
+            playSound(message.soundType, message.isPreview, message.volume);
+            break;
+        case 'exportStats':
+            exportStats();
+            break;
+        case 'importParsedStats':
+            importParsedStats(message.data);
+            break;
+        case 'resetStats':
+            resetStats();
+            break;
+        default:
+            console.log("Unknown action received:", message.action);
+            sendResponse({ success: false, message: 'Unknown action' });
+            break;
+    }
+
+    console.log('Timer state after action:', {
+        isRunning: timerState.isRunning,
+        isBreak: timerState.isBreak,
+        currentSession: timerState.type
+    });
 });
 
 // Offscreen Document를 통해 소리를 재생하는 함수
@@ -728,6 +769,13 @@ async function startNewCycle() {
 
 // 타이머 중지
 async function stopTimer() {
+    console.log('=== Background stopTimer called ===');
+    console.log('State before stop:', {
+        isRunning: timerState.isRunning,
+        isBreak: timerState.isBreak,
+        currentSession: timerState.type
+    });
+
     // 1. 알람 완전 제거
     chrome.alarms.clear(timerState.alarmName);
 
@@ -762,6 +810,12 @@ async function stopTimer() {
 
     // 6. (선택) 기타 필요한 UI/상태 리셋 로직 추가 가능
     console.log('[LOG] stopTimer: 확장 앱 최초 실행 상태로 리셋 완료');
+
+    console.log('State after stop:', {
+        isRunning: timerState.isRunning,
+        isBreak: timerState.isBreak,
+        currentSession: timerState.type
+    });
 }
 
 // 타이머 업데이트
