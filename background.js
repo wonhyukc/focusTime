@@ -165,6 +165,10 @@ async function createRunningMenus() {
     });
 }
 
+function openDashboardPage() {
+    chrome.tabs.create({ url: chrome.runtime.getURL('pages/dashboard.html') });
+}
+
 // 초기 설정
 chrome.runtime.onInstalled.addListener(async () => {
     // 기본 설정 초기화
@@ -172,6 +176,7 @@ chrome.runtime.onInstalled.addListener(async () => {
         if (!result.settings) {
             chrome.storage.sync.set({ settings: DEFAULT_SETTINGS_BG }, () => {
                 console.log('기본 설정이 초기화되었습니다.');
+                openDashboardPage(); // 최초 설치 시에만 호출
             });
         }
     });
@@ -753,10 +758,9 @@ async function startNewCycle() {
 // 타이머 중지
 async function stopTimer() {
     // 1. 알람 완전 제거
-    console.log('[LOG] stopTimer 호출 (알람 제거)');
     chrome.alarms.clear(timerState.alarmName);
 
-    // 2. timerState 모든 값 초기화
+    // 2. timerState 모든 값 초기화 (최초 실행 상태와 동일하게)
     timerState.isRunning = false;
     timerState.timeLeft = 0;
     timerState.type = 'focus';
@@ -766,7 +770,7 @@ async function stopTimer() {
     timerState.sessionStartTime = null;
     timerState.currentProjectName = null;
 
-    // 3. localStorage 값도 초기화
+    // 3. localStorage 값도 완전히 초기화 (최초 실행 상태와 동일하게)
     await chrome.storage.local.set({
         timeLeft: 0,
         isRunning: false,
@@ -778,10 +782,15 @@ async function stopTimer() {
         currentProjectName: null
     });
 
-    // 4. 뱃지/메뉴/UI 초기화
-    updateBadge();
+    // 4. context menu를 최초 실행 상태로 되돌림
     await createInitialMenus();
-    console.log('[LOG] stopTimer 함수 끝');
+
+    // 5. 뱃지/아이콘/UI 완전 초기화
+    chrome.action.setBadgeText({ text: '' });
+    chrome.action.setBadgeBackgroundColor({ color: '#3498db' });
+
+    // 6. (선택) 기타 필요한 UI/상태 리셋 로직 추가 가능
+    console.log('[LOG] stopTimer: 확장 앱 최초 실행 상태로 리셋 완료');
 }
 
 // 타이머 업데이트
