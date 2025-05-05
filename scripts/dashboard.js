@@ -57,6 +57,61 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('reset-stats').addEventListener('click', resetStats);
     // 통계 파일 입력 변경 이벤트 리스너 등록
     document.getElementById('stats-file-input').addEventListener('change', handleStatsFileImport);
+
+    // 볼륨 슬라이더 변경 시 로그 출력
+    function logVolumeChange(soundType, volume) {
+        console.log({action: 'playSound', soundType: soundType, isPreview: true, volume: volume});
+    }
+
+    document.getElementById('focus-sound-volume')?.addEventListener('input', function(e) {
+        const soundType = document.getElementById('focus-sound')?.value || 'beep';
+        logVolumeChange(soundType, e.target.value);
+    });
+    document.getElementById('focus-sound-volume')?.addEventListener('change', function(e) {
+        saveSettings();
+    });
+    document.getElementById('short-break-sound-volume')?.addEventListener('input', function(e) {
+        const soundType = document.getElementById('short-break-sound')?.value || 'beep';
+        const volume = parseInt(e.target.value);
+        chrome.runtime.sendMessage({
+            command: 'playSound',
+            soundType: soundType,
+            isPreview: false,
+            volume: volume
+        });
+        logVolumeChange(soundType, volume);
+    });
+    document.getElementById('short-break-sound-volume')?.addEventListener('change', function(e) {
+        saveSettings();
+    });
+    document.getElementById('long-break-sound-volume')?.addEventListener('input', function(e) {
+        const soundType = document.getElementById('long-break-sound')?.value || 'beep';
+        const volume = parseInt(e.target.value);
+        chrome.runtime.sendMessage({
+            command: 'playSound',
+            soundType: soundType,
+            isPreview: false,
+            volume: volume
+        });
+        logVolumeChange(soundType, volume);
+    });
+    document.getElementById('long-break-sound-volume')?.addEventListener('change', function(e) {
+        saveSettings();
+    });
+    document.getElementById('focus-sound-type-volume')?.addEventListener('input', function(e) {
+        const soundType = document.getElementById('focus-sound-type')?.value || 'brown_noise';
+        const volume = parseInt(e.target.value);
+        chrome.runtime.sendMessage({
+            command: 'playSound',
+            soundType: soundType,
+            isPreview: false,
+            volume: volume
+        });
+        logVolumeChange(soundType, volume);
+    });
+    document.getElementById('focus-sound-type-volume')?.addEventListener('change', function(e) {
+        saveSettings();
+    });
 });
 
 // '타이머 소리' 드롭다운 옵션 생성 함수

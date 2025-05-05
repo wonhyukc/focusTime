@@ -1,5 +1,5 @@
 // offscreen.js
-console.log('Offscreen document loaded');
+console.log('\n포모도로 시작---------------');
 
 // 문서 로드 완료 시 background로 메시지 전송
 document.addEventListener('DOMContentLoaded', () => {
@@ -7,19 +7,39 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.runtime.sendMessage({ type: 'OFFSCREEN_LOADED' });
 });
 
+let currentAudio = null;
+let currentSoundType = null;
+let currentIsPreview = null;
+
 // 백그라운드 스크립트로부터 메시지를 받기 위한 리스너
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("Offscreen: 메시지 수신", message);
     if (message.command === "playSound") {
-        console.log("Offscreen: 알림음 재생 시작", message.soundType, "Is Preview:", message.isPreview);
-        // isPreview 플래그와 volume도 playNotificationSound 함수로 전달
+        // 같은 소리, 같은 isPreview, 오디오가 이미 재생 중이면 볼륨만 조정
+        if (
+            currentAudio &&
+            !currentAudio.paused &&
+            message.soundType === currentSoundType &&
+            message.isPreview === currentIsPreview
+        ) {
+            currentAudio.volume = (message.volume ?? 50) / 100;
+            console.log("Offscreen: 기존 오디오 볼륨만 조정", message.volume);
+            return;
+        }
+        // 기존 오디오가 있으면 정지
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+        }
+        currentSoundType = message.soundType;
+        currentIsPreview = message.isPreview;
         playNotificationSound(message.soundType, message.isPreview, message.volume);
     }
     return false;
 });
 
 // Web Audio API를 사용하여 알림음 생성 및 재생
-function playNotificationSound(soundType = 'low-short-beep', isPreview = false, volume = 100) { // volume 파라미터 추가
+function playNotificationSound(soundType = 'low-short-beep', isPreview = false, volume = 50) { // 볼륨 파라미터 기본값 50
     try {
         console.log("Offscreen: playNotificationSound 함수 실행", { soundType, isPreview, volume });
         
@@ -39,7 +59,6 @@ function playNotificationSound(soundType = 'low-short-beep', isPreview = false, 
                 break;
             case 'beep':
             default:
-                // 기본 beep 소리 재생 (미리듣기 여부 전달)
                 playBeepSound(isPreview, volume);
         }
     } catch (error) {
@@ -49,17 +68,17 @@ function playNotificationSound(soundType = 'low-short-beep', isPreview = false, 
 }
 
 // 기본 beep 소리 재생
-function playBeepSound(isPreview = false, volume = 100) { // volume 파라미터 추가
+function playBeepSound(isPreview = false, volume = 50) { // 볼륨 파라미터 기본값 50
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 
     oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(350, audioContext.currentTime); 
-    // 볼륨(0~1)로 변환
-    const gainValue = Math.max(0, Math.min(1, volume / 100));
-    gainNode.gain.setValueAtTime(0.05 * gainValue, audioContext.currentTime); 
-    gainNode.gain.exponentialRampToValueAtTime(0.01 * gainValue, audioContext.currentTime + 1.0);
+    // 볼륨에 따라 gain을 조절 (0~1)
+    const scaledGain = (typeof volume === 'number' && volume >= 0 && volume <= 100) ? (volume / 100) * 0.05 : 0.05;
+    gainNode.gain.setValueAtTime(scaledGain, audioContext.currentTime); 
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.0);
 
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
@@ -81,15 +100,14 @@ function playBeepSound(isPreview = false, volume = 100) { // volume 파라미터
 }
 
 // 오디오 파일 재생 (공통 함수)
-function playAudioFile(soundPath, isPreview = false, volume = 100) { // volume 파라미터 추가
+function playAudioFile(soundPath, isPreview = false, volume = 50) { // 볼륨 파라미터 기본값 50
     console.log(`Offscreen: ${soundPath} 소리 재생 시도`, { isPreview, volume });
     
     const audio = new Audio();
     audio.src = chrome.runtime.getURL(soundPath);
-    // 볼륨(0~1)로 변환
-    audio.volume = Math.max(0, Math.min(1, volume / 100));
-    let previewTimeoutId = null; // 미리듣기 타임아웃 ID
-    let closeTimeoutId = null; // 창 닫기 타임아웃 ID
+    audio.volume = volume / 100; // 볼륨 설정 적용
+    let previewTimeoutId = null; // 미리듣기 타이머
+    let closeTimeoutId = null; // 창 닫기 타이머
 
     // 미리듣기 타이머 및 창 닫기 타이머 클리어 함수
     const clearTimeouts = () => {
@@ -98,6 +116,9 @@ function playAudioFile(soundPath, isPreview = false, volume = 100) { // volume �
         previewTimeoutId = null;
         closeTimeoutId = null;
     };
+
+    // currentAudio에 할당 (볼륨 조정 및 중복 방지용)
+    currentAudio = audio;
 
     audio.oncanplaythrough = () => {
         console.log(`Offscreen: ${soundPath} 소리 로드 완료, 재생 시작`);
@@ -119,6 +140,9 @@ function playAudioFile(soundPath, isPreview = false, volume = 100) { // volume �
                         }, 500); 
 
                     }, 3000);
+                } else {
+                    // 미리듣기가 아닐 때만 반복 재생
+                    audio.loop = true;
                 }
             })
             .catch(error => {
@@ -149,4 +173,9 @@ function playAudioFile(soundPath, isPreview = false, volume = 100) { // volume �
 // Gong 소리 재생 (이제 직접 호출되지 않고 playNotificationSound를 통해 처리됨)
 function playGongSound(isPreview = false) {
     playAudioFile('sounds/361494__tec_studio__gong-002.wav', isPreview);
+}
+
+// Add a new function to log sound-related information
+function logSoundInfo(soundType, isPreview) {
+    console.log(`사운드 재생: 타입=${soundType}, 미리듣기=${isPreview}`);
 } 

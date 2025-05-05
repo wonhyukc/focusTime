@@ -43,33 +43,32 @@ function getInputNumberOrDefault(id, defaultValue = 100) {
 // 현재 설정 가져오기
 function getCurrentSettings() {
     const settings = {
-        projectName: document.getElementById('project-name').value || DEFAULT_SETTINGS.projectName,
+        projectName: document.getElementById('project-name')?.value || DEFAULT_SETTINGS.projectName,
         focus: {
-            duration: parseInt(document.getElementById('focus-duration').value) || DEFAULT_SETTINGS.focus.duration,
-            sound: document.getElementById('focus-sound').value,
-            soundVolume: getInputNumberOrDefault('focus-sound-volume', 100),
-            soundType: document.getElementById('focus-sound-type').value,
-            soundTypeVolume: getInputNumberOrDefault('focus-sound-type-volume', 100),
-            desktopNotification: document.getElementById('focus-desktop-notification').checked,
-            tabNotification: document.getElementById('focus-tab-notification').checked,
+            duration: parseInt(document.getElementById('focus-duration')?.value) || DEFAULT_SETTINGS.focus.duration,
+            sound: document.getElementById('focus-sound')?.value,
+            soundType: document.getElementById('focus-sound-type')?.value,
+            soundVolume: parseInt(document.getElementById('focus-sound-volume')?.value) || DEFAULT_SETTINGS.focus.soundVolume,
+            desktopNotification: document.getElementById('focus-desktop-notification')?.checked,
+            tabNotification: document.getElementById('focus-tab-notification')?.checked,
             playSound: false
         },
         shortBreak: {
-            duration: parseInt(document.getElementById('short-break-duration').value) || DEFAULT_SETTINGS.shortBreak.duration,
-            sound: document.getElementById('short-break-sound') ? document.getElementById('short-break-sound').value : "",
-            soundType: (document.getElementById('short-break-sound-type') ? document.getElementById('short-break-sound-type').value : ""),
-            soundVolume: getInputNumberOrDefault('short-break-sound-volume', 100),
-            desktopNotification: document.getElementById('short-break-desktop-notification').checked,
-            tabNotification: document.getElementById('short-break-tab-notification').checked
+            duration: parseInt(document.getElementById('short-break-duration')?.value) || DEFAULT_SETTINGS.shortBreak.duration,
+            sound: document.getElementById('short-break-sound')?.value,
+            soundType: document.getElementById('short-break-sound-type')?.value,
+            soundVolume: parseInt(document.getElementById('short-break-sound-volume')?.value) || DEFAULT_SETTINGS.shortBreak.soundVolume,
+            desktopNotification: document.getElementById('short-break-desktop-notification')?.checked,
+            tabNotification: document.getElementById('short-break-tab-notification')?.checked
         },
         longBreak: {
-            duration: parseInt(document.getElementById('long-break-duration').value) || DEFAULT_SETTINGS.longBreak.duration,
-            startAfter: parseInt(document.getElementById('long-break-start').value) || DEFAULT_SETTINGS.longBreak.startAfter,
-            sound: document.getElementById('long-break-sound') ? document.getElementById('long-break-sound').value : "",
-            soundType: (document.getElementById('long-break-sound-type') ? document.getElementById('long-break-sound-type').value : ""),
-            soundVolume: getInputNumberOrDefault('long-break-sound-volume', 100),
-            desktopNotification: document.getElementById('long-break-desktop-notification').checked,
-            tabNotification: document.getElementById('long-break-tab-notification').checked
+            duration: parseInt(document.getElementById('long-break-duration')?.value) || DEFAULT_SETTINGS.longBreak.duration,
+            startAfter: parseInt(document.getElementById('long-break-start')?.value) || DEFAULT_SETTINGS.longBreak.startAfter,
+            sound: document.getElementById('long-break-sound')?.value,
+            soundType: document.getElementById('long-break-sound-type')?.value,
+            soundVolume: parseInt(document.getElementById('long-break-sound-volume')?.value) || DEFAULT_SETTINGS.longBreak.soundVolume,
+            desktopNotification: document.getElementById('long-break-desktop-notification')?.checked,
+            tabNotification: document.getElementById('long-break-tab-notification')?.checked
         }
     };
     console.log("Current settings:", settings);
@@ -80,14 +79,41 @@ function getCurrentSettings() {
 async function applySettings(settings) {
     try {
         // 프로젝트 이름 설정
-        document.getElementById('project-name').value = settings.projectName || DEFAULT_SETTINGS.projectName;
+        const projectNameElement = document.getElementById('project-name');
+        if (projectNameElement) {
+            projectNameElement.value = settings.projectName || DEFAULT_SETTINGS.projectName;
+        }
 
         // Focus 설정
-        document.getElementById('focus-duration').value = settings.focus.duration;
-        document.getElementById('focus-sound').value = settings.focus.sound;
-        document.getElementById('focus-sound-type').value = settings.focus.soundType;
-        document.getElementById('focus-desktop-notification').checked = settings.focus.desktopNotification;
-        document.getElementById('focus-tab-notification').checked = settings.focus.tabNotification;
+        const focusDurationElement = document.getElementById('focus-duration');
+        if (focusDurationElement) {
+            focusDurationElement.value = settings.focus.duration;
+        }
+
+        const focusSoundElement = document.getElementById('focus-sound');
+        if (focusSoundElement) {
+            focusSoundElement.value = settings.focus.sound;
+        }
+
+        const focusSoundTypeElement = document.getElementById('focus-sound-type');
+        if (focusSoundTypeElement) {
+            focusSoundTypeElement.value = settings.focus.soundType;
+        }
+
+        const focusSoundVolumeElement = document.getElementById('focus-sound-volume');
+        if (focusSoundVolumeElement) {
+            focusSoundVolumeElement.value = settings.focus.soundVolume;
+        }
+
+        const focusDesktopNotificationElement = document.getElementById('focus-desktop-notification');
+        if (focusDesktopNotificationElement) {
+            focusDesktopNotificationElement.checked = settings.focus.desktopNotification;
+        }
+
+        const focusTabNotificationElement = document.getElementById('focus-tab-notification');
+        if (focusTabNotificationElement) {
+            focusTabNotificationElement.checked = settings.focus.tabNotification;
+        }
 
         // Short Break 설정
         document.getElementById('short-break-duration').value = settings.shortBreak.duration;

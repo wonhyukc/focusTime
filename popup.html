@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Sound Player</title>
+    <style>
+        body {
+            min-width: 200px;
+            padding: 10px;
+        }
+        button {
+            display: block;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
+        }
+        .volume-label {
+            display: block;
+            margin-top: 5px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <button id="playBtn">재생</button>
+    <label class="volume-label">볼륨</label>
+    <input type="range" id="volume" min="0" max="100" value="50">
+    <audio id="audio" src="sound.mp3"></audio>
+    <script src="popup.js"></script>
+</body>
+</html> 
