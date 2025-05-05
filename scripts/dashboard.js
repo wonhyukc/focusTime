@@ -46,7 +46,27 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('reset-settings').addEventListener('click', resetSettings);
 
     // 통계 내보내기/가져오기/초기화 기능
-    document.getElementById('export-stats').addEventListener('click', exportStats);
+    const exportStatsBtn = document.getElementById('export-stats');
+    if (exportStatsBtn) {
+        exportStatsBtn.addEventListener('click', async () => {
+            try {
+                const response = await chrome.runtime.sendMessage({ action: 'exportStats' });
+                if (response?.success) {
+                    const downloadAnchorNode = document.createElement('a');
+                    downloadAnchorNode.setAttribute('href', response.dataUri);
+                    downloadAnchorNode.setAttribute('download', response.filename);
+                    document.body.appendChild(downloadAnchorNode);
+                    downloadAnchorNode.click();
+                    downloadAnchorNode.remove();
+                    showToast('통계가 내보내기되었습니다.');
+                } else {
+                    showToast(response?.message || '통계 내보내기 실패', 'error');
+                }
+            } catch (error) {
+                showToast('내보내기 요청 중 오류 발생', 'error');
+            }
+        });
+    }
     document.getElementById('import-stats').addEventListener('click', () => {
         if (confirm('통계 가져오기에 기존 데이터는 모두 지워집니다. 기존 데이터가 필요하면 먼저 통계 내보내기를 하세요. 계속 진행할까요?')) {
             document.getElementById('stats-file-input').click();
@@ -366,21 +386,93 @@ function showToast(message, type = 'success') {
     }, 100);
 }
 
-// 통계 내보내기
-function exportStats() {
-    chrome.storage.local.get('pomodoroData', (data) => {
-        if (data.pomodoroData) {
-            const jsonContent = JSON.stringify(data.pomodoroData, null, 2);
-            const blob = new Blob([jsonContent], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'focus_timer_stats.json';
-            link.click();
-        } else {
-            alert('내보낼 통계 데이터가 없습니다.');
-        }
-    });
+// 통계 가져오기 (중복 함수 제거: importStats 대신 handleStatsFileImport 사용)
+function handleStatsFileImport(event) {
+    if (event.target.files && event.target.files.length > 0) {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const fileContent = event.target.result;
+                const parsedHistory = parseCsvToHistory(fileContent); // CSV 파싱
+
+                if (parsedHistory.length === 0) {
+                     showToast('CSV 파일에서 유효한 데이터를 찾을 수 없습니다.', 'warning');
+                     return;
+                }
+
+                const response = await chrome.runtime.sendMessage({ action: 'importParsedStats', data: parsedHistory });
+
+                if (response?.success) {
+                    showToast(response.message || '통계가 성공적으로 가져오기되었습니다.');
+
+                    setTimeout(() => {
+                        if (typeof loadAndProcessStats === 'function') {
+                            loadAndProcessStats(); // stats-display.js의 함수 호출
+                        } else {
+                             showToast('통계 UI를 업데이트하려면 페이지를 새로고침하세요.', 'info');
+                        }
+                    }, 500); // 500ms (0.5초) 지연 후 호출
+
+                } else {
+                    showToast(response?.message || '통계 가져오기 실패', 'error');
+                }
+            } catch (error) {
+                showToast(`파일 처리 오류: ${error.message}`, 'error');
+            }
+        };
+        reader.onerror = (event) => {
+            showToast('파일을 읽는 중 오류가 발생했습니다.', 'error');
+        };
+        reader.readAsText(file); // 파일을 텍스트로 읽기
+        event.target.value = ''; // 입력 필드 초기화
+    }
 }
+
+// 통계 초기화
+function resetStats() {
+    if (confirm('정말로 모든 통계 기록을 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+        chrome.runtime.sendMessage({ action: 'resetStats' }, (response) => {
+            if (response?.success) {
+                showToast('통계가 초기화되었습니다.');
+                // 통계 UI 갱신 로직 호출 (화면 비우기)
+                if (typeof clearStatsDisplay === 'function') {
+                     clearStatsDisplay(); // stats-display.js의 함수 호출
+                }
+            } else {
+                 showToast(response?.message || '통계 초기화 실패', 'error');
+            }
+        });
+    }
+}
+
+// 백그라운드에서 통계 업데이트 메시지 수신
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "statsUpdated") {
+         sendResponse({ success: true }); // 메시지 수신 확인 응답
+    }
+    // 다른 메시지 처리 로직...
+    // return true; // 다른 비동기 리스너가 없다면 불필요
+});
+
+// showToast 함수 정의 (settings.js와 중복 방지를 위해 필요시 여기에만 두거나 공통 파일로 분리)
+if (typeof showToast === 'undefined') { // 이미 정의되지 않았을 경우에만 정의
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.classList.add('show'); }, 100);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => { 
+                if (document.body.contains(toast)) {
+                     document.body.removeChild(toast); 
+                }
+            }, 300);
+        }, 3000);
+    }
+} 
 
 // --- CSV 파싱 함수 ---
 function parseCsvToHistory(csvText) {
@@ -446,113 +538,4 @@ function parseCsvToHistory(csvText) {
         });
     }
     return history;
-}
-
-// 통계 가져오기 (중복 함수 제거: importStats 대신 handleStatsFileImport 사용)
-function handleStatsFileImport(event) {
-    if (event.target.files && event.target.files.length > 0) {
-        const file = event.target.files[0];
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                const fileContent = event.target.result;
-                const parsedHistory = parseCsvToHistory(fileContent); // CSV 파싱
-
-                if (parsedHistory.length === 0) {
-                     showToast('CSV 파일에서 유효한 데이터를 찾을 수 없습니다.', 'warning');
-                     return;
-                }
-
-                const response = await chrome.runtime.sendMessage({ action: 'importParsedStats', data: parsedHistory });
-
-                if (response?.success) {
-                    showToast(response.message || '통계가 성공적으로 가져오기되었습니다.');
-
-                    setTimeout(() => {
-                        if (typeof loadAndProcessStats === 'function') {
-                            loadAndProcessStats(); // stats-display.js의 함수 호출
-                        } else {
-                             showToast('통계 UI를 업데이트하려면 페이지를 새로고침하세요.', 'info');
-                        }
-                    }, 500); // 500ms (0.5초) 지연 후 호출
-
-                } else {
-                    showToast(response?.message || '통계 가져오기 실패', 'error');
-                }
-            } catch (error) {
-                showToast(`파일 처리 오류: ${error.message}`, 'error');
-            }
-        };
-        reader.onerror = (event) => {
-            showToast('파일을 읽는 중 오류가 발생했습니다.', 'error');
-        };
-        reader.readAsText(file); // 파일을 텍스트로 읽기
-        event.target.value = ''; // 입력 필드 초기화
-    }
-}
-
-// 통계 초기화
-function resetStats() {
-    if (confirm('정말로 모든 통계 기록을 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
-        chrome.runtime.sendMessage({ action: 'resetStats' }, (response) => {
-            if (response?.success) {
-                showToast('통계가 초기화되었습니다.');
-                // 통계 UI 갱신 로직 호출 (화면 비우기)
-                if (typeof clearStatsDisplay === 'function') {
-                     clearStatsDisplay(); // stats-display.js의 함수 호출
-                }
-            } else {
-                 showToast(response?.message || '통계 초기화 실패', 'error');
-            }
-        });
-    }
-}
-
-// 내보내기 버튼 클릭
-document.getElementById('export-stats')?.addEventListener('click', async () => {
-    try {
-        const response = await chrome.runtime.sendMessage({ action: 'exportStats' });
-        if (response?.success) {
-            // Background에서 받은 데이터 URI로 다운로드 링크 생성 및 클릭
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", response.dataUri);
-            downloadAnchorNode.setAttribute("download", response.filename);
-            document.body.appendChild(downloadAnchorNode);
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
-            showToast('통계가 내보내기되었습니다.');
-        } else {
-            showToast(response?.message || '통계 내보내기 실패', 'error');
-        }
-    } catch (error) {
-        showToast('내보내기 요청 중 오류 발생', 'error');
-    }
-});
-
-// 백그라운드에서 통계 업데이트 메시지 수신
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "statsUpdated") {
-         sendResponse({ success: true }); // 메시지 수신 확인 응답
-    }
-    // 다른 메시지 처리 로직...
-    // return true; // 다른 비동기 리스너가 없다면 불필요
-});
-
-// showToast 함수 정의 (settings.js와 중복 방지를 위해 필요시 여기에만 두거나 공통 파일로 분리)
-if (typeof showToast === 'undefined') { // 이미 정의되지 않았을 경우에만 정의
-    function showToast(message, type = 'success') {
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        setTimeout(() => { toast.classList.add('show'); }, 100);
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => { 
-                if (document.body.contains(toast)) {
-                     document.body.removeChild(toast); 
-                }
-            }, 300);
-        }, 3000);
-    }
 } 

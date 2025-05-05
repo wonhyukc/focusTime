@@ -395,8 +395,10 @@ function updateDailyChart(data) {
                 scales: {
                     y: {
                         beginAtZero: true,
+                        min: 0,
+                        stepSize: 1,
                         ticks: {
-                            stepSize: 5,
+                            stepSize: 1,
                             font: { size: 11 }
                         },
                         grid: { color: 'rgba(0, 0, 0, 0.05)' }
@@ -467,7 +469,9 @@ function updateWeeklyChart(data) {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: { stepSize: 10, font: { size: 11 } },
+                        min: 0,
+                        stepSize: 1,
+                        ticks: { stepSize: 1, font: { size: 11 } },
                         grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
                     x: {
@@ -656,7 +660,9 @@ function updateMonthlyChart(data) {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: { stepSize: 30, font: { size: 11 } },
+                        min: 0,
+                        stepSize: 1,
+                        ticks: { stepSize: 1, font: { size: 11 } },
                         grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
                     x: {
@@ -721,7 +727,9 @@ function updateYearlyChart(data) {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: { stepSize: 60, font: { size: 11 } },
+                        min: 0,
+                        stepSize: 1,
+                        ticks: { stepSize: 1, font: { size: 11 } },
                         grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
                     x: {

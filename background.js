@@ -1023,7 +1023,18 @@ function escapeCsvField(field) {
     return str;
 }
 
-// 통계 데이터 내보내기 (CSV 형식으로 수정)
+// 날짜를 'YYYY-MM-DD HH:mm' 포맷으로 변환하는 함수
+function formatDateToYMDHM(dateString) {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hour}:${minute}`;
+}
+
+// 통계 데이터 내보내기 (CSV 형식, 날짜 포맷 엄격 적용)
 async function exportStats() {
     try {
         const result = await chrome.storage.local.get('pomodoroHistory');
@@ -1033,11 +1044,12 @@ async function exportStats() {
         }
 
         // CSV 헤더
-        const header = ['시작시각', '세션', '지속시간(분)', '프로젝트'];
+        const header = ['시작시각(년월일시분)', '세션', '지속시간', '프로젝트'];
         // 데이터 행 생성
         const rows = history.map(entry => {
-            const startTime = entry.startTime; // ISO 형식 유지 또는 원하는 형식으로 변경 가능
-            const sessionType = entry.type === 'focus' ? '집중' : '휴식'; // short/long break 모두 '휴식'으로
+            // 날짜 포맷 변환
+            const startTime = formatDateToYMDHM(entry.startTime);
+            const sessionType = entry.type === 'focus' ? '집중' : (entry.type === 'shortBreak' ? '휴식' : '긴휴식');
             const duration = entry.durationMinutes;
             const projectName = entry.projectName;
 
@@ -1046,16 +1058,16 @@ async function exportStats() {
                 escapeCsvField(sessionType),
                 escapeCsvField(duration),
                 escapeCsvField(projectName)
-            ].join(','); // 쉼표로 필드 결합
+            ].join(',');
         });
 
         // CSV 내용 결합 (헤더 + 데이터)
-        const csvContent = [header.join(','), ...rows].join('\r\n'); // 줄바꿈 문자로 행 결합
+        const csvContent = [header.join(','), ...rows].join('\r\n');
 
         // 데이터 URI 생성
         const dataUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
 
-        return { success: true, dataUri: dataUri, filename: 'pomodoro_stats.csv' }; // 파일 확장자 .csv로 변경
+        return { success: true, dataUri: dataUri, filename: 'pomodoro_stats.csv' };
 
     } catch (error) {
         console.error("Error exporting stats:", error);
