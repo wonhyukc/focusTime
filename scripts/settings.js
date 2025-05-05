@@ -11,8 +11,7 @@ const DEFAULT_SETTINGS = {
         soundVolume: 10,
         soundType: "low-short-beep",
         desktopNotification: true,
-        tabNotification: false,
-        playSound: false
+        tabNotification: false
     },
     shortBreak: {
         duration: 5,
@@ -57,8 +56,7 @@ function getCurrentSettings() {
             soundVolume: getNumberOrDefault('focus-sound-volume', DEFAULT_SETTINGS.focus.soundVolume),
             soundTypeVolume: getNumberOrDefault('focus-sound-type-volume', DEFAULT_SETTINGS.focus.soundVolume),
             desktopNotification: document.getElementById('focus-desktop-notification')?.checked,
-            tabNotification: document.getElementById('focus-tab-notification')?.checked,
-            playSound: false
+            tabNotification: document.getElementById('focus-tab-notification')?.checked
         },
         shortBreak: {
             duration: getNumberOrDefault('short-break-duration', DEFAULT_SETTINGS.shortBreak.duration),
@@ -321,7 +319,11 @@ function populateDataList(history) {
 // 설정 내보내기
 function exportSettings() {
     try {
-        const settings = getCurrentSettings();
+        let settings = getCurrentSettings();
+        // playSound 필드 제거
+        if (settings.focus) delete settings.focus.playSound;
+        if (settings.shortBreak) delete settings.shortBreak.playSound;
+        if (settings.longBreak) delete settings.longBreak.playSound;
         console.log("Settings to export:", settings);
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(settings, null, 2));
         console.log("Data string:", dataStr.substring(0, 100) + "...");
@@ -345,7 +347,11 @@ function importSettings(e) {
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
-            const settings = JSON.parse(e.target.result);
+            let settings = JSON.parse(e.target.result);
+            // playSound 필드 제거
+            if (settings.focus) delete settings.focus.playSound;
+            if (settings.shortBreak) delete settings.shortBreak.playSound;
+            if (settings.longBreak) delete settings.longBreak.playSound;
             applySettings(settings);
             showToast('설정이 가져오기되었습니다.', 'success');
         } catch (error) {
