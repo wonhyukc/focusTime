@@ -747,12 +747,36 @@ async function startNewCycle() {
 
 // 타이머 중지
 async function stopTimer() {
+    // 1. 알람 완전 제거
+    console.log('[LOG] stopTimer 호출 (알람 제거)');
+    chrome.alarms.clear(timerState.alarmName);
+
+    // 2. timerState 모든 값 초기화
     timerState.isRunning = false;
     timerState.timeLeft = 0;
     timerState.type = 'focus';
     timerState.pomodoroCount = 0;
+    timerState.isBreak = false;
+    timerState.sessionComplete = false;
+    timerState.sessionStartTime = null;
+    timerState.currentProjectName = null;
+
+    // 3. localStorage 값도 초기화
+    await chrome.storage.local.set({
+        timeLeft: 0,
+        isRunning: false,
+        isBreak: false,
+        type: 'focus',
+        sessionComplete: false,
+        pomodoroCount: 0,
+        sessionStartTime: null,
+        currentProjectName: null
+    });
+
+    // 4. 뱃지/메뉴/UI 초기화
     updateBadge();
     await createInitialMenus();
+    console.log('[LOG] stopTimer 함수 끝');
 }
 
 // 타이머 업데이트
