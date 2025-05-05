@@ -10,11 +10,41 @@ document.addEventListener('DOMContentLoaded', () => {
 let currentAudio = null;
 let currentSoundType = null;
 let currentIsPreview = null;
+let currentAudioContext = null; // Web Audio API용 전역 컨텍스트
 
 // 백그라운드 스크립트로부터 메시지를 받기 위한 리스너
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log("Offscreen: 메시지 수신", message);
+    console.log("[OFFSCREEN] onMessage 리스너 진입", message);
     if (message.command === "playSound") {
+        // 사운드 중지 명령 처리
+        if (message.soundType === 'none') {
+            console.log('[OFFSCREEN] 사운드 중지 명령 수신. currentAudio:', currentAudio, 'currentAudioContext:', currentAudioContext);
+            // 모든 audio 태그 정지 및 제거
+            document.querySelectorAll('audio').forEach(audio => {
+                audio.pause();
+                audio.src = "";
+                if (audio.remove) audio.remove();
+            });
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.src = "";
+                if (currentAudio.remove) currentAudio.remove();
+                currentAudio = null;
+                console.log('[OFFSCREEN] 모든 사운드 중지됨 (soundType=none, Audio 객체)');
+            }
+            if (currentAudioContext) {
+                try {
+                    console.log('[OFFSCREEN] currentAudioContext 상태 - state:', currentAudioContext.state);
+                    currentAudioContext.close();
+                    console.log('[OFFSCREEN] Web Audio API 컨텍스트 종료 (soundType=none)');
+                } catch (e) {
+                    console.error('[OFFSCREEN] Web Audio API 종료 중 오류', e);
+                }
+                currentAudioContext = null;
+            }
+            sendResponse(true);
+            return;
+        }
         // 같은 소리, 같은 isPreview, 오디오가 이미 재생 중이면 볼륨만 조정
         if (
             currentAudio &&
@@ -23,7 +53,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             message.isPreview === currentIsPreview
         ) {
             currentAudio.volume = (message.volume ?? 50) / 100;
-            console.log("Offscreen: 기존 오디오 볼륨만 조정", message.volume, '실제 적용:', currentAudio.volume);
+            console.log("[OFFSCREEN] 기존 오디오 볼륨만 조정", message.volume, '실제 적용:', currentAudio.volume);
+            sendResponse(true);
             return;
         }
         // 기존 오디오가 있으면 정지
@@ -34,7 +65,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         currentSoundType = message.soundType;
         currentIsPreview = message.isPreview;
         playNotificationSound(message.soundType, message.isPreview, message.volume);
+        sendResponse(true);
+        return;
     }
+    sendResponse(true);
     return false;
 });
 
@@ -72,6 +106,7 @@ function playNotificationSound(soundType = 'low-short-beep', isPreview = false, 
 function playBeepSound(isPreview = false, volume = 50) {
     console.log('[LOG] playBeepSound 호출:', { isPreview, volume });
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    currentAudioContext = audioContext;
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 
@@ -93,6 +128,7 @@ function playBeepSound(isPreview = false, volume = 50) {
     // 오디오 컨텍스트와 문서 정리 (미리듣기든 아니든 1.5초 후 정리)
     setTimeout(() => {
         audioContext.close();
+        if (currentAudioContext === audioContext) currentAudioContext = null;
         console.log("Offscreen: 오디오 컨텍스트 종료");
         setTimeout(() => {
             console.log("Offscreen: 문서 종료 (beep)");

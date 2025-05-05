@@ -57,6 +57,8 @@ let timerState = {
 };
 
 let isCreatingMenus = false;
+let lastPlayedSoundType = null;
+let lastPlayedVolume = null;
 
 // 컨텍스트 메뉴 생성
 async function createInitialMenus() {
@@ -613,97 +615,39 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Offscreen Document를 통해 소리를 재생하는 함수
 async function playSound(soundType, isPreview = false, volume = undefined) {
     console.log('[LOG] playSound 호출:', { soundType, isPreview, volume });
-    // soundType이 'none'이면 아무 소리도 출력하지 않음
-    if (soundType === 'none') {
-        console.log('[LOG] playSound: soundType이 none이므로 소리 출력하지 않음');
-        return;
-    }
-    let finalSoundType = 'low-short-beep';
-    let finalVolume = volume;
-
-    try {
-        if (isPreview) {
-            finalSoundType = soundType || 'low-short-beep';
-            if (typeof finalVolume !== 'number') finalVolume = 50;
-        } else {
-            const settings = await getCurrentSettings();
-            const completedSessionType = timerState.type;
-            if (completedSessionType === 'focus') {
-                finalSoundType = settings.focus?.soundType || DEFAULT_SETTINGS_BG.focus.soundType;
-                finalVolume = settings.focus?.soundVolume ?? DEFAULT_SETTINGS_BG.focus.soundVolume;
-            } else if (completedSessionType === 'shortBreak') {
-                finalSoundType = settings.shortBreak?.sound || DEFAULT_SETTINGS_BG.shortBreak.sound;
-                finalVolume = settings.shortBreak?.soundVolume ?? DEFAULT_SETTINGS_BG.shortBreak.soundVolume;
-            } else if (completedSessionType === 'longBreak') {
-                finalSoundType = settings.longBreak?.sound || DEFAULT_SETTINGS_BG.longBreak.sound;
-                finalVolume = settings.longBreak?.soundVolume ?? DEFAULT_SETTINGS_BG.longBreak.soundVolume;
-            } else {
-                finalSoundType = 'low-short-beep';
-                finalVolume = 50;
-            }
-            if (finalSoundType === 'low-short-beep') {
-                finalSoundType = 'beep';
-            }
-        }
-
-        console.log("Final sound type to play:", finalSoundType, "Is Preview:", isPreview, "Volume:", finalVolume);
-
-        // 이미 존재하는 Offscreen Document 확인
-        const existingContexts = await chrome.runtime.getContexts({
-            contextTypes: ['OFFSCREEN_DOCUMENT'],
-            documentUrls: [chrome.runtime.getURL('offscreen.html')]
-        });
-        if (existingContexts.length > 0) {
-            // 기존 문서에 메시지 전송만 하고, 새로 만들지 않음
-            chrome.runtime.sendMessage({
-                command: "playSound",
-                soundType: finalSoundType,
-                isPreview: isPreview,
-                volume: finalVolume
-            });
-            return;
-        }
-
-        // Offscreen Document가 없을 때만 새로 생성
-        await new Promise(async (resolve, reject) => {
-            try {
-                // 메시지 리스너 중복 방지
-                const messageListener = (message) => {
-                    if (message.action === 'OFFSCREEN_LOADED') {
-                        console.log("Offscreen Document 로드 완료");
-                        chrome.runtime.onMessage.removeListener(messageListener);
-                        resolve();
-                    }
-                };
-                chrome.runtime.onMessage.addListener(messageListener);
-
-                await chrome.offscreen.createDocument({
-                    url: 'offscreen.html',
-                    reasons: ['AUDIO_PLAYBACK'],
-                    justification: '포모도로 타이머 알림음 재생'
-                });
-
-                setTimeout(() => {
-                    chrome.runtime.onMessage.removeListener(messageListener);
-                    reject(new Error('Offscreen Document 로드 타임아웃'));
-                }, 10000);
-            } catch (error) {
-                console.error("Offscreen Document 생성 중 오류:", error);
-                reject(error);
-            }
-        });
-
-        console.log("소리 재생 메시지 전송");
+    
+    // 이미 존재하는 오프스크린 문서 확인
+    const existingContexts = await chrome.runtime.getContexts({
+        contextTypes: ['OFFSCREEN_DOCUMENT'],
+        documentUrls: [chrome.runtime.getURL('offscreen.html')]
+    });
+    
+    if (existingContexts.length > 0) {
+        console.log('[LOG] 기존 오프스크린 문서에 메시지 전송');
         chrome.runtime.sendMessage({
             command: "playSound",
-            soundType: finalSoundType,
+            soundType: soundType,
             isPreview: isPreview,
-            volume: finalVolume
+            volume: volume
         });
-
-    } catch (error) {
-        console.error("소리 재생 중 오류 발생:", error);
+        return;
     }
+
+    // 오프스크린 문서가 없을 때만 새로 생성
+    console.log('[LOG] 오프스크린 문서 생성 시도');
+    await chrome.offscreen.createDocument({
+        url: 'offscreen.html',
+        reasons: ['AUDIO_PLAYBACK'],
+        justification: '포모도로 타이머 알림음 재생'
+    });
+    
+    // 오프스크린 문서 생성 후 메시지 전송
+    chrome.runtime.sendMessage({
+        command: "playSound",
+        soundType: soundType,
+        isPreview: isPreview,
+        volume: volume
+    });
 }
 
 // 컨텍스트 메뉴 클릭 처리
@@ -792,53 +736,46 @@ async function startNewCycle() {
 
 // 타이머 중지
 async function stopTimer() {
-    console.log('=== Background stopTimer called ===');
-    console.log('State before stop:', {
-        isRunning: timerState.isRunning,
-        isBreak: timerState.isBreak,
-        currentSession: timerState.type
-    });
-
-    // 1. 알람 완전 제거
+    console.log('[LOG] stopTimer 호출');
+    
+    // 알람 중지
     chrome.alarms.clear(timerState.alarmName);
-
-    // 2. timerState 모든 값 초기화 (최초 실행 상태와 동일하게)
+    
+    // 모든 소리 중지
+    await playSound('none', false, 0);
+    
+    // 오프스크린 문서에 직접 중지 명령 전송 (백업)
+    chrome.runtime.sendMessage({
+        command: 'playSound',
+        soundType: 'none',
+        isPreview: false,
+        volume: 0
+    });
+    
+    // 상태 초기화
     timerState.isRunning = false;
     timerState.timeLeft = 0;
     timerState.type = 'focus';
     timerState.pomodoroCount = 0;
     timerState.isBreak = false;
     timerState.sessionComplete = false;
-    timerState.sessionStartTime = null;
-    timerState.currentProjectName = null;
-
-    // 3. localStorage 값도 완전히 초기화 (최초 실행 상태와 동일하게)
+    
+    // 상태 저장
     await chrome.storage.local.set({
-        timeLeft: 0,
-        isRunning: false,
-        isBreak: false,
-        type: 'focus',
-        sessionComplete: false,
-        pomodoroCount: 0,
-        sessionStartTime: null,
-        currentProjectName: null
-    });
-
-    // 4. context menu를 최초 실행 상태로 되돌림
-    await createInitialMenus();
-
-    // 5. 뱃지/아이콘/UI 완전 초기화
-    chrome.action.setBadgeText({ text: '' });
-    chrome.action.setBadgeBackgroundColor({ color: '#3498db' });
-
-    // 6. (선택) 기타 필요한 UI/상태 리셋 로직 추가 가능
-    console.log('[LOG] stopTimer: 확장 앱 최초 실행 상태로 리셋 완료');
-
-    console.log('State after stop:', {
+        timeLeft: timerState.timeLeft,
         isRunning: timerState.isRunning,
         isBreak: timerState.isBreak,
-        currentSession: timerState.type
+        type: timerState.type,
+        sessionComplete: timerState.sessionComplete,
+        pomodoroCount: timerState.pomodoroCount
     });
+    
+    // 메뉴 초기화
+    await createInitialMenus();
+    
+    // 뱃지 초기화
+    chrome.action.setBadgeText({ text: '' });
+    chrome.action.setBadgeBackgroundColor({ color: '#3498db' });
 }
 
 // 타이머 업데이트
