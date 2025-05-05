@@ -344,24 +344,40 @@ async function startTimer(type) {
 
     // 타입에 따른 시간 설정
     let durationMinutes;
+    let soundType = undefined;
+    let soundVolume = undefined;
     switch (type) {
         case 'focus':
             durationMinutes = validateDuration(settings.focus.duration, DEFAULT_SETTINGS_BG.focus.duration);
             timerState.isBreak = false;
-            // Start playing the selected sound for focus
-            await playSound(settings.focus.soundType, false);
+            soundType = settings.focus.soundType;
+            soundVolume = settings.focus.soundVolume;
+            console.log('[playSound-call] startTimer(focus):', { soundType, soundVolume });
+            await playSound(soundType, false, soundVolume);
             break;
         case 'shortBreak':
             durationMinutes = validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS_BG.shortBreak.duration);
             timerState.isBreak = true;
+            soundType = settings.shortBreak.sound || DEFAULT_SETTINGS_BG.shortBreak.sound;
+            soundVolume = settings.shortBreak.soundVolume ?? DEFAULT_SETTINGS_BG.shortBreak.soundVolume;
+            console.log('[playSound-call] startTimer(shortBreak):', { soundType, soundVolume });
+            await playSound(soundType, false, soundVolume);
             break;
         case 'longBreak':
             durationMinutes = validateDuration(settings.longBreak.duration, DEFAULT_SETTINGS_BG.longBreak.duration);
             timerState.isBreak = true;
+            soundType = settings.longBreak.sound || DEFAULT_SETTINGS_BG.longBreak.sound;
+            soundVolume = settings.longBreak.soundVolume ?? DEFAULT_SETTINGS_BG.longBreak.soundVolume;
+            console.log('[playSound-call] startTimer(longBreak):', { soundType, soundVolume });
+            await playSound(soundType, false, soundVolume);
             break;
         default:
-            durationMinutes = DEFAULT_SETTINGS_BG.focus.duration; // Fallback
+            durationMinutes = DEFAULT_SETTINGS_BG.focus.duration;
             timerState.isBreak = false;
+            soundType = DEFAULT_SETTINGS_BG.focus.soundType;
+            soundVolume = DEFAULT_SETTINGS_BG.focus.soundVolume;
+            console.log('[playSound-call] startTimer(default):', { soundType, soundVolume });
+            await playSound(soundType, false, soundVolume);
     }
     timerState.timeLeft = durationMinutes * 60;
 
@@ -396,38 +412,35 @@ async function startTimer(type) {
 
 // 다음 세션 시작
 async function startNextSession() {
-    // 알림음 재생
-    await playSound();
-
     const settings = await getCurrentSettings();
-    const isBreak = !timerState.isBreak;
-    
-    // 다음 세션의 시간 설정 (유효성 검사 포함)
-    let newTimeLeft;
-    if (isBreak) {
-        if (timerState.pomodoroCount > 0 && 
-            timerState.pomodoroCount % validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter) === 0) {
-            newTimeLeft = validateDuration(settings.longBreak.duration, DEFAULT_SETTINGS_BG.longBreak.duration) * 60;
-            timerState.type = 'longBreak';
+    let soundType, soundVolume;
+    if (!timerState.isBreak) {
+        // focus 끝나고 break로 넘어감
+        if (timerState.pomodoroCount > 0 && timerState.pomodoroCount % validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter) === 0) {
+            soundType = settings.longBreak.sound || DEFAULT_SETTINGS_BG.longBreak.sound;
+            soundVolume = settings.longBreak.soundVolume ?? DEFAULT_SETTINGS_BG.longBreak.soundVolume;
         } else {
-            newTimeLeft = validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS_BG.shortBreak.duration) * 60;
-            timerState.type = 'shortBreak';
+            soundType = settings.shortBreak.sound || DEFAULT_SETTINGS_BG.shortBreak.sound;
+            soundVolume = settings.shortBreak.soundVolume ?? DEFAULT_SETTINGS_BG.shortBreak.soundVolume;
         }
     } else {
-        newTimeLeft = validateDuration(settings.focus.duration, DEFAULT_SETTINGS_BG.focus.duration) * 60;
-        timerState.type = 'focus';
+        // break 끝나고 focus로 넘어감
+        soundType = settings.focus.soundType;
+        soundVolume = settings.focus.soundVolume;
     }
+    console.log('[playSound-call] startNextSession:', { soundType, soundVolume });
+    await playSound(soundType, false, soundVolume);
 
     // 상태 업데이트
-    timerState.timeLeft = newTimeLeft;
-    timerState.isBreak = isBreak;
+    timerState.timeLeft = timerState.timeLeft;
+    timerState.isBreak = timerState.isBreak;
     timerState.isRunning = true;
     timerState.sessionComplete = false;
 
     // 상태 저장 및 타이머 시작
     await chrome.storage.local.set({
-            timeLeft: newTimeLeft,
-            isBreak: isBreak,
+            timeLeft: timerState.timeLeft,
+            isBreak: timerState.isBreak,
             isRunning: true,
         sessionComplete: false,
         type: timerState.type
@@ -684,24 +697,29 @@ async function playSound(soundType, isPreview = false, volume = undefined) {
 
 // 컨텍스트 메뉴 클릭 처리
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    const settings = await getCurrentSettings();
     switch (info.menuItemId) {
         case 'cycleStart':
-            await playSound();  // 알림음 재생 추가
+            console.log('[playSound-call] contextMenu: cycleStart');
+            await playSound(settings.focus.soundType, false, settings.focus.soundVolume);
             await startNewCycle();
             await createRunningMenus();
             break;
         case 'focusStart':
-            await playSound();  // 알림음 재생 추가
+            console.log('[playSound-call] contextMenu: focusStart');
+            await playSound(settings.focus.soundType, false, settings.focus.soundVolume);
             await startTimer('focus');
             await createRunningMenus();
             break;
         case 'shortBreakStart':
-            await playSound();  // 알림음 재생 추가
+            console.log('[playSound-call] contextMenu: shortBreakStart');
+            await playSound(settings.shortBreak.sound || DEFAULT_SETTINGS_BG.shortBreak.sound, false, settings.shortBreak.soundVolume ?? DEFAULT_SETTINGS_BG.shortBreak.soundVolume);
             await startTimer('shortBreak');
             await createRunningMenus();
             break;
         case 'longBreakStart':
-            await playSound();  // 알림음 재생 추가
+            console.log('[playSound-call] contextMenu: longBreakStart');
+            await playSound(settings.longBreak.sound || DEFAULT_SETTINGS_BG.longBreak.sound, false, settings.longBreak.soundVolume ?? DEFAULT_SETTINGS_BG.longBreak.soundVolume);
             await startTimer('longBreak');
             await createRunningMenus();
             break;
@@ -712,22 +730,26 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
             await stopTimer();
             break;
         case 'restartFocus':
-            await playSound();  // 알림음 재생 추가
+            console.log('[playSound-call] contextMenu: restartFocus');
+            await playSound(settings.focus.soundType, false, settings.focus.soundVolume);
             await startTimer('focus');
             await createRunningMenus();
             break;
         case 'restartShortBreak':
-            await playSound();  // 알림음 재생 추가
+            console.log('[playSound-call] contextMenu: restartShortBreak');
+            await playSound(settings.shortBreak.sound || DEFAULT_SETTINGS_BG.shortBreak.sound, false, settings.shortBreak.soundVolume ?? DEFAULT_SETTINGS_BG.shortBreak.soundVolume);
             await startTimer('shortBreak');
             await createRunningMenus();
             break;
         case 'restartLongBreak':
-            await playSound();  // 알림음 재생 추가
+            console.log('[playSound-call] contextMenu: restartLongBreak');
+            await playSound(settings.longBreak.sound || DEFAULT_SETTINGS_BG.longBreak.sound, false, settings.longBreak.soundVolume ?? DEFAULT_SETTINGS_BG.longBreak.soundVolume);
             await startTimer('longBreak');
             await createRunningMenus();
             break;
         case 'restartCycle':
-            await playSound();  // 알림음 재생 추가
+            console.log('[playSound-call] contextMenu: restartCycle');
+            await playSound(settings.focus.soundType, false, settings.focus.soundVolume);
             await startNewCycle();
             await createRunningMenus();
             break;
@@ -828,31 +850,33 @@ async function timerComplete() {
     chrome.alarms.clear(timerState.alarmName);
 
     // 알림음 재생 (인자 없이 호출 -> playSound가 완료된 세션 타입 기반으로 소리 결정)
-    await playSound();
+    const settings = await getCurrentSettings();
+    let soundType, soundVolume;
+    switch (timerState.type) {
+        case 'focus':
+            soundType = settings.focus.soundType;
+            soundVolume = settings.focus.soundVolume;
+            break;
+        case 'shortBreak':
+            soundType = settings.shortBreak.sound || DEFAULT_SETTINGS_BG.shortBreak.sound;
+            soundVolume = settings.shortBreak.soundVolume ?? DEFAULT_SETTINGS_BG.shortBreak.soundVolume;
+            break;
+        case 'longBreak':
+            soundType = settings.longBreak.sound || DEFAULT_SETTINGS_BG.longBreak.sound;
+            soundVolume = settings.longBreak.soundVolume ?? DEFAULT_SETTINGS_BG.longBreak.soundVolume;
+            break;
+        default:
+            soundType = DEFAULT_SETTINGS_BG.focus.soundType;
+            soundVolume = DEFAULT_SETTINGS_BG.focus.soundVolume;
+    }
+    console.log('[playSound-call] timerComplete:', { soundType, soundVolume });
+    await playSound(soundType, false, soundVolume);
 
      // --- 완료된 세션 정보 저장 ---
-     const settings = await getCurrentSettings();
-     let completedDuration;
-     switch (timerState.type) { // 완료된 세션의 타입 사용
-         case 'focus':
-             completedDuration = settings.focus.duration;
-             timerState.pomodoroCount++;
-             await chrome.storage.local.set({ pomodoroCount: timerState.pomodoroCount });
-             break;
-         case 'shortBreak':
-             completedDuration = settings.shortBreak.duration;
-             break;
-         case 'longBreak':
-             completedDuration = settings.longBreak.duration;
-             break;
-         default:
-             completedDuration = 0;
-     }
-
      const completedSessionData = {
          startTime: timerState.sessionStartTime,
          type: timerState.type,
-         durationMinutes: completedDuration,
+         durationMinutes: timerState.timeLeft / 60,
          projectName: timerState.currentProjectName
      };
      await saveSessionData(completedSessionData); // 세션 데이터 저장 함수 호출
@@ -1003,7 +1027,6 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
             updateBadgeForPauseState();
 
             // --- 볼륨 즉시 반영 ---
-            /*
             if (typeof newVolume === 'number') {
                 console.log(`[BG] 볼륨 변경 감지: 세션=${timerState.type}, 새 볼륨=${newVolume}`);
                 chrome.runtime.sendMessage({
@@ -1014,7 +1037,6 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
                 });
                 console.log(`[BG] playSound 메시지 전송: soundType=${timerState.type === 'focus' ? settings.focus.soundType : settings[timerState.type]?.sound}, volume=${newVolume}`);
             }
-            */
             // --- 볼륨 즉시 반영 끝 ---
         }
     }

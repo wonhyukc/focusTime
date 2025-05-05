@@ -23,7 +23,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             message.isPreview === currentIsPreview
         ) {
             currentAudio.volume = (message.volume ?? 50) / 100;
-            console.log("Offscreen: 기존 오디오 볼륨만 조정", message.volume);
+            console.log("Offscreen: 기존 오디오 볼륨만 조정", message.volume, '실제 적용:', currentAudio.volume);
             return;
         }
         // 기존 오디오가 있으면 정지
@@ -109,6 +109,7 @@ function playAudioFile(soundPath, isPreview = false, volume = 50) {
     const audio = new Audio();
     audio.src = chrome.runtime.getURL(soundPath);
     audio.volume = volume / 100; // 볼륨 설정 적용
+    console.log('Offscreen: playAudioFile 볼륨 적용', volume, audio.volume);
     let previewTimeoutId = null; // 미리듣기 타이머
     let closeTimeoutId = null; // 창 닫기 타이머
 

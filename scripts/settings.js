@@ -107,6 +107,18 @@ async function applySettings(settings) {
         const focusSoundVolumeElement = document.getElementById('focus-sound-volume');
         if (focusSoundVolumeElement) {
             focusSoundVolumeElement.value = settings.focus.soundVolume;
+            focusSoundVolumeElement.addEventListener('input', (e) => {
+                console.log('[SETTINGS] 볼륨 입력값:', e.target.value);
+                const settings = getCurrentSettings();
+                console.log('[SETTINGS] getCurrentSettings() 볼륨:', settings.focus.soundVolume);
+                applySettings(settings);
+            });
+            focusSoundVolumeElement.addEventListener('change', (e) => {
+                console.log('[SETTINGS] 볼륨 입력값(변경):', e.target.value);
+                const settings = getCurrentSettings();
+                console.log('[SETTINGS] getCurrentSettings() 볼륨(변경):', settings.focus.soundVolume);
+                applySettings(settings);
+            });
         }
 
         const focusDesktopNotificationElement = document.getElementById('focus-desktop-notification');
@@ -128,6 +140,22 @@ async function applySettings(settings) {
         document.getElementById('short-break-desktop-notification').checked = settings.shortBreak.desktopNotification;
         document.getElementById('short-break-tab-notification').checked = settings.shortBreak.tabNotification;
 
+        const shortBreakSoundVolumeElement = document.getElementById('short-break-sound-volume');
+        if (shortBreakSoundVolumeElement) {
+            shortBreakSoundVolumeElement.addEventListener('input', (e) => {
+                console.log('[SETTINGS] 볼륨 입력값(shortBreak):', e.target.value);
+                const settings = getCurrentSettings();
+                console.log('[SETTINGS] getCurrentSettings() 볼륨(shortBreak):', settings.shortBreak.soundVolume);
+                applySettings(settings);
+            });
+            shortBreakSoundVolumeElement.addEventListener('change', (e) => {
+                console.log('[SETTINGS] 볼륨 입력값(변경, shortBreak):', e.target.value);
+                const settings = getCurrentSettings();
+                console.log('[SETTINGS] getCurrentSettings() 볼륨(변경, shortBreak):', settings.shortBreak.soundVolume);
+                applySettings(settings);
+            });
+        }
+
         // Long Break 설정
         document.getElementById('long-break-duration').value = settings.longBreak.duration;
         document.getElementById('long-break-start').value = settings.longBreak.startAfter;
@@ -138,13 +166,29 @@ async function applySettings(settings) {
         document.getElementById('long-break-desktop-notification').checked = settings.longBreak.desktopNotification;
         document.getElementById('long-break-tab-notification').checked = settings.longBreak.tabNotification;
 
+        const longBreakSoundVolumeElement = document.getElementById('long-break-sound-volume');
+        if (longBreakSoundVolumeElement) {
+            longBreakSoundVolumeElement.addEventListener('input', (e) => {
+                console.log('[SETTINGS] 볼륨 입력값(longBreak):', e.target.value);
+                const settings = getCurrentSettings();
+                console.log('[SETTINGS] getCurrentSettings() 볼륨(longBreak):', settings.longBreak.soundVolume);
+                applySettings(settings);
+            });
+            longBreakSoundVolumeElement.addEventListener('change', (e) => {
+                console.log('[SETTINGS] 볼륨 입력값(변경, longBreak):', e.target.value);
+                const settings = getCurrentSettings();
+                console.log('[SETTINGS] getCurrentSettings() 볼륨(변경, longBreak):', settings.longBreak.soundVolume);
+                applySettings(settings);
+            });
+        }
+
         // 설정을 Chrome storage에 저장
         chrome.storage.sync.set({ settings }, async () => {
             if (chrome.runtime.lastError) {
                 console.error('Error saving settings:', chrome.runtime.lastError);
                 showToast('설정 저장 중 오류 발생', 'error');
             } else {
-                console.log('Settings saved successfully');
+                console.log('[SETTINGS] 저장된 settings:', settings);
                 // 프로젝트 이름이 있으면 기록에 추가
                 if (settings.projectName) {
                     await addProjectToHistory(settings.projectName);
@@ -315,4 +359,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             applySettings(settings); // 변경 시 applySettings 호출 (내부에서 저장 및 기록 추가)
         });
     });
+
+    // Focus sound type volume input
+    const focusSoundTypeVolumeElement = document.getElementById('focus-sound-type-volume');
+    if (focusSoundTypeVolumeElement) {
+        focusSoundTypeVolumeElement.addEventListener('input', (e) => {
+            console.log('[SETTINGS] 볼륨 입력값(focus-sound-type):', e.target.value);
+            const settings = getCurrentSettings();
+            console.log('[SETTINGS] getCurrentSettings() 볼륨(focus-sound-type):', settings.focus.soundTypeVolume);
+            applySettings(settings);
+        });
+        focusSoundTypeVolumeElement.addEventListener('change', (e) => {
+            console.log('[SETTINGS] 볼륨 입력값(변경, focus-sound-type):', e.target.value);
+            const settings = getCurrentSettings();
+            console.log('[SETTINGS] getCurrentSettings() 볼륨(변경, focus-sound-type):', settings.focus.soundTypeVolume);
+            applySettings(settings);
+        });
+    }
 }); 

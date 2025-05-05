@@ -238,12 +238,14 @@ document.querySelectorAll('.preview-sound').forEach(button => {
             let sibling = button.nextElementSibling;
             while (sibling) {
                 if (sibling.tagName === 'INPUT' && sibling.type === 'number') {
-                    volume = parseInt(sibling.value) || 100;
+                    let v = parseInt(sibling.value);
+                    volume = isNaN(v) ? 100 : v;
                     break;
                 }
                 sibling = sibling.nextElementSibling;
             }
             const soundType = soundSelect.value;
+            console.log('[PREVIEW] 미리듣기 요청: soundType=' + soundType + ', volume=' + volume);
             chrome.runtime.sendMessage({ 
                 action: 'playSound',
                 soundType: soundType,
