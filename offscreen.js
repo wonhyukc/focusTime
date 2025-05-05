@@ -1,5 +1,5 @@
 // offscreen.js
-console.log('Offscreen document loaded');
+console.log('\n포모도로 시작---------------');
 
 // 문서 로드 완료 시 background로 메시지 전송
 document.addEventListener('DOMContentLoaded', () => {
@@ -12,35 +12,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("Offscreen: 메시지 수신", message);
     if (message.command === "playSound") {
         console.log("Offscreen: 알림음 재생 시작", message.soundType, "Is Preview:", message.isPreview);
-        // isPreview 플래그도 playNotificationSound 함수로 전달
-        playNotificationSound(message.soundType, message.isPreview);
+        // isPreview 플래그와 볼륨도 playNotificationSound 함수로 전달
+        playNotificationSound(message.soundType, message.isPreview, message.volume);
     }
     return false;
 });
 
 // Web Audio API를 사용하여 알림음 생성 및 재생
-function playNotificationSound(soundType = 'low-short-beep', isPreview = false) { // isPreview 파라미터 추가
+function playNotificationSound(soundType = 'low-short-beep', isPreview = false, volume = 50) { // 볼륨 파라미터 추가
     try {
-        console.log("Offscreen: playNotificationSound 함수 실행", { soundType, isPreview });
+        console.log("Offscreen: playNotificationSound 함수 실행", { soundType, isPreview, volume });
         
         // 사운드 타입에 따라 다른 소리 재생
         switch (soundType) {
             case 'gong':
-                playAudioFile('sounds/361494__tec_studio__gong-002.wav', isPreview);
+                playAudioFile('sounds/361494__tec_studio__gong-002.wav', isPreview, volume);
                 break;
             case 'brown_noise':
-                playAudioFile('sounds/253922__jagadamba__brown-noise-2-minutes.wav', isPreview);
+                playAudioFile('sounds/253922__jagadamba__brown-noise-2-minutes.wav', isPreview, volume);
                 break;
             case 'rainy_birds':
-                playAudioFile('sounds/201534__toonothing__rainy-day-with-various-birds.wav', isPreview);
+                playAudioFile('sounds/201534__toonothing__rainy-day-with-various-birds.wav', isPreview, volume);
                 break;
             case 'clock_ticking':
-                playAudioFile('sounds/412751__blukotek__ticking-of-the-clock-01.wav', isPreview);
+                playAudioFile('sounds/412751__blukotek__ticking-of-the-clock-01.wav', isPreview, volume);
                 break;
             case 'beep':
             default:
                 // 기본 beep 소리 재생 (미리듣기 여부 전달)
-                playBeepSound(isPreview);
+                playBeepSound(isPreview, volume);
         }
     } catch (error) {
         console.error('Offscreen: 알림음 재생 중 오류 발생:', error);
@@ -49,14 +49,16 @@ function playNotificationSound(soundType = 'low-short-beep', isPreview = false) 
 }
 
 // 기본 beep 소리 재생
-function playBeepSound(isPreview = false) { // isPreview 파라미터 추가
+function playBeepSound(isPreview = false, volume = 50) { // isPreview 파라미터 추가
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 
     oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(350, audioContext.currentTime); 
-    gainNode.gain.setValueAtTime(0.05, audioContext.currentTime); 
+    // 볼륨에 따라 gain을 조절 (0~1)
+    const scaledGain = (typeof volume === 'number' && volume >= 0 && volume <= 100) ? (volume / 100) * 0.05 : 0.05;
+    gainNode.gain.setValueAtTime(scaledGain, audioContext.currentTime); 
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.0);
 
     oscillator.connect(gainNode);
@@ -79,11 +81,12 @@ function playBeepSound(isPreview = false) { // isPreview 파라미터 추가
 }
 
 // 오디오 파일 재생 (공통 함수)
-function playAudioFile(soundPath, isPreview = false) { // isPreview 파라미터 추가
-    console.log(`Offscreen: ${soundPath} 소리 재생 시도`, { isPreview });
+function playAudioFile(soundPath, isPreview = false, volume = 50) { // volume 파라미터 추가
+    console.log(`Offscreen: ${soundPath} 소리 재생 시도`, { isPreview, volume });
     
     const audio = new Audio();
     audio.src = chrome.runtime.getURL(soundPath);
+    audio.volume = volume / 100; // 볼륨 설정 적용
     let previewTimeoutId = null; // 미리듣기 타임아웃 ID
     let closeTimeoutId = null; // 창 닫기 타임아웃 ID
 
@@ -115,6 +118,9 @@ function playAudioFile(soundPath, isPreview = false) { // isPreview 파라미터
                         }, 500); 
 
                     }, 3000);
+                } else {
+                    // 미리듣기가 아닐 때만 반복 재생
+                    audio.loop = true;
                 }
             })
             .catch(error => {
@@ -145,4 +151,9 @@ function playAudioFile(soundPath, isPreview = false) { // isPreview 파라미터
 // Gong 소리 재생 (이제 직접 호출되지 않고 playNotificationSound를 통해 처리됨)
 function playGongSound(isPreview = false) {
     playAudioFile('sounds/361494__tec_studio__gong-002.wav', isPreview);
+}
+
+// Add a new function to log sound-related information
+function logSoundInfo(soundType, isPreview) {
+    console.log(`사운드 재생: 타입=${soundType}, 미리듣기=${isPreview}`);
 } 

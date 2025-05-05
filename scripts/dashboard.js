@@ -59,6 +59,28 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('reset-stats').addEventListener('click', resetStats);
     // 통계 파일 입력 변경 이벤트 리스너 등록
     document.getElementById('stats-file-input').addEventListener('change', handleStatsFileImport);
+
+    // 볼륨 슬라이더 변경 시 로그 출력
+    function logVolumeChange(soundType, volume) {
+        console.log({action: 'playSound', soundType: soundType, isPreview: true, volume: volume});
+    }
+
+    document.getElementById('focus-sound-volume')?.addEventListener('input', function(e) {
+        const soundType = document.getElementById('focus-sound')?.value || 'beep';
+        logVolumeChange(soundType, e.target.value);
+    });
+    document.getElementById('short-break-sound-volume')?.addEventListener('input', function(e) {
+        const soundType = document.getElementById('short-break-sound')?.value || 'beep';
+        logVolumeChange(soundType, e.target.value);
+    });
+    document.getElementById('long-break-sound-volume')?.addEventListener('input', function(e) {
+        const soundType = document.getElementById('long-break-sound')?.value || 'beep';
+        logVolumeChange(soundType, e.target.value);
+    });
+    document.getElementById('focus-sound-type-volume')?.addEventListener('input', function(e) {
+        const soundType = document.getElementById('focus-sound-type')?.value || 'brown_noise';
+        logVolumeChange(soundType, e.target.value);
+    });
 });
 
 // '타이머 소리' 드롭다운 옵션 생성 함수
@@ -87,7 +109,7 @@ function saveSettings() {
         focus: {
             duration: parseInt(document.getElementById('focus-duration').value),
             sound: document.getElementById('focus-sound').value,
-            soundVolume: 50,
+            soundVolume: parseInt(document.getElementById('focus-sound-volume').value),
             soundType: document.getElementById('focus-sound-type').value,
             desktopNotification: document.getElementById('focus-desktop-notification').checked,
             tabNotification: document.getElementById('focus-tab-notification').checked
@@ -95,7 +117,7 @@ function saveSettings() {
         shortBreak: {
             duration: parseInt(document.getElementById('short-break-duration').value),
             sound: document.getElementById('short-break-sound').value,
-            soundVolume: 50,
+            soundVolume: parseInt(document.getElementById('short-break-sound-volume').value),
             desktopNotification: document.getElementById('short-break-desktop-notification').checked,
             tabNotification: document.getElementById('short-break-tab-notification').checked
         },
@@ -103,7 +125,7 @@ function saveSettings() {
             duration: parseInt(document.getElementById('long-break-duration').value),
             startAfter: parseInt(document.getElementById('long-break-start').value),
             sound: document.getElementById('long-break-sound').value,
-            soundVolume: 50,
+            soundVolume: parseInt(document.getElementById('long-break-sound-volume').value),
             desktopNotification: document.getElementById('long-break-desktop-notification').checked,
             tabNotification: document.getElementById('long-break-tab-notification').checked
         },
@@ -161,16 +183,32 @@ document.querySelectorAll('.preview-sound').forEach(button => {
     button.addEventListener('click', () => {
         // 버튼 바로 앞의 select 요소 가져오기
         const soundSelect = button.previousElementSibling;
-        
+        let volume = 50;
+        // 재생(배경음) 미리듣기 버튼인지 구분
+        if (soundSelect && soundSelect.id === 'focus-sound-type') {
+            // 재생(배경음) 볼륨 슬라이더는 id로 직접 접근
+            const bgVolumeSlider = document.getElementById('focus-sound-type-volume');
+            if (bgVolumeSlider) {
+                volume = parseInt(bgVolumeSlider.value);
+                if (isNaN(volume)) volume = 50;
+            }
+        } else {
+            // 기존 방식(타이머 소리)
+            const volumeSlider = button.nextElementSibling && button.nextElementSibling.type === 'range' ? button.nextElementSibling : null;
+            if (volumeSlider) {
+                volume = parseInt(volumeSlider.value);
+                if (isNaN(volume)) volume = 50;
+            }
+        }
         if (soundSelect && soundSelect.tagName === 'SELECT') {
             const soundType = soundSelect.value;
-            console.log('미리듣기 요청:', soundType);
-            
-            // 선택된 소리 타입과 미리듣기 플래그와 함께 메시지 전송
+            console.log('미리듣기 요청:', soundType, '볼륨:', volume);
+            // 선택된 소리 타입과 미리듣기 플래그, 볼륨과 함께 메시지 전송
             chrome.runtime.sendMessage({ 
                 action: 'playSound',
                 soundType: soundType,
-                isPreview: true // 미리듣기 플래그 추가
+                isPreview: true, // 미리듣기 플래그 추가
+                volume: volume
             });
         } else {
             console.error('Could not find select element for preview button.');

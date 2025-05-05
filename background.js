@@ -336,18 +336,20 @@ async function startTimer(type) {
         case 'focus':
             durationMinutes = validateDuration(settings.focus.duration, DEFAULT_SETTINGS_BG.focus.duration);
             timerState.isBreak = false;
+            // Start playing the selected sound for focus
+            await playSound(settings.focus.soundType, false);
             break;
         case 'shortBreak':
-             durationMinutes = validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS_BG.shortBreak.duration);
+            durationMinutes = validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS_BG.shortBreak.duration);
             timerState.isBreak = true;
             break;
         case 'longBreak':
-             durationMinutes = validateDuration(settings.longBreak.duration, DEFAULT_SETTINGS_BG.longBreak.duration);
+            durationMinutes = validateDuration(settings.longBreak.duration, DEFAULT_SETTINGS_BG.longBreak.duration);
             timerState.isBreak = true;
             break;
         default:
             durationMinutes = DEFAULT_SETTINGS_BG.focus.duration; // Fallback
-             timerState.isBreak = false;
+            timerState.isBreak = false;
     }
     timerState.timeLeft = durationMinutes * 60;
 
@@ -526,8 +528,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 response = { success: true };
                 break;
             case 'playSound':
-                // isPreview 플래그도 playSound 함수로 전달
-                await playSound(request.soundType, request.isPreview);
+                // isPreview 플래그와 volume도 playSound 함수로 전달
+                await playSound(request.soundType, request.isPreview, request.volume);
                 response = { success: true };
                 break;
             case 'exportStats':
@@ -545,50 +547,49 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 break;
         }
         console.log("Sending response:", response);
-        if (response) { // response가 정의된 경우에만 전송
-            sendResponse(response);
-        } else {
-            console.error("Response was not set for action:", request.action);
-            sendResponse({ success: false, message: "No response generated" });
-        }
-    })(); // 즉시 실행
-
-    return true; // 비동기 응답을 위해 항상 true 반환
+        if (sendResponse) sendResponse(response);
+    })();
+    return true;
 });
 
 // Offscreen Document를 통해 소리를 재생하는 함수
-async function playSound(soundType, isPreview = false) { // isPreview 파라미터 추가
-    console.log("playSound 함수 호출됨", { soundType, isPreview });
+async function playSound(soundType, isPreview = false, volume = undefined) { // volume은 undefined일 수 있음
+    console.log("playSound 함수 호출됨", { soundType, isPreview, volume });
     let finalSoundType = 'low-short-beep'; // 최종 재생할 소리 타입, 기본값 설정
+    let finalVolume = volume;
 
     try {
         if (isPreview) {
-            // 미리듣기 시에는 전달받은 soundType 사용 (없으면 기본값 유지)
-            finalSoundType = soundType || 'low-short-beep'; 
+            // 미리듣기 시에는 전달받은 soundType/volume 사용 (없으면 기본값 유지)
+            finalSoundType = soundType || 'low-short-beep';
+            if (typeof finalVolume !== 'number') finalVolume = 50;
         } else {
             // 타이머 완료 시
             const settings = await getCurrentSettings();
             const completedSessionType = timerState.type; // 방금 완료된 세션 타입
 
             if (completedSessionType === 'focus') {
-                // 집중 완료 시: '재생' 설정 (focus.soundType) 사용
                 finalSoundType = settings.focus?.soundType || DEFAULT_SETTINGS_BG.focus.soundType;
-            } else if (completedSessionType === 'shortBreak' || completedSessionType === 'longBreak') {
-                // 휴식 완료 시: 해당 휴식의 '타이머 소리' 설정 (break.sound) 사용
-                finalSoundType = settings[completedSessionType]?.sound || DEFAULT_SETTINGS_BG[completedSessionType].sound;
+                finalVolume = settings.focus?.soundVolume ?? DEFAULT_SETTINGS_BG.focus.soundVolume;
+            } else if (completedSessionType === 'shortBreak') {
+                finalSoundType = settings.shortBreak?.sound || DEFAULT_SETTINGS_BG.shortBreak.sound;
+                finalVolume = settings.shortBreak?.soundVolume ?? DEFAULT_SETTINGS_BG.shortBreak.soundVolume;
+            } else if (completedSessionType === 'longBreak') {
+                finalSoundType = settings.longBreak?.sound || DEFAULT_SETTINGS_BG.longBreak.sound;
+                finalVolume = settings.longBreak?.soundVolume ?? DEFAULT_SETTINGS_BG.longBreak.soundVolume;
             } else {
                 // 예외 처리: 알 수 없는 세션 타입이면 기본 비프음
                 console.warn(`Unknown session type for sound: ${completedSessionType}`);
                 finalSoundType = 'low-short-beep';
+                finalVolume = 50;
             }
-            
             // 'low-short-beep' 값을 'beep'으로 매핑 (offscreen.js는 'beep'을 기대)
             if (finalSoundType === 'low-short-beep') {
                 finalSoundType = 'beep';
             }
         }
         
-        console.log("Final sound type to play:", finalSoundType, "Is Preview:", isPreview);
+        console.log("Final sound type to play:", finalSoundType, "Is Preview:", isPreview, "Volume:", finalVolume);
         
         // 이미 존재하는 Offscreen Document 확인
         const existingContexts = await chrome.runtime.getContexts({
@@ -600,7 +601,8 @@ async function playSound(soundType, isPreview = false) { // isPreview 파라미�
         const messagePayload = {
             command: "playSound",
             soundType: finalSoundType, // 결정된 최종 소리 타입 사용
-            isPreview: isPreview
+            isPreview: isPreview,
+            volume: finalVolume // 올바른 볼륨 사용
         };
 
         if (existingContexts.length > 0) {
@@ -1023,4 +1025,12 @@ async function resetStats() {
         console.error("Error resetting stats:", error);
         return { success: false, message: '통계 초기화 중 오류 발생' };
     }
+}
+
+// Remove all console.log statements and add a single log at the start of the extension
+console.log('\n포모도로 시작---------------');
+
+// Add a new function to log sound-related information
+function logSoundInfo(soundType, isPreview) {
+    console.log(`사운드 재생: 타입=${soundType}, 미리듣기=${isPreview}`);
 } 
