@@ -549,8 +549,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 // Offscreen Document를 통해 소리를 재생하는 함수
-async function playSound(soundType, isPreview = false, volume = undefined) { // volume은 undefined일 수 있음
-    console.log("playSound 함수 호출됨", { soundType, isPreview, volume });
+async function playSound(soundType, isPreview = false, volume = undefined) {
+    console.log('[LOG] playSound 호출:', { soundType, isPreview, volume });
     let finalSoundType = 'low-short-beep'; // 최종 재생할 소리 타입, 기본값 설정
     let finalVolume = volume;
 
@@ -770,6 +770,7 @@ function updateTimer() {
 
 // 타이머 완료
 async function timerComplete() {
+    console.log('[LOG] timerComplete 호출 (세션 종료)', timerState);
     // 알람 중지
     chrome.alarms.clear(timerState.alarmName);
 
@@ -1070,9 +1071,9 @@ async function resetStats() {
 }
 
 // Remove all console.log statements and add a single log at the start of the extension
-console.log('\n포모도로 시작---------------');
+console.log('\n---집중시간 앱 시작---------------');
 
 // Add a new function to log sound-related information
 function logSoundInfo(soundType, isPreview) {
-    console.log(`사운드 재생: 타입=${soundType}, 미리듣기=${isPreview}`);
+    // 로그 제거
 } 

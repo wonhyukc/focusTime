@@ -15,7 +15,6 @@ let selectedDurationFilter = 25; // 기본값 (예: 25분)
 // Chart.js 로딩 상태 확인 함수
 function isChartJsLoaded() {
     if (typeof Chart === 'undefined') {
-        console.error("[Stats Display] Chart.js is not loaded. Charts cannot be rendered.");
         if (typeof showToast === 'function') {
             showToast('차트 라이브러리가 로드되지 않았습니다. 페이지를 새로고침하거나 네트워크 연결을 확인하세요.', 'error');
         }
@@ -28,62 +27,43 @@ function isChartJsLoaded() {
 async function loadAndProcessStats() {
     // 현재 날짜/시각을 콘솔에 출력
     const now = new Date();
-    console.log('[loadAndProcessStats] 현재 시스템 날짜/시각:', now, '| ISO:', now.toISOString());
-    console.log("[Stats Display] Starting loadAndProcessStats..."); // 시작 로그
     try {
         const result = await chrome.storage.local.get('pomodoroHistory');
         let history = result.pomodoroHistory || [];
-        console.log("[Stats Display] Loaded history count:", history.length);
         
         // 데이터 포맷 변환 (필요한 경우)
         history = convertHistoryFormat(history);
         
         if (history.length > 0) {
-             console.log("[Stats Display] Sample history entry:", history[0]); // 샘플 데이터 확인
         }
 
         // --- 요약 카드 데이터 처리 ---
-        console.log("[Stats Display] Updating summary cards...");
         updateSummaryCards(history);
 
         // 오늘의 집중 시간(분) 시간대별/프로젝트별 집계 및 콘솔 출력
         logTodayFocusDetails(history);
 
         // --- 일 단위 분포 데이터 처리 ---
-        console.log("[Stats Display] Processing daily data...");
         const dailyData = processDailyData(history, selectedDurationFilter);
-        console.log("[Stats Display] Daily data:", dailyData);
         updateDailyChart(dailyData);
 
         // --- 주 단위 분포 데이터 처리 ---
-         console.log("[Stats Display] Processing weekly data...");
         const weeklyData = processWeeklyData(history);
-        console.log("[Stats Display] Weekly data:", weeklyData);
         updateWeeklyChart(weeklyData);
 
         // --- 월별 히트맵 데이터 처리 ---
-         console.log("[Stats Display] Processing heatmap data...");
         const heatmapData = processHeatmapData(history);
-        console.log("[Stats Display] Heatmap data (sample):", Object.keys(heatmapData).length > 0 ? heatmapData[Object.keys(heatmapData)[0]] : 'empty');
         renderMonthlyHeatmap(heatmapData);
 
         // --- 월 단위 분포 데이터 처리 ---
-        console.log("[Stats Display] Processing monthly data...");
         const monthlyData = processMonthlyData(history);
-        console.log("[Stats Display] Monthly data:", monthlyData);
         updateMonthlyChart(monthlyData);
 
         // --- 연 단위 분포 데이터 처리 ---
-        console.log("[Stats Display] Processing yearly data...");
         const yearlyData = processYearlyData(history);
-        console.log("[Stats Display] Yearly data:", yearlyData);
         updateYearlyChart(yearlyData);
 
-        console.log("[Stats Display] loadAndProcessStats completed successfully."); // 완료 로그
-
     } catch (error) {
-        console.error("[Stats Display] Error in loadAndProcessStats:", error);
-        // 사용자에게 오류 알림 (예: showToast 사용)
         if (typeof showToast === 'function') {
              showToast(`통계 로딩/처리 중 오류 발생: ${error.message}`, 'error');
         }
@@ -133,6 +113,7 @@ function convertHistoryFormat(history) {
 
 // 요약 카드 업데이트 함수
 function updateSummaryCards(history) {
+    console.log('[LOG] updateSummaryCards 호출:', { historyLength: history.length });
     try {
         // 오늘 카드 업데이트
         const todayFocusSessions = getSessionsToday(history);
@@ -178,8 +159,6 @@ function updateSummaryCards(history) {
         if (yearCard) {
             yearCard.querySelector('.stat-value').textContent = yearMinutes;
             yearCard.querySelector('.stat-label').textContent = yearHours.toFixed(2);
-        } else {
-            console.warn('[Stats Display] 올해 카드(.stat-card:nth-child(4))를 찾을 수 없습니다!');
         }
 
         // 총 카드 업데이트 (5번째 카드)
@@ -188,15 +167,11 @@ function updateSummaryCards(history) {
             const totalFocusSessions = history.filter(entry => entry.type === 'focus');
             const totalMinutes = calculateTotalFocusMinutes(totalFocusSessions);
             const totalHours = totalMinutes / 60;
-            console.log('[DEBUG] totalMinutes:', totalMinutes, 'totalHours:', totalHours);
             
             totalCard.querySelector('.stat-value').textContent = totalMinutes;
             totalCard.querySelector('.stat-label').textContent = totalHours.toFixed(2);
-        } else {
-            console.warn('[Stats Display] 총 카드(.stat-card:nth-child(5))를 찾을 수 없습니다!');
         }
     } catch (error) {
-        console.error("[Stats Display] Error updating summary cards:", error);
     }
 }
 
@@ -232,7 +207,6 @@ function getDateFromEntry(entry) {
         // 다른 형식이거나 파싱 실패 시 Date 생성자 직접 적용
         return new Date(entry.startTime);
     } catch (error) {
-        console.error("[Stats Display] Error parsing date:", entry.startTime, error);
         return null;
     }
 }
@@ -242,9 +216,6 @@ function getSessionsToday(history) {
     const today = new Date();
     today.setHours(0, 0, 0, 0); // 로컬 자정
     
-    // 디버깅: 오늘 날짜와 각 entry의 날짜 출력 (로컬/UTC 모두)
-    console.log('[getSessionsToday] 오늘(로컬):', today, '| 오늘(UTC):', today.toISOString());
-
     return history.filter(entry => {
         if (entry.type !== 'focus') return false;
         const entryDate = getDateFromEntry(entry);
@@ -302,25 +273,20 @@ function getSessionsThisYear(history) {
 
 function processDailyData(history, durationFilter) {
     try {
-        console.log(`[Stats Display] Filtering daily data for duration: ${durationFilter}`);
         const hourlyCounts = Array(24).fill(0);
         const filteredHistory = history.filter(entry =>
             entry.type === 'focus' && entry.durationMinutes == durationFilter // 선택된 지속시간 필터 적용
         );
-        console.log(`[Stats Display] Filtered daily history count: ${filteredHistory.length}`);
 
         filteredHistory.forEach(entry => {
             const entryDate = getDateFromEntry(entry);
             if (entryDate && !isNaN(entryDate)) { // 유효한 날짜인지 확인
                 const hour = entryDate.getHours();
                 hourlyCounts[hour]++;
-            } else {
-                 console.warn("[Stats Display] Invalid date found in daily processing:", entry.startTime);
             }
         });
         return hourlyCounts;
     } catch (error) {
-        console.error("[Stats Display] Error in processDailyData:", error);
         return Array(24).fill(0); // 오류 시 빈 데이터 반환
     }
 }
@@ -335,13 +301,10 @@ function processWeeklyData(history) {
             if (entryDate && !isNaN(entryDate)) {
                 const dayOfWeek = entryDate.getDay(); // 0 = Sunday, 6 = Saturday
                 weeklyCounts[dayOfWeek]++;
-            } else {
-                 console.warn("[Stats Display] Invalid date found in weekly processing:", entry.startTime);
             }
         });
         return weeklyCounts;
      } catch (error) {
-        console.error("[Stats Display] Error in processWeeklyData:", error);
         return Array(7).fill(0);
     }
 }
@@ -356,13 +319,10 @@ function processHeatmapData(history) {
             if (entryDate && !isNaN(entryDate)) {
                 const dateString = entryDate.toISOString().split('T')[0]; // 'YYYY-MM-DD'
                 dailyFocusCounts[dateString] = (dailyFocusCounts[dateString] || 0) + 1;
-            } else {
-                 console.warn("[Stats Display] Invalid date found in heatmap processing:", entry.startTime);
             }
         });
         return dailyFocusCounts;
     } catch (error) {
-        console.error("[Stats Display] Error in processHeatmapData:", error);
         return {};
     }
 }
@@ -404,12 +364,9 @@ function processYearlyData(history) {
 
 // --- 차트 업데이트 ---
 function updateDailyChart(data) {
-    console.log("[Stats Display] Updating daily chart...");
-    
     try {
         const canvas = document.getElementById('daily-chart');
         if (!canvas) {
-            console.error("[Stats Display] Daily chart canvas element not found.");
             return;
         }
         
@@ -489,17 +446,13 @@ function updateDailyChart(data) {
             dailyChartInstance = new Chart(ctx, chartConfig);
         }
     } catch (error) {
-        console.error("[Stats Display] Error in daily chart update function:", error);
     }
 }
 
 function updateWeeklyChart(data) {
-    console.log("[Stats Display] Updating weekly chart...");
-    
     try {
         const canvas = document.getElementById('weekly-chart');
         if (!canvas) {
-            console.error("[Stats Display] Weekly chart canvas element not found.");
             return;
         }
         
@@ -582,17 +535,14 @@ function updateWeeklyChart(data) {
             weeklyChartInstance = new Chart(ctx, chartConfig);
         }
     } catch (error) {
-        console.error("[Stats Display] Error in weekly chart update function:", error);
     }
 }
 
 // --- 월별 히트맵 렌더링 ---
 function renderMonthlyHeatmap(dailyCounts) {
-    console.log('[Stats Display] Rendering monthly heatmap...');
     try {
         const heatmapContainer = document.getElementById('yearly-heatmap');
         if (!heatmapContainer) {
-            console.error('[Stats Display] Could not find stats section to append heatmap');
             return;
         }
 
@@ -700,9 +650,7 @@ function renderMonthlyHeatmap(dailyCounts) {
 
         // 스크롤 위치 조정 (최근 데이터 보이게)
         heatmapContainer.scrollLeft = heatmapContainer.scrollWidth;
-         console.log("[Stats Display] Monthly heatmap rendered.");
     } catch (error) {
-         console.error("[Stats Display] Error rendering monthly heatmap:", error);
     }
 }
 
@@ -716,11 +664,9 @@ function getHeatmapLevel(count) {
 
 // 월별 차트 업데이트 함수
 function updateMonthlyChart(data) {
-    console.log("[Stats Display] Updating monthly chart...");
     try {
         const canvas = document.getElementById('monthly-chart');
         if (!canvas) {
-            console.error("[Stats Display] Monthly chart canvas element not found.");
             return;
         }
         const ctx = canvas.getContext('2d');
@@ -781,17 +727,14 @@ function updateMonthlyChart(data) {
             monthlyChartInstance = new Chart(ctx, chartConfig);
         }
     } catch (error) {
-        console.error("[Stats Display] Error in monthly chart update function:", error);
     }
 }
 
 // 연별 차트 업데이트 함수
 function updateYearlyChart(data) {
-    console.log("[Stats Display] Updating yearly chart...");
     try {
         const canvas = document.getElementById('yearly-chart');
         if (!canvas) {
-            console.error("[Stats Display] Yearly chart canvas element not found.");
             return;
         }
         const ctx = canvas.getContext('2d');
@@ -851,65 +794,38 @@ function updateYearlyChart(data) {
             yearlyChartInstance = new Chart(ctx, chartConfig);
         }
     } catch (error) {
-        console.error("[Stats Display] Error in yearly chart update function:", error);
     }
 }
 
 // --- 이벤트 리스너 (DOMContentLoaded 사용) ---
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('\n\n---집중시간 앱 시작 ---------------');
-    console.log("[Stats Display] DOMContentLoaded event fired.");
-    
-    // Canvas 요소 확인
-    const dailyCanvas = document.getElementById('daily-chart');
-    const weeklyCanvas = document.getElementById('weekly-chart');
-    
-    if (!dailyCanvas) {
-        console.error("[Stats Display] Daily chart canvas element not found!");
-    }
-    
-    if (!weeklyCanvas) {
-        console.error("[Stats Display] Weekly chart canvas element not found!");
-    }
-    
-    // 시간 필터 버튼 이벤트 리스너 설정
-    const timeFilterButtons = document.querySelectorAll('.time-filter .time-button');
-    timeFilterButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            timeFilterButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            selectedDurationFilter = parseInt(button.dataset.duration) || 25;
-            
-            // 데이터 다시 로드/처리 후 일간 차트만 업데이트
-            chrome.storage.local.get('pomodoroHistory', (result) => {
-                const history = result.pomodoroHistory || [];
-                const convertedHistory = convertHistoryFormat(history);
-                const dailyData = processDailyData(convertedHistory, selectedDurationFilter);
-                updateDailyChart(dailyData);
-            });
-        });
-    });
+    setTimeout(() => {
+        if (typeof Chart !== 'undefined') {
+            loadAndProcessStats();
+        } else {
+            setTimeout(() => {
+                if (typeof Chart !== 'undefined') {
+                    loadAndProcessStats();
+                } else {
+                    if (typeof showToast === 'function') {
+                        showToast('차트 라이브러리를 로드하는 데 실패했습니다. 페이지를 새로고침해 보세요.', 'error');
+                    }
+                }
+            }, 1000);
+        }
+    }, 300);
 });
 
 // Window load event for chart initialization - give Chart.js more time to load
 window.addEventListener('load', () => {
-    console.log("[Stats Display] Window load event fired.");
-    
-    // Wait a short time to make sure Chart.js is loaded
     setTimeout(() => {
         if (typeof Chart !== 'undefined') {
-            console.log("[Stats Display] Chart.js is available, loading stats...");
             loadAndProcessStats();
         } else {
-            console.error("[Stats Display] Chart.js is not available after window load. Will retry once more...");
-            
-            // Try once more after a longer delay
             setTimeout(() => {
                 if (typeof Chart !== 'undefined') {
-                    console.log("[Stats Display] Chart.js is now available on retry, loading stats...");
                     loadAndProcessStats();
                 } else {
-                    console.error("[Stats Display] Chart.js is still not available. Charts cannot be rendered.");
                     if (typeof showToast === 'function') {
                         showToast('차트 라이브러리를 로드하는 데 실패했습니다. 페이지를 새로고침해 보세요.', 'error');
                     }
@@ -922,7 +838,6 @@ window.addEventListener('load', () => {
 // 백그라운드에서 통계 업데이트 메시지 수신 (기존 리스너 유지)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "statsUpdated") {
-        console.log("[Stats Display] Stats updated message received.");
         if (typeof Chart !== 'undefined') {
              loadAndProcessStats();
         } else {
@@ -957,9 +872,6 @@ function logTodayFocusDetails(history) {
     const total = todayFocusSessions.reduce((sum, entry) => sum + (entry.durationMinutes || 0), 0);
 
     // 결과 출력
-    console.log('[오늘 집중 시간 합계]', total + '분');
-    console.log('[시간대별 집중 시간(분)]', hourlyTotals);
-    console.log('[프로젝트별 집중 시간(분)]', projectTotals);
 }
 
 // ... (clearStatsDisplay 등) 

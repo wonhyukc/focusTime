@@ -1,5 +1,5 @@
 // offscreen.js
-console.log('\n포모도로 시작---------------');
+console.log('\n---집중시간 앱 시작---------------');
 
 // 문서 로드 완료 시 background로 메시지 전송
 document.addEventListener('DOMContentLoaded', () => {
@@ -39,7 +39,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // Web Audio API를 사용하여 알림음 생성 및 재생
-function playNotificationSound(soundType = 'low-short-beep', isPreview = false, volume = 50) { // 볼륨 파라미터 기본값 50
+function playNotificationSound(soundType = 'low-short-beep', isPreview = false, volume = 50) {
+    console.log('[LOG] playNotificationSound 호출:', { soundType, isPreview, volume });
     try {
         console.log("Offscreen: playNotificationSound 함수 실행", { soundType, isPreview, volume });
         
@@ -68,7 +69,8 @@ function playNotificationSound(soundType = 'low-short-beep', isPreview = false, 
 }
 
 // 기본 beep 소리 재생
-function playBeepSound(isPreview = false, volume = 50) { // 볼륨 파라미터 기본값 50
+function playBeepSound(isPreview = false, volume = 50) {
+    console.log('[LOG] playBeepSound 호출:', { isPreview, volume });
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
@@ -100,7 +102,8 @@ function playBeepSound(isPreview = false, volume = 50) { // 볼륨 파라미터 
 }
 
 // 오디오 파일 재생 (공통 함수)
-function playAudioFile(soundPath, isPreview = false, volume = 50) { // 볼륨 파라미터 기본값 50
+function playAudioFile(soundPath, isPreview = false, volume = 50) {
+    console.log('[LOG] playAudioFile 호출:', { soundPath, isPreview, volume });
     console.log(`Offscreen: ${soundPath} 소리 재생 시도`, { isPreview, volume });
     
     const audio = new Audio();

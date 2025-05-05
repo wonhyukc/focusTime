@@ -37,10 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Let stats-display.js handle chart initialization
     // Use window.dashboardChartInitialized to avoid duplicate initialization
     if (!window.statsDisplayLoaded) {
-        console.log("Initializing charts from dashboard.js");
         setTimeout(initializeCharts, 500); // Give Chart.js more time to load
-    } else {
-        console.log("Charts will be initialized by stats-display.js");
     }
 
     // 설정 내보내기/가져오기/초기화 기능
@@ -60,57 +57,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 볼륨 슬라이더 변경 시 로그 출력
     function logVolumeChange(soundType, volume) {
-        console.log({action: 'playSound', soundType: soundType, isPreview: true, volume: volume});
     }
 
     document.getElementById('focus-sound-volume')?.addEventListener('input', function(e) {
-        const soundType = document.getElementById('focus-sound')?.value || 'beep';
-        logVolumeChange(soundType, e.target.value);
     });
     document.getElementById('focus-sound-volume')?.addEventListener('change', function(e) {
-        saveSettings();
     });
     document.getElementById('short-break-sound-volume')?.addEventListener('input', function(e) {
-        const soundType = document.getElementById('short-break-sound')?.value || 'beep';
-        const volume = parseInt(e.target.value);
-        chrome.runtime.sendMessage({
-            command: 'playSound',
-            soundType: soundType,
-            isPreview: false,
-            volume: volume
-        });
-        logVolumeChange(soundType, volume);
     });
     document.getElementById('short-break-sound-volume')?.addEventListener('change', function(e) {
-        saveSettings();
     });
     document.getElementById('long-break-sound-volume')?.addEventListener('input', function(e) {
-        const soundType = document.getElementById('long-break-sound')?.value || 'beep';
-        const volume = parseInt(e.target.value);
-        chrome.runtime.sendMessage({
-            command: 'playSound',
-            soundType: soundType,
-            isPreview: false,
-            volume: volume
-        });
-        logVolumeChange(soundType, volume);
     });
     document.getElementById('long-break-sound-volume')?.addEventListener('change', function(e) {
-        saveSettings();
     });
     document.getElementById('focus-sound-type-volume')?.addEventListener('input', function(e) {
-        const soundType = document.getElementById('focus-sound-type')?.value || 'brown_noise';
-        const volume = parseInt(e.target.value);
-        chrome.runtime.sendMessage({
-            command: 'playSound',
-            soundType: soundType,
-            isPreview: false,
-            volume: volume
-        });
-        logVolumeChange(soundType, volume);
     });
     document.getElementById('focus-sound-type-volume')?.addEventListener('change', function(e) {
-        saveSettings();
     });
 });
 
@@ -238,8 +201,6 @@ document.querySelectorAll('.preview-sound').forEach(button => {
                 isPreview: true,
                 volume: volume
             });
-        } else {
-            console.error('Could not find select element for preview button.');
         }
     });
 });
@@ -248,13 +209,9 @@ document.querySelectorAll('.preview-sound').forEach(button => {
 function initializeCharts() {
     // Check if Chart is defined before using it
     if (typeof Chart === 'undefined') {
-        console.error("Chart.js library not loaded yet. Charts will not be initialized.");
-        // Try again after a short delay
         setTimeout(initializeCharts, 500);
         return;
     }
-    
-    console.log("Initializing charts with Chart.js version:", Chart.version);
     
     try {
         // 일간 차트
@@ -307,7 +264,6 @@ function initializeCharts() {
             }
         });
     } catch (error) {
-        console.error("Error initializing charts:", error);
     }
 }
 
@@ -316,7 +272,6 @@ document.getElementById('feedback-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const feedback = document.getElementById('feedback-text').value;
     // 여기에 피드백 제출 로직 추가
-    console.log('피드백 제출:', feedback);
     document.getElementById('feedback-text').value = '';
     alert('피드백이 제출되었습니다. 감사합니다!');
 });
@@ -422,7 +377,6 @@ function parseCsvToHistory(csvText) {
     const projectIndex = headers.indexOf('프로젝트');
 
     if (startIndex === -1 || sessionIndex === -1 || durationIndex === -1 || projectIndex === -1) {
-        console.error("찾은 헤더:", headers); // 실제 헤더 로그 출력
         throw new Error("CSV 헤더에 필요한 열('시작시각(년월일시분)', '세션', '지속시간', '프로젝트')이 없습니다.");
     }
 
@@ -443,7 +397,6 @@ function parseCsvToHistory(csvText) {
         const values = line.split(',');
 
         if (values.length < Math.max(startIndex, sessionIndex, durationIndex, projectIndex) + 1) {
-            console.warn(`Skipping incomplete CSV row ${i + 1}: ${line}`);
             continue;
         }
 
@@ -458,7 +411,6 @@ function parseCsvToHistory(csvText) {
         const durationMinutes = parseInt(durationStr);
 
         if (!startTime || !sessionType || isNaN(durationMinutes)) {
-            console.warn(`Skipping invalid data in CSV row ${i + 1}: ${line}, sessionType=${sessionCsv}->${sessionType}, duration=${durationStr}->${durationMinutes}`);
             continue;
         }
 
@@ -482,7 +434,6 @@ function handleStatsFileImport(event) {
             try {
                 const fileContent = event.target.result;
                 const parsedHistory = parseCsvToHistory(fileContent); // CSV 파싱
-                console.log("[Dashboard] Parsed History:", JSON.stringify(parsedHistory.slice(0, 5))); // 파싱 결과 샘플 로그 추가
 
                 if (parsedHistory.length === 0) {
                      showToast('CSV 파일에서 유효한 데이터를 찾을 수 없습니다.', 'warning');
@@ -490,34 +441,26 @@ function handleStatsFileImport(event) {
                 }
 
                 const response = await chrome.runtime.sendMessage({ action: 'importParsedStats', data: parsedHistory });
-                console.log("Import parsed stats response:", response);
 
                 if (response?.success) {
-                    showToast(response.message || '통계가 성공적으로 가져오기되었습니다.', 'success');
-                    console.log("[Dashboard] Import successful, attempting chart update shortly..."); // 로그 추가
+                    showToast(response.message || '통계가 성공적으로 가져오기되었습니다.');
 
-                    // --- 차트 업데이트 로직 호출 (setTimeout 추가) ---
                     setTimeout(() => {
                         if (typeof loadAndProcessStats === 'function') {
-                            console.log("[Dashboard] Calling loadAndProcessStats via setTimeout..."); // 로그 추가
                             loadAndProcessStats(); // stats-display.js의 함수 호출
                         } else {
-                             console.warn("[Dashboard] loadAndProcessStats function not found for UI update.");
                              showToast('통계 UI를 업데이트하려면 페이지를 새로고침하세요.', 'info');
                         }
                     }, 500); // 500ms (0.5초) 지연 후 호출
-                    // --- 차트 업데이트 로직 끝 ---
 
                 } else {
                     showToast(response?.message || '통계 가져오기 실패', 'error');
                 }
             } catch (error) {
-                console.error("Error parsing or importing CSV stats file:", error);
                 showToast(`파일 처리 오류: ${error.message}`, 'error');
             }
         };
         reader.onerror = (event) => {
-            console.error("File reading error:", event);
             showToast('파일을 읽는 중 오류가 발생했습니다.', 'error');
         };
         reader.readAsText(file); // 파일을 텍스트로 읽기
@@ -529,9 +472,8 @@ function handleStatsFileImport(event) {
 function resetStats() {
     if (confirm('정말로 모든 통계 기록을 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
         chrome.runtime.sendMessage({ action: 'resetStats' }, (response) => {
-            console.log("Reset response:", response); // 응답 로그 추가
             if (response?.success) {
-                showToast('통계가 초기화되었습니다.', 'success');
+                showToast('통계가 초기화되었습니다.');
                 // 통계 UI 갱신 로직 호출 (화면 비우기)
                 if (typeof clearStatsDisplay === 'function') {
                      clearStatsDisplay(); // stats-display.js의 함수 호출
@@ -547,7 +489,6 @@ function resetStats() {
 document.getElementById('export-stats')?.addEventListener('click', async () => {
     try {
         const response = await chrome.runtime.sendMessage({ action: 'exportStats' });
-        console.log("Export response:", response); // 응답 로그 추가
         if (response?.success) {
             // Background에서 받은 데이터 URI로 다운로드 링크 생성 및 클릭
             const downloadAnchorNode = document.createElement('a');
@@ -556,12 +497,11 @@ document.getElementById('export-stats')?.addEventListener('click', async () => {
             document.body.appendChild(downloadAnchorNode);
             downloadAnchorNode.click();
             downloadAnchorNode.remove();
-            showToast('통계가 내보내기되었습니다.', 'success'); // showToast 함수 필요
+            showToast('통계가 내보내기되었습니다.');
         } else {
             showToast(response?.message || '통계 내보내기 실패', 'error');
         }
     } catch (error) {
-        console.error("Error sending export message:", error);
         showToast('내보내기 요청 중 오류 발생', 'error');
     }
 });
@@ -569,9 +509,6 @@ document.getElementById('export-stats')?.addEventListener('click', async () => {
 // 백그라운드에서 통계 업데이트 메시지 수신
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "statsUpdated") {
-        console.log("Stats updated message received from background.");
-        // TODO: 통계 UI 갱신 로직 호출
-        // loadAndDisplayStats();
          sendResponse({ success: true }); // 메시지 수신 확인 응답
     }
     // 다른 메시지 처리 로직...
