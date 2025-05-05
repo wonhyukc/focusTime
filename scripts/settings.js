@@ -8,16 +8,18 @@ const DEFAULT_SETTINGS = {
     focus: {
         duration: 25,
         sound: "beep",
-        soundVolume: 10,
+        soundVolume: 100, // 종료음 볼륨
         soundType: "low-short-beep",
+        soundTypeVolume: 15, // 재생음 볼륨
         desktopNotification: true,
         tabNotification: false
     },
     shortBreak: {
         duration: 5,
         sound: "beep",
-        soundVolume: 10,
+        soundVolume: 100, // 종료음 볼륨
         soundType: "low-short-beep",
+        soundTypeVolume: 15, // 재생음 볼륨
         desktopNotification: true,
         tabNotification: false
     },
@@ -25,8 +27,9 @@ const DEFAULT_SETTINGS = {
         duration: 15,
         startAfter: 4,
         sound: "beep",
-        soundVolume: 10,
+        soundVolume: 100, // 종료음 볼륨
         soundType: "low-short-beep",
+        soundTypeVolume: 15, // 재생음 볼륨
         desktopNotification: true,
         tabNotification: false
     }
@@ -47,14 +50,24 @@ function getCurrentSettings() {
         const v = parseInt(el.value);
         return isNaN(v) ? def : v;
     };
+    // 볼륨 유효성 검사 함수
+    const clampVolume = (v, el, def = 10) => {
+        if (typeof v !== 'number' || isNaN(v)) return def;
+        if (v < 0 || v > 100) {
+            showToast('볼륨은 0~100 사이의 값만 입력할 수 있습니다.', 'error');
+            if (el) el.value = def;
+            return def;
+        }
+        return v;
+    };
     const settings = {
         projectName: document.getElementById('project-name')?.value || DEFAULT_SETTINGS.projectName,
         focus: {
             duration: getNumberOrDefault('focus-duration', DEFAULT_SETTINGS.focus.duration),
             sound: document.getElementById('focus-sound')?.value,
             soundType: document.getElementById('focus-sound-type')?.value,
-            soundVolume: getNumberOrDefault('focus-sound-volume', DEFAULT_SETTINGS.focus.soundVolume),
-            soundTypeVolume: getNumberOrDefault('focus-sound-type-volume', DEFAULT_SETTINGS.focus.soundVolume),
+            soundVolume: clampVolume(getNumberOrDefault('focus-sound-volume', DEFAULT_SETTINGS.focus.soundVolume), document.getElementById('focus-sound-volume'), DEFAULT_SETTINGS.focus.soundVolume),
+            soundTypeVolume: clampVolume(getNumberOrDefault('focus-sound-type-volume', DEFAULT_SETTINGS.focus.soundTypeVolume), document.getElementById('focus-sound-type-volume'), DEFAULT_SETTINGS.focus.soundTypeVolume),
             desktopNotification: document.getElementById('focus-desktop-notification')?.checked,
             tabNotification: document.getElementById('focus-tab-notification')?.checked
         },
@@ -62,8 +75,8 @@ function getCurrentSettings() {
             duration: getNumberOrDefault('short-break-duration', DEFAULT_SETTINGS.shortBreak.duration),
             sound: document.getElementById('short-break-sound')?.value,
             soundType: document.getElementById('short-break-sound-type')?.value,
-            soundVolume: getNumberOrDefault('short-break-sound-volume', DEFAULT_SETTINGS.shortBreak.soundVolume),
-            soundTypeVolume: getNumberOrDefault('short-break-sound-type-volume', DEFAULT_SETTINGS.shortBreak.soundVolume),
+            soundVolume: clampVolume(getNumberOrDefault('short-break-sound-volume', DEFAULT_SETTINGS.shortBreak.soundVolume), document.getElementById('short-break-sound-volume'), DEFAULT_SETTINGS.shortBreak.soundVolume),
+            soundTypeVolume: clampVolume(getNumberOrDefault('short-break-sound-type-volume', DEFAULT_SETTINGS.shortBreak.soundTypeVolume), document.getElementById('short-break-sound-type-volume'), DEFAULT_SETTINGS.shortBreak.soundTypeVolume),
             desktopNotification: document.getElementById('short-break-desktop-notification')?.checked,
             tabNotification: document.getElementById('short-break-tab-notification')?.checked
         },
@@ -72,8 +85,8 @@ function getCurrentSettings() {
             startAfter: getNumberOrDefault('long-break-start', DEFAULT_SETTINGS.longBreak.startAfter),
             sound: document.getElementById('long-break-sound')?.value,
             soundType: document.getElementById('long-break-sound-type')?.value,
-            soundVolume: getNumberOrDefault('long-break-sound-volume', DEFAULT_SETTINGS.longBreak.soundVolume),
-            soundTypeVolume: getNumberOrDefault('long-break-sound-type-volume', DEFAULT_SETTINGS.longBreak.soundVolume),
+            soundVolume: clampVolume(getNumberOrDefault('long-break-sound-volume', DEFAULT_SETTINGS.longBreak.soundVolume), document.getElementById('long-break-sound-volume'), DEFAULT_SETTINGS.longBreak.soundVolume),
+            soundTypeVolume: clampVolume(getNumberOrDefault('long-break-sound-type-volume', DEFAULT_SETTINGS.longBreak.soundTypeVolume), document.getElementById('long-break-sound-type-volume'), DEFAULT_SETTINGS.longBreak.soundTypeVolume),
             desktopNotification: document.getElementById('long-break-desktop-notification')?.checked,
             tabNotification: document.getElementById('long-break-tab-notification')?.checked
         }
@@ -89,7 +102,7 @@ function mergeWithDefaultSettings(userSettings) {
         focus: {
             duration: 25,
             sound: "beep",
-            soundVolume: 10,
+            soundVolume: 100,
             soundType: "brown_noise",
             desktopNotification: true,
             tabNotification: true
@@ -97,7 +110,7 @@ function mergeWithDefaultSettings(userSettings) {
         shortBreak: {
             duration: 5,
             sound: "beep",
-            soundVolume: 10,
+            soundVolume: 100,
             desktopNotification: true,
             tabNotification: true
         },
@@ -105,7 +118,7 @@ function mergeWithDefaultSettings(userSettings) {
             duration: 15,
             startAfter: 4,
             sound: "beep",
-            soundVolume: 10,
+            soundVolume: 100,
             desktopNotification: true,
             tabNotification: true
         },
