@@ -8,7 +8,7 @@ const DEFAULT_SETTINGS = {
     focus: {
         duration: 25,
         sound: "beep",
-        soundVolume: 50,
+        soundVolume: 10,
         soundType: "low-short-beep",
         desktopNotification: true,
         tabNotification: false,
@@ -17,7 +17,7 @@ const DEFAULT_SETTINGS = {
     shortBreak: {
         duration: 5,
         sound: "beep",
-        soundVolume: 50,
+        soundVolume: 10,
         soundType: "low-short-beep",
         desktopNotification: true,
         tabNotification: false
@@ -26,7 +26,7 @@ const DEFAULT_SETTINGS = {
         duration: 15,
         startAfter: 4,
         sound: "beep",
-        soundVolume: 50,
+        soundVolume: 10,
         soundType: "low-short-beep",
         desktopNotification: true,
         tabNotification: false
@@ -42,31 +42,40 @@ function getInputNumberOrDefault(id, defaultValue = 100) {
 
 // 현재 설정 가져오기
 function getCurrentSettings() {
+    const getNumberOrDefault = (id, def) => {
+        const el = document.getElementById(id);
+        if (!el) return def;
+        const v = parseInt(el.value);
+        return isNaN(v) ? def : v;
+    };
     const settings = {
         projectName: document.getElementById('project-name')?.value || DEFAULT_SETTINGS.projectName,
         focus: {
-            duration: parseInt(document.getElementById('focus-duration')?.value) || DEFAULT_SETTINGS.focus.duration,
+            duration: getNumberOrDefault('focus-duration', DEFAULT_SETTINGS.focus.duration),
             sound: document.getElementById('focus-sound')?.value,
             soundType: document.getElementById('focus-sound-type')?.value,
-            soundVolume: parseInt(document.getElementById('focus-sound-volume')?.value) || DEFAULT_SETTINGS.focus.soundVolume,
+            soundVolume: getNumberOrDefault('focus-sound-volume', DEFAULT_SETTINGS.focus.soundVolume),
+            soundTypeVolume: getNumberOrDefault('focus-sound-type-volume', DEFAULT_SETTINGS.focus.soundVolume),
             desktopNotification: document.getElementById('focus-desktop-notification')?.checked,
             tabNotification: document.getElementById('focus-tab-notification')?.checked,
             playSound: false
         },
         shortBreak: {
-            duration: parseInt(document.getElementById('short-break-duration')?.value) || DEFAULT_SETTINGS.shortBreak.duration,
+            duration: getNumberOrDefault('short-break-duration', DEFAULT_SETTINGS.shortBreak.duration),
             sound: document.getElementById('short-break-sound')?.value,
             soundType: document.getElementById('short-break-sound-type')?.value,
-            soundVolume: parseInt(document.getElementById('short-break-sound-volume')?.value) || DEFAULT_SETTINGS.shortBreak.soundVolume,
+            soundVolume: getNumberOrDefault('short-break-sound-volume', DEFAULT_SETTINGS.shortBreak.soundVolume),
+            soundTypeVolume: getNumberOrDefault('short-break-sound-type-volume', DEFAULT_SETTINGS.shortBreak.soundVolume),
             desktopNotification: document.getElementById('short-break-desktop-notification')?.checked,
             tabNotification: document.getElementById('short-break-tab-notification')?.checked
         },
         longBreak: {
-            duration: parseInt(document.getElementById('long-break-duration')?.value) || DEFAULT_SETTINGS.longBreak.duration,
-            startAfter: parseInt(document.getElementById('long-break-start')?.value) || DEFAULT_SETTINGS.longBreak.startAfter,
+            duration: getNumberOrDefault('long-break-duration', DEFAULT_SETTINGS.longBreak.duration),
+            startAfter: getNumberOrDefault('long-break-start', DEFAULT_SETTINGS.longBreak.startAfter),
             sound: document.getElementById('long-break-sound')?.value,
             soundType: document.getElementById('long-break-sound-type')?.value,
-            soundVolume: parseInt(document.getElementById('long-break-sound-volume')?.value) || DEFAULT_SETTINGS.longBreak.soundVolume,
+            soundVolume: getNumberOrDefault('long-break-sound-volume', DEFAULT_SETTINGS.longBreak.soundVolume),
+            soundTypeVolume: getNumberOrDefault('long-break-sound-type-volume', DEFAULT_SETTINGS.longBreak.soundVolume),
             desktopNotification: document.getElementById('long-break-desktop-notification')?.checked,
             tabNotification: document.getElementById('long-break-tab-notification')?.checked
         }
@@ -75,38 +84,91 @@ function getCurrentSettings() {
     return settings;
 }
 
+function mergeWithDefaultSettings(userSettings) {
+    const DEFAULT_SETTINGS_BG = {
+        projectName: "집중 시간 도우미 설정",
+        version: "1.0",
+        focus: {
+            duration: 25,
+            sound: "beep",
+            soundVolume: 10,
+            soundType: "brown_noise",
+            desktopNotification: true,
+            tabNotification: true
+        },
+        shortBreak: {
+            duration: 5,
+            sound: "beep",
+            soundVolume: 10,
+            desktopNotification: true,
+            tabNotification: true
+        },
+        longBreak: {
+            duration: 15,
+            startAfter: 4,
+            sound: "beep",
+            soundVolume: 10,
+            desktopNotification: true,
+            tabNotification: true
+        },
+        general: {
+            soundEnabled: true,
+            autoStartBreaks: false,
+            autoStartPomodoros: false,
+            availableSounds: [
+                { name: "기본 비프음", value: "low-short-beep" },
+                { name: "공(Gong)", value: "gong" },
+                { name: "Brown Noise", value: "brown_noise" },
+                { name: "Rainy Day", value: "rainy_birds" },
+                { name: "Clock Ticking", value: "clock_ticking" }
+            ]
+        }
+    };
+    return {
+        projectName: userSettings.projectName ?? DEFAULT_SETTINGS_BG.projectName,
+        version: DEFAULT_SETTINGS_BG.version,
+        focus: { ...DEFAULT_SETTINGS_BG.focus, ...(userSettings.focus || {}) },
+        shortBreak: { ...DEFAULT_SETTINGS_BG.shortBreak, ...(userSettings.shortBreak || {}) },
+        longBreak: { ...DEFAULT_SETTINGS_BG.longBreak, ...(userSettings.longBreak || {}) },
+        general: { ...DEFAULT_SETTINGS_BG.general, ...(userSettings.general || {}) }
+    };
+}
+
 // 설정 적용하기
 async function applySettings(settings) {
     try {
         // version 필드 강제 추가
         if (!settings.version) {
-            settings.version = '1.0'; // background.js의 DEFAULT_SETTINGS_BG.version과 동일하게!
+            settings.version = '1.0';
         }
+        // 병합: 누락된 필드는 기본값으로 채움
+        const mergedSettings = mergeWithDefaultSettings(settings);
+        console.log('[SETTINGS] 병합 후 저장될 settings:', mergedSettings);
         // 프로젝트 이름 설정
         const projectNameElement = document.getElementById('project-name');
         if (projectNameElement) {
-            projectNameElement.value = settings.projectName || DEFAULT_SETTINGS.projectName;
+            projectNameElement.value = mergedSettings.projectName || DEFAULT_SETTINGS.projectName;
         }
 
         // Focus 설정
         const focusDurationElement = document.getElementById('focus-duration');
         if (focusDurationElement) {
-            focusDurationElement.value = settings.focus.duration;
+            focusDurationElement.value = mergedSettings.focus.duration;
         }
 
         const focusSoundElement = document.getElementById('focus-sound');
         if (focusSoundElement) {
-            focusSoundElement.value = settings.focus.sound;
+            focusSoundElement.value = mergedSettings.focus.sound;
         }
 
         const focusSoundTypeElement = document.getElementById('focus-sound-type');
         if (focusSoundTypeElement) {
-            focusSoundTypeElement.value = settings.focus.soundType;
+            focusSoundTypeElement.value = mergedSettings.focus.soundType;
         }
 
         const focusSoundVolumeElement = document.getElementById('focus-sound-volume');
         if (focusSoundVolumeElement) {
-            focusSoundVolumeElement.value = settings.focus.soundVolume;
+            focusSoundVolumeElement.value = mergedSettings.focus.soundVolume;
             focusSoundVolumeElement.addEventListener('input', (e) => {
                 console.log('[SETTINGS] 볼륨 입력값:', e.target.value);
                 const settings = getCurrentSettings();
@@ -123,22 +185,22 @@ async function applySettings(settings) {
 
         const focusDesktopNotificationElement = document.getElementById('focus-desktop-notification');
         if (focusDesktopNotificationElement) {
-            focusDesktopNotificationElement.checked = settings.focus.desktopNotification;
+            focusDesktopNotificationElement.checked = mergedSettings.focus.desktopNotification;
         }
 
         const focusTabNotificationElement = document.getElementById('focus-tab-notification');
         if (focusTabNotificationElement) {
-            focusTabNotificationElement.checked = settings.focus.tabNotification;
+            focusTabNotificationElement.checked = mergedSettings.focus.tabNotification;
         }
 
         // Short Break 설정
-        document.getElementById('short-break-duration').value = settings.shortBreak.duration;
+        document.getElementById('short-break-duration').value = mergedSettings.shortBreak.duration;
         const shortBreakSoundEl = document.getElementById('short-break-sound');
-        if (shortBreakSoundEl) shortBreakSoundEl.value = settings.shortBreak.sound;
+        if (shortBreakSoundEl) shortBreakSoundEl.value = mergedSettings.shortBreak.sound;
         const shortBreakSoundTypeEl = document.getElementById('short-break-sound-type');
-        if (shortBreakSoundTypeEl) shortBreakSoundTypeEl.value = settings.shortBreak.soundType;
-        document.getElementById('short-break-desktop-notification').checked = settings.shortBreak.desktopNotification;
-        document.getElementById('short-break-tab-notification').checked = settings.shortBreak.tabNotification;
+        if (shortBreakSoundTypeEl) shortBreakSoundTypeEl.value = mergedSettings.shortBreak.soundType;
+        document.getElementById('short-break-desktop-notification').checked = mergedSettings.shortBreak.desktopNotification;
+        document.getElementById('short-break-tab-notification').checked = mergedSettings.shortBreak.tabNotification;
 
         const shortBreakSoundVolumeElement = document.getElementById('short-break-sound-volume');
         if (shortBreakSoundVolumeElement) {
@@ -157,14 +219,14 @@ async function applySettings(settings) {
         }
 
         // Long Break 설정
-        document.getElementById('long-break-duration').value = settings.longBreak.duration;
-        document.getElementById('long-break-start').value = settings.longBreak.startAfter;
+        document.getElementById('long-break-duration').value = mergedSettings.longBreak.duration;
+        document.getElementById('long-break-start').value = mergedSettings.longBreak.startAfter;
         const longBreakSoundEl = document.getElementById('long-break-sound');
-        if (longBreakSoundEl) longBreakSoundEl.value = settings.longBreak.sound;
+        if (longBreakSoundEl) longBreakSoundEl.value = mergedSettings.longBreak.sound;
         const longBreakSoundTypeEl = document.getElementById('long-break-sound-type');
-        if (longBreakSoundTypeEl) longBreakSoundTypeEl.value = settings.longBreak.soundType;
-        document.getElementById('long-break-desktop-notification').checked = settings.longBreak.desktopNotification;
-        document.getElementById('long-break-tab-notification').checked = settings.longBreak.tabNotification;
+        if (longBreakSoundTypeEl) longBreakSoundTypeEl.value = mergedSettings.longBreak.soundType;
+        document.getElementById('long-break-desktop-notification').checked = mergedSettings.longBreak.desktopNotification;
+        document.getElementById('long-break-tab-notification').checked = mergedSettings.longBreak.tabNotification;
 
         const longBreakSoundVolumeElement = document.getElementById('long-break-sound-volume');
         if (longBreakSoundVolumeElement) {
@@ -183,15 +245,19 @@ async function applySettings(settings) {
         }
 
         // 설정을 Chrome storage에 저장
-        chrome.storage.sync.set({ settings }, async () => {
+        chrome.storage.sync.set({ settings: mergedSettings }, async () => {
             if (chrome.runtime.lastError) {
                 console.error('Error saving settings:', chrome.runtime.lastError);
                 showToast('설정 저장 중 오류 발생', 'error');
             } else {
-                console.log('[SETTINGS] 저장된 settings:', settings);
+                console.log('[SETTINGS] 저장된 settings:', mergedSettings);
+                // 저장 직후 실제 저장된 값 확인
+                chrome.storage.sync.get('settings', (result) => {
+                    console.log('[SETTINGS] 저장 직후 읽은 settings:', result.settings);
+                });
                 // 프로젝트 이름이 있으면 기록에 추가
-                if (settings.projectName) {
-                    await addProjectToHistory(settings.projectName);
+                if (mergedSettings.projectName) {
+                    await addProjectToHistory(mergedSettings.projectName);
                 }
             }
         });

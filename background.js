@@ -9,7 +9,7 @@ const DEFAULT_SETTINGS_BG = {
     focus: {
         duration: 25,
         sound: "beep", // '타이머 소리' 기본값
-        soundVolume: 50,
+        soundVolume: 10, // 디폴트 볼륨을 10으로 변경
         soundType: "brown_noise", // '재생' 기본값 (이제 beep/gong 제외)
         desktopNotification: true,
         tabNotification: true
@@ -17,7 +17,7 @@ const DEFAULT_SETTINGS_BG = {
     shortBreak: {
         duration: 5,
         sound: "beep", // '타이머 소리' 기본값
-        soundVolume: 50,
+        soundVolume: 10,
         desktopNotification: true,
         tabNotification: true
     },
@@ -25,7 +25,7 @@ const DEFAULT_SETTINGS_BG = {
         duration: 15,
         startAfter: 4,
         sound: "beep", // '타이머 소리' 기본값
-        soundVolume: 50,
+        soundVolume: 10,
         desktopNotification: true,
         tabNotification: true
     },
@@ -267,8 +267,8 @@ function validateDuration(duration, defaultValue) {
 async function getCurrentSettings() {
     try {
         const result = await chrome.storage.sync.get('settings');
+        console.log('[BG][getCurrentSettings] chrome.storage.sync.get:', result.settings);
         let settings = result.settings;
-
         // 설정이 없거나 버전이 다르면 기본값(BG용)으로 병합
         if (!settings || settings.version !== DEFAULT_SETTINGS_BG.version) {
             console.log('[BG] 저장된 설정이 없거나 버전이 달라 기본 설정과 병합합니다.');
@@ -287,7 +287,9 @@ async function getCurrentSettings() {
             settings.version = DEFAULT_SETTINGS_BG.version; // 버전 업데이트
             await chrome.storage.sync.set({ settings }); // 병합된 설정 저장
         }
-
+        // 병합 후 focus 로그
+        const mergedFocus = { ...DEFAULT_SETTINGS_BG.focus, ...(settings.focus || {}) };
+        console.log('[BG][getCurrentSettings] 병합 후 focus:', mergedFocus);
         // 프로젝트 이름 처리 (없으면 BG 기본값 사용)
         const projectName = settings.projectName !== undefined ? settings.projectName : DEFAULT_SETTINGS_BG.projectName;
 
@@ -297,20 +299,23 @@ async function getCurrentSettings() {
             focus: {
                 ...DEFAULT_SETTINGS_BG.focus,
                 ...(settings.focus || {}),
-                duration: validateDuration(settings.focus?.duration, DEFAULT_SETTINGS_BG.focus.duration)
+                duration: validateDuration(settings.focus?.duration, DEFAULT_SETTINGS_BG.focus.duration),
+                soundVolume: settings.focus?.soundTypeVolume ?? settings.focus?.soundVolume ?? DEFAULT_SETTINGS_BG.focus.soundVolume
                 // sound, soundType 은 기본값과 병합하여 사용
             },
             shortBreak: {
                  ...DEFAULT_SETTINGS_BG.shortBreak,
                 ...(settings.shortBreak || {}),
-                duration: validateDuration(settings.shortBreak?.duration, DEFAULT_SETTINGS_BG.shortBreak.duration)
+                duration: validateDuration(settings.shortBreak?.duration, DEFAULT_SETTINGS_BG.shortBreak.duration),
+                soundVolume: settings.shortBreak?.soundTypeVolume ?? settings.shortBreak?.soundVolume ?? DEFAULT_SETTINGS_BG.shortBreak.soundVolume
                 // sound 는 기본값과 병합하여 사용, soundType은 없음
             },
             longBreak: {
                  ...DEFAULT_SETTINGS_BG.longBreak,
                 ...(settings.longBreak || {}),
                 duration: validateDuration(settings.longBreak?.duration, DEFAULT_SETTINGS_BG.longBreak.duration),
-                startAfter: validateDuration(settings.longBreak?.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter)
+                startAfter: validateDuration(settings.longBreak?.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter),
+                soundVolume: settings.longBreak?.soundTypeVolume ?? settings.longBreak?.soundVolume ?? DEFAULT_SETTINGS_BG.longBreak.soundVolume
                 // sound 는 기본값과 병합하여 사용, soundType은 없음
             },
              general: settings.general || DEFAULT_SETTINGS_BG.general
@@ -336,6 +341,7 @@ async function startTimer(type) {
     });
 
     const settings = await getCurrentSettings();
+    console.log('[BG][startTimer] playSound 직전 focus.soundVolume:', settings.focus.soundVolume);
     timerState.type = type;
     timerState.isRunning = true;
     timerState.sessionComplete = false;
@@ -351,23 +357,23 @@ async function startTimer(type) {
             durationMinutes = validateDuration(settings.focus.duration, DEFAULT_SETTINGS_BG.focus.duration);
             timerState.isBreak = false;
             soundType = settings.focus.soundType;
-            soundVolume = settings.focus.soundVolume;
+            soundVolume = settings.focus.soundTypeVolume ?? settings.focus.soundVolume ?? DEFAULT_SETTINGS_BG.focus.soundVolume;
             console.log('[playSound-call] startTimer(focus):', { soundType, soundVolume });
             await playSound(soundType, false, soundVolume);
             break;
         case 'shortBreak':
             durationMinutes = validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS_BG.shortBreak.duration);
             timerState.isBreak = true;
-            soundType = settings.shortBreak.sound || DEFAULT_SETTINGS_BG.shortBreak.sound;
-            soundVolume = settings.shortBreak.soundVolume ?? DEFAULT_SETTINGS_BG.shortBreak.soundVolume;
+            soundType = settings.shortBreak.soundType;
+            soundVolume = settings.shortBreak.soundTypeVolume ?? settings.shortBreak.soundVolume ?? DEFAULT_SETTINGS_BG.shortBreak.soundVolume;
             console.log('[playSound-call] startTimer(shortBreak):', { soundType, soundVolume });
             await playSound(soundType, false, soundVolume);
             break;
         case 'longBreak':
             durationMinutes = validateDuration(settings.longBreak.duration, DEFAULT_SETTINGS_BG.longBreak.duration);
             timerState.isBreak = true;
-            soundType = settings.longBreak.sound || DEFAULT_SETTINGS_BG.longBreak.sound;
-            soundVolume = settings.longBreak.soundVolume ?? DEFAULT_SETTINGS_BG.longBreak.soundVolume;
+            soundType = settings.longBreak.soundType;
+            soundVolume = settings.longBreak.soundTypeVolume ?? settings.longBreak.soundVolume ?? DEFAULT_SETTINGS_BG.longBreak.soundVolume;
             console.log('[playSound-call] startTimer(longBreak):', { soundType, soundVolume });
             await playSound(soundType, false, soundVolume);
             break;
@@ -413,6 +419,7 @@ async function startTimer(type) {
 // 다음 세션 시작
 async function startNextSession() {
     const settings = await getCurrentSettings();
+    console.log('[BG][startNextSession] playSound 직전 focus.soundVolume:', settings.focus.soundVolume);
     let soundType, soundVolume;
     if (!timerState.isBreak) {
         // focus 끝나고 break로 넘어감
@@ -587,6 +594,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 sessionComplete: timerState.sessionComplete
             });
             return true;
+        case 'OFFSCREEN_LOADED':
+            console.log('[BG] Offscreen 문서 로드됨');
+            break;
         default:
             console.log("Unknown action received:", message.action);
             sendResponse({ success: false, message: 'Unknown action' });
@@ -657,8 +667,9 @@ async function playSound(soundType, isPreview = false, volume = undefined) {
         // Offscreen Document가 없을 때만 새로 생성
         await new Promise(async (resolve, reject) => {
             try {
+                // 메시지 리스너 중복 방지
                 const messageListener = (message) => {
-                    if (message.type === 'OFFSCREEN_LOADED') {
+                    if (message.action === 'OFFSCREEN_LOADED') {
                         console.log("Offscreen Document 로드 완료");
                         chrome.runtime.onMessage.removeListener(messageListener);
                         resolve();
@@ -851,6 +862,7 @@ async function timerComplete() {
 
     // 알림음 재생 (인자 없이 호출 -> playSound가 완료된 세션 타입 기반으로 소리 결정)
     const settings = await getCurrentSettings();
+    console.log('[BG][timerComplete] playSound 직전 focus.soundVolume:', settings.focus.soundVolume);
     let soundType, soundVolume;
     switch (timerState.type) {
         case 'focus':
@@ -993,49 +1005,55 @@ async function saveSessionData(completedSession) {
 // 설정 변경 감지 및 현재 세션 업데이트
 chrome.storage.onChanged.addListener(async (changes, namespace) => {
     if (namespace === 'sync' && changes.settings) {
+        console.log('[BG][onChanged] oldValue:', changes.settings.oldValue);
+        console.log('[BG][onChanged] newValue:', changes.settings.newValue);
+        const settings = await getCurrentSettings();
+        console.log('[BG][onChanged] getCurrentSettings()로 읽은 볼륨:', {
+            focus: settings.focus.soundVolume,
+            shortBreak: settings.shortBreak.soundVolume,
+            longBreak: settings.longBreak.soundVolume
+        });
         const newSettings = changes.settings.newValue;
         
         // 현재 실행 중인 세션이 있을 경우 시간 업데이트
         if (timerState.timeLeft > 0) {
-            const settings = await getCurrentSettings();
             let newDuration;
             let newVolume;
-            
+            let newSoundType;
             switch (timerState.type) {
                 case 'focus':
                     newDuration = settings.focus.duration * 60;
-                    newVolume = settings.focus.soundVolume;
+                    newVolume = settings.focus.soundTypeVolume ?? settings.focus.soundVolume ?? DEFAULT_SETTINGS_BG.focus.soundVolume;
+                    newSoundType = settings.focus.soundType;
                     break;
                 case 'shortBreak':
                     newDuration = settings.shortBreak.duration * 60;
-                    newVolume = settings.shortBreak.soundVolume;
+                    newVolume = settings.shortBreak.soundTypeVolume ?? settings.shortBreak.soundVolume ?? DEFAULT_SETTINGS_BG.shortBreak.soundVolume;
+                    newSoundType = settings.shortBreak.soundType;
                     break;
                 case 'longBreak':
                     newDuration = settings.longBreak.duration * 60;
-                    newVolume = settings.longBreak.soundVolume;
+                    newVolume = settings.longBreak.soundTypeVolume ?? settings.longBreak.soundVolume ?? DEFAULT_SETTINGS_BG.longBreak.soundVolume;
+                    newSoundType = settings.longBreak.soundType;
                     break;
             }
-            
             // 남은 시간 비율 계산 및 적용
             const remainingRatio = timerState.timeLeft / (timerState.timeLeft + 1);
             timerState.timeLeft = Math.round(newDuration * remainingRatio);
-            
             // 상태 저장
             await chrome.storage.local.set({ timeLeft: timerState.timeLeft });
-            
             // 뱃지 업데이트
             updateBadgeForPauseState();
-
             // --- 볼륨 즉시 반영 ---
             if (typeof newVolume === 'number') {
                 console.log(`[BG] 볼륨 변경 감지: 세션=${timerState.type}, 새 볼륨=${newVolume}`);
                 chrome.runtime.sendMessage({
                     command: 'playSound',
-                    soundType: timerState.type === 'focus' ? settings.focus.soundType : settings[timerState.type]?.sound,
+                    soundType: newSoundType,
                     isPreview: false,
                     volume: newVolume
                 });
-                console.log(`[BG] playSound 메시지 전송: soundType=${timerState.type === 'focus' ? settings.focus.soundType : settings[timerState.type]?.sound}, volume=${newVolume}`);
+                console.log(`[BG] playSound 메시지 전송: soundType=${newSoundType}, volume=${newVolume}`);
             }
             // --- 볼륨 즉시 반영 끝 ---
         }
@@ -1163,4 +1181,7 @@ console.log('\n---집중시간 앱 시작---------------');
 // Add a new function to log sound-related information
 function logSoundInfo(soundType, isPreview) {
     // 로그 제거
-} 
+}
+
+// 초기화/리셋 시 DEFAULT_SETTINGS_BG 로그
+console.log('[BG][init] DEFAULT_SETTINGS_BG:', DEFAULT_SETTINGS_BG); 

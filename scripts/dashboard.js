@@ -199,7 +199,7 @@ function loadSettings() {
             if (focus.soundType) {
                 document.getElementById('focus-sound-type').value = focus.soundType;
             }
-            document.getElementById('focus-sound-volume').value = (typeof focus.soundVolume === 'number') ? focus.soundVolume : 100;
+            document.getElementById('focus-sound-volume').value = (typeof focus.soundVolume === 'number') ? focus.soundVolume : 10;
             document.getElementById('focus-sound-type-volume').value = (typeof focus.soundTypeVolume === 'number') ? focus.soundTypeVolume : 100;
             document.getElementById('focus-desktop-notification').checked = focus.desktopNotification;
             document.getElementById('focus-tab-notification').checked = focus.tabNotification;
@@ -209,7 +209,7 @@ function loadSettings() {
             if (shortBreak.sound) {
                 document.getElementById('short-break-sound').value = shortBreak.sound;
             }
-            document.getElementById('short-break-sound-volume').value = (typeof shortBreak.soundVolume === 'number') ? shortBreak.soundVolume : 100;
+            document.getElementById('short-break-sound-volume').value = (typeof shortBreak.soundVolume === 'number') ? shortBreak.soundVolume : 10;
             document.getElementById('short-break-desktop-notification').checked = shortBreak.desktopNotification;
             document.getElementById('short-break-tab-notification').checked = shortBreak.tabNotification;
 
@@ -219,7 +219,7 @@ function loadSettings() {
             if (longBreak.sound) {
                 document.getElementById('long-break-sound').value = longBreak.sound;
             }
-            document.getElementById('long-break-sound-volume').value = (typeof longBreak.soundVolume === 'number') ? longBreak.soundVolume : 100;
+            document.getElementById('long-break-sound-volume').value = (typeof longBreak.soundVolume === 'number') ? longBreak.soundVolume : 10;
             document.getElementById('long-break-desktop-notification').checked = longBreak.desktopNotification;
             document.getElementById('long-break-tab-notification').checked = longBreak.tabNotification;
         }
