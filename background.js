@@ -569,14 +569,11 @@ async function playSound(soundType, isPreview = false, volume = undefined) {
 
     try {
         if (isPreview) {
-            // 미리듣기 시에는 전달받은 soundType/volume 사용 (없으면 기본값 유지)
             finalSoundType = soundType || 'low-short-beep';
             if (typeof finalVolume !== 'number') finalVolume = 50;
         } else {
-            // 타이머 완료 시
             const settings = await getCurrentSettings();
-            const completedSessionType = timerState.type; // 방금 완료된 세션 타입
-
+            const completedSessionType = timerState.type;
             if (completedSessionType === 'focus') {
                 finalSoundType = settings.focus?.soundType || DEFAULT_SETTINGS_BG.focus.soundType;
                 finalVolume = settings.focus?.soundVolume ?? DEFAULT_SETTINGS_BG.focus.soundVolume;
@@ -587,41 +584,33 @@ async function playSound(soundType, isPreview = false, volume = undefined) {
                 finalSoundType = settings.longBreak?.sound || DEFAULT_SETTINGS_BG.longBreak.sound;
                 finalVolume = settings.longBreak?.soundVolume ?? DEFAULT_SETTINGS_BG.longBreak.soundVolume;
             } else {
-                // 예외 처리: 알 수 없는 세션 타입이면 기본 비프음
-                console.warn(`Unknown session type for sound: ${completedSessionType}`);
                 finalSoundType = 'low-short-beep';
                 finalVolume = 50;
             }
-            // 'low-short-beep' 값을 'beep'으로 매핑 (offscreen.js는 'beep'을 기대)
             if (finalSoundType === 'low-short-beep') {
                 finalSoundType = 'beep';
             }
         }
-        
+
         console.log("Final sound type to play:", finalSoundType, "Is Preview:", isPreview, "Volume:", finalVolume);
-        
+
         // 이미 존재하는 Offscreen Document 확인
         const existingContexts = await chrome.runtime.getContexts({
             contextTypes: ['OFFSCREEN_DOCUMENT'],
             documentUrls: [chrome.runtime.getURL('offscreen.html')]
         });
-        console.log("existingContexts:", existingContexts);
-
-        const messagePayload = {
-            command: "playSound",
-            soundType: finalSoundType, // 결정된 최종 소리 타입 사용
-            isPreview: isPreview,
-            volume: finalVolume // 올바른 볼륨 사용
-        };
-
         if (existingContexts.length > 0) {
-            console.log("기존 Offscreen Document에 메시지 전송");
-            chrome.runtime.sendMessage(messagePayload);
+            // 기존 문서에 메시지 전송만 하고, 새로 만들지 않음
+            chrome.runtime.sendMessage({
+                command: "playSound",
+                soundType: finalSoundType,
+                isPreview: isPreview,
+                volume: finalVolume
+            });
             return;
         }
 
-        console.log("새 Offscreen Document 생성 시도");
-        // Offscreen Document 생성 및 로드 완료 대기
+        // Offscreen Document가 없을 때만 새로 생성
         await new Promise(async (resolve, reject) => {
             try {
                 const messageListener = (message) => {
@@ -644,42 +633,21 @@ async function playSound(soundType, isPreview = false, volume = undefined) {
                     reject(new Error('Offscreen Document 로드 타임아웃'));
                 }, 10000);
             } catch (error) {
-                // 중복 생성 에러 발생 시 fallback: 기존 문서에 메시지 전송
-                if (
-                    error &&
-                    error.message &&
-                    error.message.includes("Only a single offscreen document may be created")
-                ) {
-                    console.warn("오프스크린 문서 중복 생성 오류, 기존 문서에 메시지 전송 시도");
-                    chrome.runtime.sendMessage(messagePayload);
-                    resolve();
-                } else {
-                    console.error("Offscreen Document 생성 중 오류:", error);
-                    reject(error);
-                }
+                console.error("Offscreen Document 생성 중 오류:", error);
+                reject(error);
             }
         });
 
         console.log("소리 재생 메시지 전송");
-        chrome.runtime.sendMessage(messagePayload);
+        chrome.runtime.sendMessage({
+            command: "playSound",
+            soundType: finalSoundType,
+            isPreview: isPreview,
+            volume: finalVolume
+        });
 
     } catch (error) {
-        // catch 블록에서도 중복 생성 에러 fallback 처리
-        if (
-            error &&
-            error.message &&
-            error.message.includes("Only a single offscreen document may be created")
-        ) {
-            console.warn("오프스크린 문서 중복 생성 오류(catch), 기존 문서에 메시지 전송 시도");
-            chrome.runtime.sendMessage({
-                command: "playSound",
-                soundType: finalSoundType,
-                isPreview: isPreview,
-                volume: finalVolume
-            });
-        } else {
-            console.error("소리 재생 중 오류 발생:", error);
-        }
+        console.error("소리 재생 중 오류 발생:", error);
     }
 }
 
