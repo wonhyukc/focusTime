@@ -7,12 +7,32 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.runtime.sendMessage({ type: 'OFFSCREEN_LOADED' });
 });
 
+let currentAudio = null;
+let currentSoundType = null;
+let currentIsPreview = null;
+
 // 백그라운드 스크립트로부터 메시지를 받기 위한 리스너
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("Offscreen: 메시지 수신", message);
     if (message.command === "playSound") {
-        console.log("Offscreen: 알림음 재생 시작", message.soundType, "Is Preview:", message.isPreview);
-        // isPreview 플래그와 볼륨도 playNotificationSound 함수로 전달
+        // 같은 소리, 같은 isPreview, 오디오가 이미 재생 중이면 볼륨만 조정
+        if (
+            currentAudio &&
+            !currentAudio.paused &&
+            message.soundType === currentSoundType &&
+            message.isPreview === currentIsPreview
+        ) {
+            currentAudio.volume = (message.volume ?? 50) / 100;
+            console.log("Offscreen: 기존 오디오 볼륨만 조정", message.volume);
+            return;
+        }
+        // 기존 오디오가 있으면 정지
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+        }
+        currentSoundType = message.soundType;
+        currentIsPreview = message.isPreview;
         playNotificationSound(message.soundType, message.isPreview, message.volume);
     }
     return false;
@@ -97,6 +117,9 @@ function playAudioFile(soundPath, isPreview = false, volume = 50) { // volume �
         previewTimeoutId = null;
         closeTimeoutId = null;
     };
+
+    // currentAudio에 할당 (볼륨 조정 및 중복 방지용)
+    currentAudio = audio;
 
     audio.oncanplaythrough = () => {
         console.log(`Offscreen: ${soundPath} 소리 로드 완료, 재생 시작`);

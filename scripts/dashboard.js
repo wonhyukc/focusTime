@@ -69,17 +69,36 @@ document.addEventListener('DOMContentLoaded', function() {
         const soundType = document.getElementById('focus-sound')?.value || 'beep';
         logVolumeChange(soundType, e.target.value);
     });
+    document.getElementById('focus-sound-volume')?.addEventListener('change', function(e) {
+        saveSettings();
+    });
     document.getElementById('short-break-sound-volume')?.addEventListener('input', function(e) {
         const soundType = document.getElementById('short-break-sound')?.value || 'beep';
         logVolumeChange(soundType, e.target.value);
+    });
+    document.getElementById('short-break-sound-volume')?.addEventListener('change', function(e) {
+        saveSettings();
     });
     document.getElementById('long-break-sound-volume')?.addEventListener('input', function(e) {
         const soundType = document.getElementById('long-break-sound')?.value || 'beep';
         logVolumeChange(soundType, e.target.value);
     });
+    document.getElementById('long-break-sound-volume')?.addEventListener('change', function(e) {
+        saveSettings();
+    });
     document.getElementById('focus-sound-type-volume')?.addEventListener('input', function(e) {
         const soundType = document.getElementById('focus-sound-type')?.value || 'brown_noise';
-        logVolumeChange(soundType, e.target.value);
+        const volume = parseInt(e.target.value);
+        chrome.runtime.sendMessage({
+            command: 'playSound',
+            soundType: soundType,
+            isPreview: false,
+            volume: volume
+        });
+        logVolumeChange(soundType, volume);
+    });
+    document.getElementById('focus-sound-type-volume')?.addEventListener('change', function(e) {
+        saveSettings();
     });
 });
 
