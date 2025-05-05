@@ -63,7 +63,7 @@ async function createInitialMenus() {
     // 초기 상태 메뉴 생성
     chrome.contextMenus.create({
         id: 'cycleStart',
-        title: '사이클 시작',
+        title: '싸이클 시작',
         contexts: ['action']
     });
 
