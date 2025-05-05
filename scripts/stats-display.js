@@ -273,37 +273,37 @@ function getSessionsThisYear(history) {
 
 function processDailyData(history, durationFilter) {
     try {
-        const hourlyCounts = Array(24).fill(0);
+        const hourlyTotals = Array(24).fill(0);
         const filteredHistory = history.filter(entry =>
             entry.type === 'focus' && entry.durationMinutes == durationFilter // 선택된 지속시간 필터 적용
         );
 
         filteredHistory.forEach(entry => {
             const entryDate = getDateFromEntry(entry);
-            if (entryDate && !isNaN(entryDate)) { // 유효한 날짜인지 확인
+            if (entryDate && !isNaN(entryDate)) {
                 const hour = entryDate.getHours();
-                hourlyCounts[hour]++;
+                hourlyTotals[hour] += entry.durationMinutes || 0;
             }
         });
-        return hourlyCounts;
+        return hourlyTotals;
     } catch (error) {
-        return Array(24).fill(0); // 오류 시 빈 데이터 반환
+        return Array(24).fill(0);
     }
 }
 
 function processWeeklyData(history) {
     try {
-        const weeklyCounts = Array(7).fill(0); // 0: Sunday, 6: Saturday
+        const weeklyTotals = Array(7).fill(0);
         const focusHistory = history.filter(entry => entry.type === 'focus');
 
         focusHistory.forEach(entry => {
             const entryDate = getDateFromEntry(entry);
             if (entryDate && !isNaN(entryDate)) {
-                const dayOfWeek = entryDate.getDay(); // 0 = Sunday, 6 = Saturday
-                weeklyCounts[dayOfWeek]++;
+                const dayOfWeek = entryDate.getDay();
+                weeklyTotals[dayOfWeek] += entry.durationMinutes || 0;
             }
         });
-        return weeklyCounts;
+        return weeklyTotals;
      } catch (error) {
         return Array(7).fill(0);
     }
@@ -330,36 +330,36 @@ function processHeatmapData(history) {
 // 월별 데이터 집계 함수 (최근 12개월)
 function processMonthlyData(history) {
     const now = new Date();
-    const monthlyCounts = Array(12).fill(0); // 최근 12개월
+    const monthlyTotals = Array(12).fill(0);
     const focusHistory = history.filter(entry => entry.type === 'focus');
     focusHistory.forEach(entry => {
         const entryDate = getDateFromEntry(entry);
         if (entryDate && !isNaN(entryDate)) {
             const diffMonth = (now.getFullYear() - entryDate.getFullYear()) * 12 + (now.getMonth() - entryDate.getMonth());
             if (diffMonth >= 0 && diffMonth < 12) {
-                monthlyCounts[11 - diffMonth]++;
+                monthlyTotals[11 - diffMonth] += entry.durationMinutes || 0;
             }
         }
     });
-    return monthlyCounts;
+    return monthlyTotals;
 }
 
 // 연별 데이터 집계 함수 (최근 5년)
 function processYearlyData(history) {
     const now = new Date();
     const startYear = now.getFullYear() - 4;
-    const yearlyCounts = Array(5).fill(0);
+    const yearlyTotals = Array(5).fill(0);
     const focusHistory = history.filter(entry => entry.type === 'focus');
     focusHistory.forEach(entry => {
         const entryDate = getDateFromEntry(entry);
         if (entryDate && !isNaN(entryDate)) {
             const year = entryDate.getFullYear();
             if (year >= startYear && year <= now.getFullYear()) {
-                yearlyCounts[year - startYear]++;
+                yearlyTotals[year - startYear] += entry.durationMinutes || 0;
             }
         }
     });
-    return yearlyCounts;
+    return yearlyTotals;
 }
 
 // --- 차트 업데이트 ---
@@ -369,26 +369,23 @@ function updateDailyChart(data) {
         if (!canvas) {
             return;
         }
-        
         const ctx = canvas.getContext('2d');
-        
         const labels = Array.from({ length: 24 }, (_, i) => {
             return `${String(i).padStart(2, '0')}시`;
         });
-
         const chartConfig = {
             type: 'bar',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: '집중 세션 수',
+                    label: '집중 시간(분)',
                     data: data,
                     backgroundColor: '#3B82F6',
                     barPercentage: 0.8,
                     categoryPercentage: 0.7
                 }]
             },
-            options: { 
+            options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: {
@@ -396,29 +393,20 @@ function updateDailyChart(data) {
                     easing: 'easeOutQuart'
                 },
                 scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        ticks: { 
-                            stepSize: 1,
-                            font: {
-                                size: 11
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        }
-                    },
-                    x: { 
-                        grid: { display: false },
+                    y: {
+                        beginAtZero: true,
                         ticks: {
-                            font: {
-                                size: 10
-                            },
-                            maxRotation: 0
-                        }
+                            stepSize: 5,
+                            font: { size: 11 }
+                        },
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 10 }, maxRotation: 0 }
                     }
                 },
-                plugins: { 
+                plugins: {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
@@ -427,26 +415,23 @@ function updateDailyChart(data) {
                                 return `${hour}시 ~ ${(hour + 1) % 24}시`;
                             },
                             label: (context) => {
-                                const count = context.parsed.y;
-                                return `${count}개 세션`;
+                                const minutes = context.parsed.y;
+                                return `${minutes}분 집중`;
                             }
                         }
                     }
                 }
             }
         };
-
         if (dailyChartInstance) {
-            // 이미 차트가 있으면 데이터만 업데이트
             dailyChartInstance.data.labels = labels;
             dailyChartInstance.data.datasets[0].data = data;
+            dailyChartInstance.data.datasets[0].label = '집중 시간(분)';
             dailyChartInstance.update();
         } else {
-            // 새로 차트 생성
             dailyChartInstance = new Chart(ctx, chartConfig);
         }
-    } catch (error) {
-    }
+    } catch (error) {}
 }
 
 function updateWeeklyChart(data) {
@@ -455,33 +440,24 @@ function updateWeeklyChart(data) {
         if (!canvas) {
             return;
         }
-        
         const ctx = canvas.getContext('2d');
-        
         const labels = ['일', '월', '화', '수', '목', '금', '토'];
         const colors = [
-            '#F87171', // 일요일 - 빨간색 톤
-            '#60A5FA', // 월요일 - 파란색
-            '#34D399', // 화요일 - 초록색
-            '#A78BFA', // 수요일 - 보라색
-            '#FBBF24', // 목요일 - 노란색
-            '#F97316', // 금요일 - 주황색
-            '#A8A29E'  // 토요일 - 회색 톤
+            '#F87171', '#60A5FA', '#34D399', '#A78BFA', '#FBBF24', '#F97316', '#A8A29E'
         ];
-
         const chartConfig = {
             type: 'bar',
-            data: { 
-                labels: labels, 
+            data: {
+                labels: labels,
                 datasets: [{
-                    label: '집중 세션 수',
+                    label: '집중 시간(분)',
                     data: data,
                     backgroundColor: colors,
                     barPercentage: 0.7,
                     categoryPercentage: 0.6
                 }]
             },
-            options: { 
+            options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: {
@@ -489,53 +465,35 @@ function updateWeeklyChart(data) {
                     easing: 'easeOutQuart'
                 },
                 scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        ticks: { 
-                            stepSize: 1,
-                            font: {
-                                size: 11
-                            }
-                        },
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
-                        }
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 10, font: { size: 11 } },
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
-                    x: { 
+                    x: {
                         grid: { display: false },
-                        ticks: {
-                            font: {
-                                size: 12,
-                                weight: 'bold'
-                            }
-                        }
+                        ticks: { font: { size: 12, weight: 'bold' } }
                     }
                 },
-                plugins: { 
+                plugins: {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: (context) => {
-                                const count = context.parsed.y;
-                                return `${count}개 세션`;
-                            }
+                            label: (context) => `${context.parsed.y}분 집중`
                         }
                     }
                 }
             }
         };
-
         if (weeklyChartInstance) {
-            // 이미 차트가 있으면 데이터만 업데이트
             weeklyChartInstance.data.labels = labels;
             weeklyChartInstance.data.datasets[0].data = data;
+            weeklyChartInstance.data.datasets[0].label = '집중 시간(분)';
             weeklyChartInstance.update();
         } else {
-            // 새로 차트 생성
             weeklyChartInstance = new Chart(ctx, chartConfig);
         }
-    } catch (error) {
-    }
+    } catch (error) {}
 }
 
 // --- 월별 히트맵 렌더링 ---
@@ -681,7 +639,7 @@ function updateMonthlyChart(data) {
             data: {
                 labels: labels,
                 datasets: [{
-                    label: '집중 세션 수',
+                    label: '집중 시간(분)',
                     data: data,
                     backgroundColor: '#F59E42',
                     barPercentage: 0.7,
@@ -698,10 +656,7 @@ function updateMonthlyChart(data) {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: {
-                            stepSize: 1,
-                            font: { size: 11 }
-                        },
+                        ticks: { stepSize: 30, font: { size: 11 } },
                         grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
                     x: {
@@ -713,7 +668,7 @@ function updateMonthlyChart(data) {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: (context) => `${context.parsed.y}개 세션`
+                            label: (context) => `${context.parsed.y}분 집중`
                         }
                     }
                 }
@@ -722,6 +677,7 @@ function updateMonthlyChart(data) {
         if (monthlyChartInstance) {
             monthlyChartInstance.data.labels = labels;
             monthlyChartInstance.data.datasets[0].data = data;
+            monthlyChartInstance.data.datasets[0].label = '집중 시간(분)';
             monthlyChartInstance.update();
         } else {
             monthlyChartInstance = new Chart(ctx, chartConfig);
@@ -748,7 +704,7 @@ function updateYearlyChart(data) {
             data: {
                 labels: labels,
                 datasets: [{
-                    label: '집중 세션 수',
+                    label: '집중 시간(분)',
                     data: data,
                     backgroundColor: '#7C3AED',
                     barPercentage: 0.7,
@@ -765,10 +721,7 @@ function updateYearlyChart(data) {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: {
-                            stepSize: 1,
-                            font: { size: 11 }
-                        },
+                        ticks: { stepSize: 60, font: { size: 11 } },
                         grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
                     x: {
@@ -780,7 +733,7 @@ function updateYearlyChart(data) {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: (context) => `${context.parsed.y}개 세션`
+                            label: (context) => `${context.parsed.y}분 집중`
                         }
                     }
                 }
@@ -789,6 +742,7 @@ function updateYearlyChart(data) {
         if (yearlyChartInstance) {
             yearlyChartInstance.data.labels = labels;
             yearlyChartInstance.data.datasets[0].data = data;
+            yearlyChartInstance.data.datasets[0].label = '집중 시간(분)';
             yearlyChartInstance.update();
         } else {
             yearlyChartInstance = new Chart(ctx, chartConfig);

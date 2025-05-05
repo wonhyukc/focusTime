@@ -170,13 +170,16 @@ function openDashboardPage() {
 }
 
 // 초기 설정
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async (details) => {
+    // 확장 프로그램이 설치, 업데이트, 재로드될 때마다 dashboard.html을 새 탭으로 엽니다.
+    if (["install", "update", "chrome_update", "reload"].includes(details.reason)) {
+        openDashboardPage();
+    }
     // 기본 설정 초기화
     chrome.storage.sync.get(['settings'], (result) => {
         if (!result.settings) {
             chrome.storage.sync.set({ settings: DEFAULT_SETTINGS_BG }, () => {
                 console.log('기본 설정이 초기화되었습니다.');
-                openDashboardPage(); // 최초 설치 시에만 호출
             });
         }
     });
