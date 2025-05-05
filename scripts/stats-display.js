@@ -279,12 +279,21 @@ function processDailyData(history, durationFilter) {
         );
 
         filteredHistory.forEach(entry => {
+            // 로그 추가: 파싱된 entry의 시간, 분, 원본 startTime
             const entryDate = getDateFromEntry(entry);
             if (entryDate && !isNaN(entryDate)) {
                 const hour = entryDate.getHours();
+                console.log('[DEBUG] processDailyData entry:', {
+                    startTime: entry.startTime,
+                    parsedHour: hour,
+                    duration: entry.durationMinutes
+                });
                 hourlyTotals[hour] += entry.durationMinutes || 0;
+            } else {
+                console.log('[DEBUG] processDailyData entry: INVALID DATE', entry.startTime);
             }
         });
+        console.log('[DEBUG] processDailyData hourlyTotals:', hourlyTotals);
         return hourlyTotals;
     } catch (error) {
         return Array(24).fill(0);
@@ -327,39 +336,39 @@ function processHeatmapData(history) {
     }
 }
 
-// 월별 데이터 집계 함수 (최근 12개월)
+// 월별 데이터 집계 함수 (이번 달의 일별 합산)
 function processMonthlyData(history) {
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const dailyTotals = Array(daysInMonth).fill(0);
+    const focusHistory = history.filter(entry => entry.type === 'focus');
+    focusHistory.forEach(entry => {
+        const entryDate = getDateFromEntry(entry);
+        if (entryDate && !isNaN(entryDate)) {
+            if (entryDate.getFullYear() === now.getFullYear() && entryDate.getMonth() === now.getMonth()) {
+                const day = entryDate.getDate(); // 1~31
+                dailyTotals[day - 1] += entry.durationMinutes || 0;
+            }
+        }
+    });
+    return dailyTotals;
+}
+
+// 연별 데이터 집계 함수 (올해의 월별 합산)
+function processYearlyData(history) {
     const now = new Date();
     const monthlyTotals = Array(12).fill(0);
     const focusHistory = history.filter(entry => entry.type === 'focus');
     focusHistory.forEach(entry => {
         const entryDate = getDateFromEntry(entry);
         if (entryDate && !isNaN(entryDate)) {
-            const diffMonth = (now.getFullYear() - entryDate.getFullYear()) * 12 + (now.getMonth() - entryDate.getMonth());
-            if (diffMonth >= 0 && diffMonth < 12) {
-                monthlyTotals[11 - diffMonth] += entry.durationMinutes || 0;
+            if (entryDate.getFullYear() === now.getFullYear()) {
+                const month = entryDate.getMonth(); // 0~11
+                monthlyTotals[month] += entry.durationMinutes || 0;
             }
         }
     });
     return monthlyTotals;
-}
-
-// 연별 데이터 집계 함수 (최근 5년)
-function processYearlyData(history) {
-    const now = new Date();
-    const startYear = now.getFullYear() - 4;
-    const yearlyTotals = Array(5).fill(0);
-    const focusHistory = history.filter(entry => entry.type === 'focus');
-    focusHistory.forEach(entry => {
-        const entryDate = getDateFromEntry(entry);
-        if (entryDate && !isNaN(entryDate)) {
-            const year = entryDate.getFullYear();
-            if (year >= startYear && year <= now.getFullYear()) {
-                yearlyTotals[year - startYear] += entry.durationMinutes || 0;
-            }
-        }
-    });
-    return yearlyTotals;
 }
 
 // --- 차트 업데이트 ---
@@ -632,12 +641,10 @@ function updateMonthlyChart(data) {
             return;
         }
         const ctx = canvas.getContext('2d');
+        // 이번 달의 일별 라벨 생성
         const now = new Date();
-        const labels = [];
-        for (let i = 11; i >= 0; i--) {
-            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            labels.push(`${d.getFullYear()}-${d.getMonth() + 1}`);
-        }
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const labels = Array.from({ length: daysInMonth }, (_, i) => `${i + 1}일`);
         const chartConfig = {
             type: 'bar',
             data: {
@@ -700,11 +707,8 @@ function updateYearlyChart(data) {
             return;
         }
         const ctx = canvas.getContext('2d');
-        const now = new Date();
-        const labels = [];
-        for (let i = 4; i >= 0; i--) {
-            labels.push(`${now.getFullYear() - i}년`);
-        }
+        // 올해의 월별 라벨 생성
+        const labels = Array.from({ length: 12 }, (_, i) => `${i + 1}월`);
         const chartConfig = {
             type: 'bar',
             data: {
@@ -837,3 +841,13 @@ function logTodayFocusDetails(history) {
 }
 
 // ... (clearStatsDisplay 등) 
+
+// 차트 제목 텍스트 변경
+const dailyTitle = document.querySelector('h3.daily-title');
+if (dailyTitle) dailyTitle.textContent = '일 단위 집중 시간';
+const weeklyTitle = document.querySelector('h3.weekly-title');
+if (weeklyTitle) weeklyTitle.textContent = '주 단위 집중 시간';
+const monthlyTitle = document.querySelector('h3.monthly-title');
+if (monthlyTitle) monthlyTitle.textContent = '월 단위 집중 시간';
+const yearlyTitle = document.querySelector('h3.yearly-title');
+if (yearlyTitle) yearlyTitle.textContent = '연 단위 집중 시간'; 
