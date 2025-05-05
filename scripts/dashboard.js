@@ -148,6 +148,7 @@ function populateFocusSoundTypeOptions(selectElementId) {
 // 설정 저장
 function saveSettings() {
     const settings = {
+        version: '1.0', // background.js의 DEFAULT_SETTINGS_BG.version과 동일하게
         focus: {
             duration: parseInt(document.getElementById('focus-duration').value),
             sound: document.getElementById('focus-sound').value,

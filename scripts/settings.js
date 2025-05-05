@@ -78,6 +78,10 @@ function getCurrentSettings() {
 // 설정 적용하기
 async function applySettings(settings) {
     try {
+        // version 필드 강제 추가
+        if (!settings.version) {
+            settings.version = '1.0'; // background.js의 DEFAULT_SETTINGS_BG.version과 동일하게!
+        }
         // 프로젝트 이름 설정
         const projectNameElement = document.getElementById('project-name');
         if (projectNameElement) {
