@@ -256,15 +256,15 @@ document.querySelectorAll('.preview-sound').forEach(button => {
 
 // 차트 초기화
 function initializeCharts() {
-    // Check if Chart is defined before using it
     if (typeof Chart === 'undefined') {
         setTimeout(initializeCharts, 500);
         return;
     }
-    
     try {
         // 일간 차트
         const dailyCtx = document.getElementById('daily-chart').getContext('2d');
+        const maxValueDaily = 0; // 초기값 0, 데이터 로딩 후 갱신됨
+        const stepSizeDaily = getDynamicStepSize(maxValueDaily);
         new Chart(dailyCtx, {
             type: 'bar',
             data: {
@@ -280,16 +280,22 @@ function initializeCharts() {
                 scales: {
                     y: {
                         beginAtZero: true,
+                        min: 0,
+                        stepSize: stepSizeDaily,
                         ticks: {
-                            stepSize: 1
+                            stepSize: stepSizeDaily,
+                            font: { size: 11 },
+                            callback: formatNumber,
+                            maxTicksLimit: 10
                         }
                     }
                 }
             }
         });
-
         // 주간 차트
         const weeklyCtx = document.getElementById('weekly-chart').getContext('2d');
+        const maxValueWeekly = 0;
+        const stepSizeWeekly = getDynamicStepSize(maxValueWeekly);
         new Chart(weeklyCtx, {
             type: 'bar',
             data: {
@@ -305,15 +311,19 @@ function initializeCharts() {
                 scales: {
                     y: {
                         beginAtZero: true,
+                        min: 0,
+                        stepSize: stepSizeWeekly,
                         ticks: {
-                            stepSize: 1
+                            stepSize: stepSizeWeekly,
+                            font: { size: 11 },
+                            callback: formatNumber,
+                            maxTicksLimit: 10
                         }
                     }
                 }
             }
         });
-    } catch (error) {
-    }
+    } catch (error) {}
 }
 
 // 피드백 제출
@@ -544,4 +554,19 @@ function parseCsvToHistory(csvText) {
         });
     }
     return history;
+}
+
+function getDynamicStepSize(maxValue) {
+    if (maxValue > 1000000) return 100000;
+    if (maxValue > 100000) return 10000;
+    if (maxValue > 10000) return 1000;
+    if (maxValue > 1000) return 100;
+    if (maxValue > 100) return 10;
+    return 1;
+}
+function formatNumber(n) {
+    if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(2) + 'G';
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + 'M';
+    if (n >= 1_000) return (n / 1_000).toFixed(2) + 'K';
+    return n.toLocaleString();
 } 

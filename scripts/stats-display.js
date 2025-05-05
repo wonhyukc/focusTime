@@ -364,38 +364,43 @@ function processHeatmapData(history) {
     }
 }
 
-// 월별 데이터 집계 함수 (이번 달의 일별 합산)
+// 월별 데이터 집계 함수 (최근 30일)
 function processMonthlyData(history) {
     const now = new Date();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const dailyTotals = Array(daysInMonth).fill(0);
-    const focusHistory = history.filter(entry => entry.type === 'focus');
-    focusHistory.forEach(entry => {
-        const entryDate = getDateFromEntry(entry);
-        if (entryDate && !isNaN(entryDate)) {
-            if (entryDate.getFullYear() === now.getFullYear() && entryDate.getMonth() === now.getMonth()) {
-                const day = entryDate.getDate(); // 1~31
-                dailyTotals[day - 1] += entry.durationMinutes || 0;
-            }
-        }
-    });
+    const dailyTotals = [];
+    const labels = [];
+    for (let i = 29; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(now.getDate() - i);
+        const dateString = date.toISOString().slice(0, 10); // YYYY-MM-DD
+        labels.push(dateString.slice(5).replace('-', '/')); // MM/DD
+        const total = history.filter(entry => {
+            const entryDate = getDateFromEntry(entry);
+            return entryDate && entryDate.toISOString().slice(0, 10) === dateString && entry.type === 'focus';
+        }).reduce((sum, entry) => sum + (entry.durationMinutes || 0), 0);
+        dailyTotals.push(total);
+    }
+    processMonthlyData.labels = labels;
     return dailyTotals;
 }
 
-// 연별 데이터 집계 함수 (올해의 월별 합산)
+// 연별 데이터 집계 함수 (최근 12개월)
 function processYearlyData(history) {
     const now = new Date();
-    const monthlyTotals = Array(12).fill(0);
-    const focusHistory = history.filter(entry => entry.type === 'focus');
-    focusHistory.forEach(entry => {
-        const entryDate = getDateFromEntry(entry);
-        if (entryDate && !isNaN(entryDate)) {
-            if (entryDate.getFullYear() === now.getFullYear()) {
-                const month = entryDate.getMonth(); // 0~11
-                monthlyTotals[month] += entry.durationMinutes || 0;
-            }
-        }
-    });
+    const monthlyTotals = [];
+    const labels = [];
+    for (let i = 11; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        labels.push(`${year}/${month}`);
+        const total = history.filter(entry => {
+            const entryDate = getDateFromEntry(entry);
+            return entryDate && entryDate.getFullYear() === year && entryDate.getMonth() + 1 === month && entry.type === 'focus';
+        }).reduce((sum, entry) => sum + (entry.durationMinutes || 0), 0);
+        monthlyTotals.push(total);
+    }
+    processYearlyData.labels = labels;
     return monthlyTotals;
 }
 
@@ -448,7 +453,8 @@ function updateDailyChart(data) {
                         ticks: {
                             stepSize: stepSize,
                             font: { size: 11 },
-                            callback: formatNumber
+                            callback: formatNumber,
+                            maxTicksLimit: 10
                         },
                         grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
@@ -496,6 +502,8 @@ function updateWeeklyChart(data) {
         const colors = [
             '#F87171', '#60A5FA', '#34D399', '#A78BFA', '#FBBF24', '#F97316', '#A8A29E'
         ];
+        const maxValue = Math.max(...data);
+        const stepSize = getDynamicStepSize(maxValue);
         const chartConfig = {
             type: 'bar',
             data: {
@@ -519,8 +527,13 @@ function updateWeeklyChart(data) {
                     y: {
                         beginAtZero: true,
                         min: 0,
-                        stepSize: 1,
-                        ticks: { stepSize: 1, font: { size: 11 } },
+                        stepSize: stepSize,
+                        ticks: {
+                            stepSize: stepSize,
+                            font: { size: 11 },
+                            callback: formatNumber,
+                            maxTicksLimit: 10
+                        },
                         grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
                     x: {
@@ -532,7 +545,7 @@ function updateWeeklyChart(data) {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: (context) => `${context.parsed.y}분 집중`
+                            label: (context) => `${formatNumber(context.parsed.y)}분 집중`
                         }
                     }
                 }
@@ -681,10 +694,8 @@ function updateMonthlyChart(data) {
             return;
         }
         const ctx = canvas.getContext('2d');
-        // 이번 달의 일별 라벨 생성
-        const now = new Date();
-        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        const labels = Array.from({ length: daysInMonth }, (_, i) => `${i + 1}일`);
+        // 최근 30일 라벨
+        const labels = processMonthlyData.labels || [];
         const maxValue = Math.max(...data);
         const stepSize = getDynamicStepSize(maxValue);
         const chartConfig = {
@@ -711,19 +722,24 @@ function updateMonthlyChart(data) {
                         beginAtZero: true,
                         min: 0,
                         stepSize: stepSize,
-                        ticks: { stepSize: stepSize, font: { size: 11 }, callback: formatNumber },
+                        ticks: {
+                            stepSize: stepSize,
+                            font: { size: 11 },
+                            callback: formatNumber,
+                            maxTicksLimit: 10
+                        },
                         grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { font: { size: 12, weight: 'bold' } }
+                        ticks: { font: { size: 12, weight: 'bold' }, maxRotation: 60 }
                     }
                 },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: (context) => `${context.parsed.y}분 집중`
+                            label: (context) => `${formatNumber(context.parsed.y)}분 집중`
                         }
                     }
                 }
@@ -749,8 +765,8 @@ function updateYearlyChart(data) {
             return;
         }
         const ctx = canvas.getContext('2d');
-        // 올해의 월별 라벨 생성
-        const labels = Array.from({ length: 12 }, (_, i) => `${i + 1}월`);
+        // 최근 12개월 라벨
+        const labels = processYearlyData.labels || [];
         const maxValue = Math.max(...data);
         const stepSize = getDynamicStepSize(maxValue);
         const chartConfig = {
@@ -777,19 +793,24 @@ function updateYearlyChart(data) {
                         beginAtZero: true,
                         min: 0,
                         stepSize: stepSize,
-                        ticks: { stepSize: stepSize, font: { size: 11 }, callback: formatNumber },
+                        ticks: {
+                            stepSize: stepSize,
+                            font: { size: 11 },
+                            callback: formatNumber,
+                            maxTicksLimit: 10
+                        },
                         grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { font: { size: 12, weight: 'bold' } }
+                        ticks: { font: { size: 12, weight: 'bold' }, maxRotation: 60 }
                     }
                 },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: (context) => `${context.parsed.y}분 집중`
+                            label: (context) => `${formatNumber(context.parsed.y)}분 집중`
                         }
                     }
                 }
