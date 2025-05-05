@@ -551,7 +551,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Offscreen Document를 통해 소리를 재생하는 함수
 async function playSound(soundType, isPreview = false, volume = undefined) {
     console.log('[LOG] playSound 호출:', { soundType, isPreview, volume });
-    let finalSoundType = 'low-short-beep'; // 최종 재생할 소리 타입, 기본값 설정
+    // soundType이 'none'이면 아무 소리도 출력하지 않음
+    if (soundType === 'none') {
+        console.log('[LOG] playSound: soundType이 none이므로 소리 출력하지 않음');
+        return;
+    }
+    let finalSoundType = 'low-short-beep';
     let finalVolume = volume;
 
     try {

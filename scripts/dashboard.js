@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
     populateTimerSoundOptions('focus-sound');
     populateTimerSoundOptions('short-break-sound');
     populateTimerSoundOptions('long-break-sound');
+    populateFocusSoundTypeOptions('focus-sound-type');
 
     // 설정 저장 기능
     const settingsForm = document.querySelectorAll('.timer-settings input, .timer-settings select');
@@ -83,13 +84,35 @@ function populateTimerSoundOptions(selectElementId) {
     if (!selectElement) return;
 
     const timerSoundOptions = [
+        { value: 'none', text: 'None' },
         { value: 'beep', text: '짧은 beep' },
         { value: 'gong', text: '공(Gong)' }
     ];
 
-    selectElement.innerHTML = ''; // 기존 옵션 제거
+    selectElement.innerHTML = '';
 
     timerSoundOptions.forEach(optionData => {
+        const option = document.createElement('option');
+        option.value = optionData.value;
+        option.textContent = optionData.text;
+        selectElement.appendChild(option);
+    });
+}
+
+function populateFocusSoundTypeOptions(selectElementId) {
+    const selectElement = document.getElementById(selectElementId);
+    if (!selectElement) return;
+
+    const focusSoundTypeOptions = [
+        { value: 'none', text: 'None' },
+        { value: 'brown_noise', text: 'Brown Noise' },
+        { value: 'rainy_birds', text: 'Rainy Day' },
+        { value: 'clock_ticking', text: 'Clock Ticking' }
+    ];
+
+    selectElement.innerHTML = '';
+
+    focusSoundTypeOptions.forEach(optionData => {
         const option = document.createElement('option');
         option.value = optionData.value;
         option.textContent = optionData.text;
