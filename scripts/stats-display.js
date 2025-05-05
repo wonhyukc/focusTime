@@ -30,7 +30,12 @@ async function loadAndProcessStats() {
     try {
         const result = await chrome.storage.local.get('pomodoroHistory');
         let history = result.pomodoroHistory || [];
-        
+        // 최근 1년(12개월) 데이터만 남기기
+        const oneYearAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+        history = history.filter(entry => {
+            const entryDate = getDateFromEntry(entry);
+            return entryDate && entryDate >= oneYearAgo;
+        });
         // 데이터 포맷 변환 (필요한 경우)
         history = convertHistoryFormat(history);
         
@@ -111,6 +116,14 @@ function convertHistoryFormat(history) {
     });
 }
 
+// 숫자 단위 축약 함수
+function formatNumber(n) {
+    if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(2) + 'G';
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + 'M';
+    if (n >= 1_000) return (n / 1_000).toFixed(2) + 'K';
+    return n.toLocaleString();
+}
+
 // 요약 카드 업데이트 함수
 function updateSummaryCards(history) {
     console.log('[LOG] updateSummaryCards 호출:', { historyLength: history.length });
@@ -126,7 +139,7 @@ function updateSummaryCards(history) {
         } else {
             todayLabel = todayHours + ':' + String(todayRemainMinutes).padStart(2, '0');
         }
-        document.querySelector('.stats-summary .stat-card:nth-child(1) .stat-value').textContent = todayMinutes;
+        document.querySelector('.stats-summary .stat-card:nth-child(1) .stat-value').textContent = formatNumber(todayMinutes);
         document.querySelector('.stats-summary .stat-card:nth-child(1) .stat-label').textContent = todayLabel;
         
         // 이번 주 카드 업데이트
@@ -134,7 +147,7 @@ function updateSummaryCards(history) {
         const weekMinutes = calculateTotalFocusMinutes(thisWeekSessions);
         const weekHours = weekMinutes / 60;
         
-        document.querySelector('.stats-summary .stat-card:nth-child(2) .stat-value').textContent = weekMinutes;
+        document.querySelector('.stats-summary .stat-card:nth-child(2) .stat-value').textContent = formatNumber(weekMinutes);
         document.querySelector('.stats-summary .stat-card:nth-child(2) .stat-label').textContent = 
             weekHours.toFixed(2);
         
@@ -147,7 +160,7 @@ function updateSummaryCards(history) {
         const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
         
         document.querySelector('.stats-summary .stat-card:nth-child(3) h3').textContent = monthNames[currentMonth];
-        document.querySelector('.stats-summary .stat-card:nth-child(3) .stat-value').textContent = monthMinutes;
+        document.querySelector('.stats-summary .stat-card:nth-child(3) .stat-value').textContent = formatNumber(monthMinutes);
         document.querySelector('.stats-summary .stat-card:nth-child(3) .stat-label').textContent = 
             monthHours.toFixed(2);
 
@@ -157,7 +170,7 @@ function updateSummaryCards(history) {
         const yearHours = yearMinutes / 60;
         const yearCard = document.querySelector('.stats-summary .stat-card:nth-child(4)');
         if (yearCard) {
-            yearCard.querySelector('.stat-value').textContent = yearMinutes;
+            yearCard.querySelector('.stat-value').textContent = formatNumber(yearMinutes);
             yearCard.querySelector('.stat-label').textContent = yearHours.toFixed(2);
         }
 
@@ -168,9 +181,24 @@ function updateSummaryCards(history) {
             const totalMinutes = calculateTotalFocusMinutes(totalFocusSessions);
             const totalHours = totalMinutes / 60;
             
-            totalCard.querySelector('.stat-value').textContent = totalMinutes;
+            totalCard.querySelector('.stat-value').textContent = formatNumber(totalMinutes);
             totalCard.querySelector('.stat-label').textContent = totalHours.toFixed(2);
         }
+
+        // 카드 소제목 추가
+        const cardTitles = document.querySelectorAll('.stats-summary .stat-card');
+        cardTitles.forEach(card => {
+            let subtitle = card.querySelector('.stat-subtitle');
+            if (!subtitle) {
+                subtitle = document.createElement('div');
+                subtitle.className = 'stat-subtitle';
+                subtitle.style.fontSize = '12px';
+                subtitle.style.color = '#888';
+                subtitle.style.marginBottom = '2px';
+                card.insertBefore(subtitle, card.querySelector('.stat-value'));
+            }
+            subtitle.textContent = '집중 세션의 시간(분)';
+        });
     } catch (error) {
     }
 }
@@ -372,6 +400,15 @@ function processYearlyData(history) {
 }
 
 // --- 차트 업데이트 ---
+function getDynamicStepSize(maxValue) {
+    if (maxValue > 1000000) return 100000;
+    if (maxValue > 100000) return 10000;
+    if (maxValue > 10000) return 1000;
+    if (maxValue > 1000) return 100;
+    if (maxValue > 100) return 10;
+    return 1;
+}
+
 function updateDailyChart(data) {
     try {
         const canvas = document.getElementById('daily-chart');
@@ -382,6 +419,8 @@ function updateDailyChart(data) {
         const labels = Array.from({ length: 24 }, (_, i) => {
             return `${String(i).padStart(2, '0')}시`;
         });
+        const maxValue = Math.max(...data);
+        const stepSize = getDynamicStepSize(maxValue);
         const chartConfig = {
             type: 'bar',
             data: {
@@ -405,10 +444,11 @@ function updateDailyChart(data) {
                     y: {
                         beginAtZero: true,
                         min: 0,
-                        stepSize: 1,
+                        stepSize: stepSize,
                         ticks: {
-                            stepSize: 1,
-                            font: { size: 11 }
+                            stepSize: stepSize,
+                            font: { size: 11 },
+                            callback: formatNumber
                         },
                         grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
@@ -427,7 +467,7 @@ function updateDailyChart(data) {
                             },
                             label: (context) => {
                                 const minutes = context.parsed.y;
-                                return `${minutes}분 집중`;
+                                return `${formatNumber(minutes)}분 집중`;
                             }
                         }
                     }
@@ -645,6 +685,8 @@ function updateMonthlyChart(data) {
         const now = new Date();
         const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
         const labels = Array.from({ length: daysInMonth }, (_, i) => `${i + 1}일`);
+        const maxValue = Math.max(...data);
+        const stepSize = getDynamicStepSize(maxValue);
         const chartConfig = {
             type: 'bar',
             data: {
@@ -668,8 +710,8 @@ function updateMonthlyChart(data) {
                     y: {
                         beginAtZero: true,
                         min: 0,
-                        stepSize: 1,
-                        ticks: { stepSize: 1, font: { size: 11 } },
+                        stepSize: stepSize,
+                        ticks: { stepSize: stepSize, font: { size: 11 }, callback: formatNumber },
                         grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
                     x: {
@@ -709,6 +751,8 @@ function updateYearlyChart(data) {
         const ctx = canvas.getContext('2d');
         // 올해의 월별 라벨 생성
         const labels = Array.from({ length: 12 }, (_, i) => `${i + 1}월`);
+        const maxValue = Math.max(...data);
+        const stepSize = getDynamicStepSize(maxValue);
         const chartConfig = {
             type: 'bar',
             data: {
@@ -732,8 +776,8 @@ function updateYearlyChart(data) {
                     y: {
                         beginAtZero: true,
                         min: 0,
-                        stepSize: 1,
-                        ticks: { stepSize: 1, font: { size: 11 } },
+                        stepSize: stepSize,
+                        ticks: { stepSize: stepSize, font: { size: 11 }, callback: formatNumber },
                         grid: { color: 'rgba(0, 0, 0, 0.05)' }
                     },
                     x: {
