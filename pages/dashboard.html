@@ -262,11 +262,5 @@
     <script src="../scripts/dashboard.js"></script>
     <script src="../scripts/settings.js"></script>
     <script src="../scripts/stats-display.js"></script>
-    <script>
-    // 새로고침 시 dashboard.html이 아닌 경우 자동으로 dashboard.html로 이동
-    if (!window.location.pathname.endsWith('dashboard.html')) {
-        window.location.href = chrome.runtime.getURL('pages/dashboard.html');
-    }
-    </script>
 </body>
 </html> 

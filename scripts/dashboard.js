@@ -96,6 +96,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     document.getElementById('focus-sound-type-volume')?.addEventListener('change', function(e) {
     });
+
+    // 새로고침 시 dashboard.html이 아닌 경우 자동으로 dashboard.html로 이동
+    if (!window.location.pathname.endsWith('dashboard.html')) {
+        window.location.href = chrome.runtime.getURL('pages/dashboard.html');
+    }
 });
 
 // '타이머 소리' 드롭다운 옵션 생성 함수
