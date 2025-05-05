@@ -219,31 +219,23 @@ chrome.notifications.onClicked.addListener(async (notificationId) => {
 });
 
 // 확장 프로그램 아이콘 클릭 이벤트 처리
-chrome.action.onClicked.addListener((tab) => {
-    chrome.storage.sync.get('settings', async (result) => {
-        const settings = result.settings || DEFAULT_SETTINGS_BG;
-        const projectName = settings.projectName || '';
-
-        if (projectName) {
-            // 사용자에게 확인 요청
-            // 백그라운드 스크립트에서는 confirm 사용 불가, 다른 방식 필요
-            // 예를 들어, 팝업을 띄우거나 content script를 통해 확인
-            // 여기서는 임시로 바로 시작하거나 설정 페이지를 여는 방식으로 구현
-            console.log(`프로젝트 "${projectName}" 타이머를 시작합니다.`);
-            // TODO: 사용자 확인 로직 추가 (예: 팝업 또는 content script 사용)
-            // 현재는 바로 시작
-            if (!timerState.isRunning) {
-                await startTimer('focus'); // 기본적으로 focus 시작
-            } else {
-                // 이미 실행 중이면 토글
-                 toggleTimer();
-            }
-
-        } else {
-            // 설정 페이지 열기
-            chrome.runtime.openOptionsPage();
-        }
-    });
+chrome.action.onClicked.addListener(async () => {
+    console.log('[DEBUG] Icon clicked, timerState:', timerState);
+    const { isRunning, timeLeft, sessionComplete } = timerState;
+    if (isRunning) {
+        // 실행 중이면 일시정지
+        console.log('[DEBUG] Icon triggers: toggleTimer (pause)');
+        await toggleTimer();
+    } else if (!isRunning && timeLeft > 0 && !sessionComplete) {
+        // 일시정지 상태면 재개
+        console.log('[DEBUG] Icon triggers: toggleTimer (resume)');
+        await toggleTimer();
+    } else {
+        // 완전히 정지/종료 상태면 새로 시작
+        console.log('[DEBUG] Icon triggers: startTimer (new session)');
+        await startTimer('focus');
+        await createRunningMenus();
+    }
 });
 
 // 프로젝트 기록에 이름 추가 (background용)
@@ -335,7 +327,7 @@ async function getCurrentSettings() {
 
 // 타이머 시작
 async function startTimer(type) {
-    console.log('=== Background startTimer called ===');
+    console.log('=== Background startTimer called ===', new Error().stack);
     console.log('Parameters:', { type });
     console.log('State before start:', {
         isRunning: timerState.isRunning,
@@ -453,18 +445,6 @@ async function startNextSession() {
     await createRunningMenus();
 }
 
-// 아이콘 클릭 이벤트 처리
-chrome.action.onClicked.addListener(async () => {
-    if (!timerState.timeLeft || timerState.timeLeft === 0) {
-        // 타이머가 실행되지 않은 상태: 집중 시간 시작
-        await startTimer('focus');
-        await createRunningMenus();
-    } else {
-        // 타이머가 이미 존재하는 경우: 일시정지/재개 토글
-        await toggleTimer();
-    }
-});
-
 // 타이머 시작/일시정지/재개
 async function toggleTimer() {
     console.log('=== Background toggleTimer called ===');
@@ -475,6 +455,7 @@ async function toggleTimer() {
     });
 
     timerState.isRunning = !timerState.isRunning;
+    timerState.sessionComplete = false;
     
     if (timerState.isRunning) {
         // 타이머 재개
@@ -584,6 +565,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'resetStats':
             resetStats();
             break;
+        case 'getTimerState':
+            sendResponse({
+                isRunning: timerState.isRunning,
+                isBreak: timerState.isBreak,
+                type: timerState.type,
+                timeLeft: timerState.timeLeft,
+                sessionComplete: timerState.sessionComplete
+            });
+            return true;
         default:
             console.log("Unknown action received:", message.action);
             sendResponse({ success: false, message: 'Unknown action' });

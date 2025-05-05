@@ -52,28 +52,34 @@ function updateTimerDisplay() {
     });
 }
 
+let startTimerClickLock = false;
 document.getElementById('start-timer').addEventListener('click', () => {
-    console.log('=== Start button clicked ===');
-    console.log('Current state before start:', {
-        isRunning: state.isRunning,
-        isPaused: state.isPaused,
-        currentSession: state.currentSession
+    if (startTimerClickLock) return;
+    startTimerClickLock = true;
+    setTimeout(() => { startTimerClickLock = false; }, 500);
+
+    console.log('[DEBUG] start-timer button clicked');
+    chrome.runtime.sendMessage({ action: 'getTimerState' }, (bgState) => {
+        console.log('=== Start button clicked ===');
+        console.log('Background timer state:', bgState);
+        if (!bgState) {
+            console.warn('[DEBUG] bgState is undefined/null, aborting start-timer click handler.');
+            return;
+        }
+        if (
+            !bgState.isRunning &&
+            bgState.timeLeft > 0 &&
+            !bgState.sessionComplete // resume only if session is not complete
+        ) {
+            chrome.runtime.sendMessage({ action: 'toggleTimer' }); // resume
+        } else {
+            chrome.runtime.sendMessage({ action: 'startTimer', sessionType: state.currentSession }); // new session
+        }
     });
-    if (state.isPaused) {
-        chrome.runtime.sendMessage({ action: 'toggleTimer' });
-    } else {
-        chrome.runtime.sendMessage({ action: 'startTimer', sessionType: state.currentSession });
-    }
 });
 
 document.getElementById('pause-timer').addEventListener('click', () => {
-    console.log('=== Pause button clicked ===');
-    console.log('Current state before pause:', {
-        isRunning: state.isRunning,
-        isPaused: state.isPaused,
-        currentSession: state.currentSession
-    });
-    chrome.runtime.sendMessage({ action: 'toggleTimer' });
+    chrome.runtime.sendMessage({ action: 'togglePause' });
 });
 
 document.getElementById('stop-timer').addEventListener('click', () => {
