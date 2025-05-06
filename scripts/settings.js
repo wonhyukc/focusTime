@@ -4,7 +4,7 @@ const MAX_HISTORY_SIZE = 10; // 기록 최대 개수 (선택 사항)
 
 // 기본 설정값 정의
 const DEFAULT_SETTINGS = {
-    projectName: "집중 시간 도우미 설정",
+    projectName: "포모로그 설정",
     focus: {
         duration: 25,
         sound: "beep",
@@ -96,7 +96,7 @@ function getCurrentSettings() {
 
 function mergeWithDefaultSettings(userSettings) {
     const DEFAULT_SETTINGS_BG = {
-        projectName: "집중 시간 도우미 설정",
+        projectName: "포모로그 설정",
         version: "1.0",
         focus: {
             duration: 25,
