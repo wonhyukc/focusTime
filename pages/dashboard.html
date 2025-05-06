@@ -9,122 +9,50 @@
     <link rel="stylesheet" href="../styles/heatmap.css">
     <script src="../scripts/email.min.js"></script>
     <script>
-    // i18n dictionary (must match settings.js)
-    const I18N = {
-        ko: {
-            appName: '포모로그',
-            feedbackGuide: '향후 개선하겠습니다. 피드백은 <b><a href="mailto:willyads@gmail.com">willyads@gmail.com</a></b> 으로 메일 보내주세요.',
-            currentProject: '현재 프로젝트 이름:',
-            feedback: '피드백',
-            feedbackGuideShort: '여러분의 소중한 의견을 들려주세요!',
-            credits: '사운드 크레딧'
-        },
-        en: {
-            appName: 'PomoLog',
-            feedbackGuide: 'We will improve this in the future. Please send feedback to <b><a href="mailto:willyads@gmail.com">willyads@gmail.com</a></b>.',
-            currentProject: 'Current Project Name:',
-            feedback: 'Feedback',
-            feedbackGuideShort: 'We value your feedback!',
-            credits: 'Sound Credits'
-        },
-        zh: {
-            appName: '番茄日志',
-            feedbackGuide: '我们将来会改进。请将反馈发送到 <b><a href="mailto:willyads@gmail.com">willyads@gmail.com</a></b>。',
-            currentProject: '当前项目名称：',
-            feedback: '反馈',
-            feedbackGuideShort: '欢迎您的宝贵意见！',
-            credits: '音效致谢'
-        },
-        hi: {
-            appName: 'पोमोलॉग',
-            feedbackGuide: 'हम भविष्य में इसमें सुधार करेंगे। कृपया अपनी प्रतिक्रिया <b><a href="mailto:willyads@gmail.com">willyads@gmail.com</a></b> पर भेजें।',
-            currentProject: 'वर्तमान परियोजना नाम:',
-            feedback: 'प्रतिक्रिया',
-            feedbackGuideShort: 'आपकी प्रतिक्रिया हमारे लिए महत्वपूर्ण है!',
-            credits: 'साउंड क्रेडिट्स'
-        },
-        es: {
-            appName: 'PomoLog',
-            feedbackGuide: 'Mejoraremos esto en el futuro. Por favor, envíe sus comentarios a <b><a href="mailto:willyads@gmail.com">willyads@gmail.com</a></b>.',
-            currentProject: 'Nombre del proyecto actual:',
-            feedback: 'Comentarios',
-            feedbackGuideShort: '¡Valoramos sus comentarios!',
-            credits: 'Créditos de sonido'
-        },
-        fr: {
-            appName: 'PomoLog',
-            feedbackGuide: 'Nous améliorerons cela à l\'avenir. Veuillez envoyer vos commentaires à <b><a href="mailto:willyads@gmail.com">willyads@gmail.com</a></b>.',
-            currentProject: 'Nom du projet actuel :',
-            feedback: 'Retour',
-            feedbackGuideShort: 'Nous apprécions vos commentaires !',
-            credits: 'Crédits sonores'
-        },
-        ar: {
-            appName: 'بومولوج',
-            feedbackGuide: 'سنعمل على تحسين ذلك في المستقبل. يرجى إرسال ملاحظاتك إلى <b><a href="mailto:willyads@gmail.com">willyads@gmail.com</a></b>.',
-            currentProject: 'اسم المشروع الحالي:',
-            feedback: 'ملاحظات',
-            feedbackGuideShort: 'نحن نقدر ملاحظاتك!',
-            credits: 'اعتمادات الصوت'
-        },
-        bn: {
-            appName: 'পোমোলগ',
-            feedbackGuide: 'আমরা ভবিষ্যতে এটি উন্নত করব। দয়া করে আপনার মতামত <b><a href="mailto:willyads@gmail.com">willyads@gmail.com</a></b> এ পাঠান।',
-            currentProject: 'বর্তমান প্রকল্পের নাম:',
-            feedback: 'প্রতিক্রিয়া',
-            feedbackGuideShort: 'আপনার মতামত আমাদের জন্য গুরুত্বপূর্ণ!',
-            credits: 'সাউন্ড ক্রেডিট'
-        },
-        pt: {
-            appName: 'PomoLog',
-            feedbackGuide: 'Vamos melhorar isso no futuro. Por favor, envie seu feedback para <b><a href="mailto:willyads@gmail.com">willyads@gmail.com</a></b>.',
-            currentProject: 'Nome do projeto atual:',
-            feedback: 'Feedback',
-            feedbackGuideShort: 'Valorizamos seu feedback!',
-            credits: 'Créditos de som'
-        },
-        ru: {
-            appName: 'ПомоЛог',
-            feedbackGuide: 'В будущем мы это улучшим. Пожалуйста, отправьте свой отзыв на <b><a href="mailto:willyads@gmail.com">willyads@gmail.com</a></b>.',
-            currentProject: 'Текущее название проекта:',
-            feedback: 'Обратная связь',
-            feedbackGuideShort: 'Мы ценим ваши отзывы!',
-            credits: 'Звуковые кредиты'
-        },
-        ur: {
-            appName: 'پومو لاگ',
-            feedbackGuide: 'ہم مستقبل میں اس میں بہتری لائیں گے۔ براہ کرم اپنی رائے <b><a href="mailto:willyads@gmail.com">willyads@gmail.com</a></b> پر بھیجیں۔',
-            currentProject: 'موجودہ پروجیکٹ کا نام:',
-            feedback: 'رائے',
-            feedbackGuideShort: 'ہم آپ کی رائے کو اہمیت دیتے ہیں!',
-            credits: 'آواز کے کریڈٹ'
-        }
-    };
     function getLang() {
         const lang = (navigator.language || navigator.userLanguage || 'ko').slice(0,2).toLowerCase();
-        return I18N[lang] ? lang : 'ko';
+        return [
+            'ko','en','zh','hi','es','fr','ar','bn','pt','ru','ur'
+        ].includes(lang) ? lang : 'ko';
     }
-    function i18nUpdate(selectedLang) {
+    function getI18nUrl(lang) {
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
+            return chrome.runtime.getURL(`i18n/${lang}.json`);
+        }
+        return '../i18n/' + lang + '.json';
+    }
+    async function loadI18n(lang) {
+        try {
+            const res = await fetch(getI18nUrl(lang));
+            if (!res.ok) throw new Error('not ok');
+            return await res.json();
+        } catch {
+            const res = await fetch(getI18nUrl('ko'));
+            return await res.json();
+        }
+    }
+    async function i18nUpdate(selectedLang) {
         const lang = selectedLang || getLang();
-        document.title = I18N[lang].appName + ' (PomoLog)';
+        const dict = await loadI18n(lang);
+        document.title = dict.appName + ' (PomoLog)';
         // 헤더
         const h1 = document.querySelector('.logo h1');
-        if (h1) h1.innerHTML = I18N[lang].appName + ' (PomoLog)';
+        if (h1) h1.innerHTML = dict.appName + ' (PomoLog)';
         const logo = document.querySelector('.logo img');
-        if (logo) logo.alt = I18N[lang].appName + ' 로고';
+        if (logo) logo.alt = dict.appName + ' 로고';
         // 프로젝트 이름 라벨
         const projectLabel = document.querySelector('label[for="project-name"]');
-        if (projectLabel) projectLabel.textContent = I18N[lang].currentProject;
+        if (projectLabel) projectLabel.textContent = dict.currentProject;
         // 피드백 탭
         const feedbackTab = document.querySelector('#feedback h2');
-        if (feedbackTab) feedbackTab.textContent = I18N[lang].feedback;
+        if (feedbackTab) feedbackTab.textContent = dict.feedback;
         const feedbackGuide = document.querySelector('#feedback .feedback-container > div');
-        if (feedbackGuide) feedbackGuide.innerHTML = I18N[lang].feedbackGuide;
+        if (feedbackGuide) feedbackGuide.innerHTML = dict.feedbackGuide;
         const feedbackGuideShort = document.querySelector('#feedback .feedback-container > p');
-        if (feedbackGuideShort) feedbackGuideShort.textContent = I18N[lang].feedbackGuideShort;
+        if (feedbackGuideShort) feedbackGuideShort.textContent = dict.feedbackGuideShort;
         // 사운드 크레딧
         const credits = document.querySelector('#feedback .credits-section h3');
-        if (credits) credits.textContent = I18N[lang].credits;
+        if (credits) credits.textContent = dict.credits;
         // 드롭다운 값 동기화
         const langSelect = document.getElementById('lang-select');
         if (langSelect) langSelect.value = lang;
