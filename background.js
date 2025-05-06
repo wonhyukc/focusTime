@@ -47,7 +47,6 @@ const DEFAULT_SETTINGS_BG = {
 let timerState = {
     timeLeft: 0,
     isRunning: false,
-    isBreak: false,
     type: 'focus',
     pomodoroCount: 0,
     alarmName: 'pomodoroTimer',
@@ -202,10 +201,10 @@ chrome.alarms.onAlarm.addListener((alarm) => {
         if (timerState.timeLeft > 0) {
             timerState.timeLeft--;
             chrome.storage.local.set({ timeLeft: timerState.timeLeft });
-            updateBadge(timerState.timeLeft, timerState.isBreak);
-                } else {
+            updateBadge(timerState.timeLeft, timerState.type !== 'focus');
+        } else {
             timerComplete();
-            }
+        }
     }
 });
 
@@ -213,7 +212,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 chrome.notifications.onClicked.addListener(async (notificationId) => {
     if (notificationId === 'pomodoroNotification') {
         // 알림 제거
-                chrome.notifications.clear(notificationId);
+        chrome.notifications.clear(notificationId);
 
         // 다음 세션 시작
         await startNextSession();
@@ -338,7 +337,6 @@ async function startTimer(type) {
     console.log('Parameters:', { type });
     console.log('State before start:', {
         isRunning: timerState.isRunning,
-        isBreak: timerState.isBreak,
         currentSession: timerState.type
     });
 
@@ -355,7 +353,6 @@ async function startTimer(type) {
     switch (type) {
         case 'focus':
             durationMinutes = validateDuration(settings.focus.duration, DEFAULT_SETTINGS_BG.focus.duration);
-            timerState.isBreak = false;
             // 집중 세션에서만, 사운드가 설정된 경우에만 재생
             if (settings.focus.soundType && settings.focus.soundType !== 'none') {
                 await playSound(settings.focus.soundType, false, settings.focus.soundVolume);
@@ -365,19 +362,16 @@ async function startTimer(type) {
             break;
         case 'shortBreak':
             durationMinutes = validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS_BG.shortBreak.duration);
-            timerState.isBreak = true;
             // 휴식 세션에서는 반드시 소리 중지
             await playSound('none', false, 0);
             break;
         case 'longBreak':
             durationMinutes = validateDuration(settings.longBreak.duration, DEFAULT_SETTINGS_BG.longBreak.duration);
-            timerState.isBreak = true;
             // 휴식 세션에서는 반드시 소리 중지
             await playSound('none', false, 0);
             break;
         default:
             durationMinutes = DEFAULT_SETTINGS_BG.focus.duration;
-            timerState.isBreak = false;
             await playSound('none', false, 0);
     }
     timerState.timeLeft = durationMinutes * 60;
@@ -390,7 +384,6 @@ async function startTimer(type) {
     await chrome.storage.local.set({
         timeLeft: timerState.timeLeft,
         isRunning: timerState.isRunning,
-        isBreak: timerState.isBreak,
         type: timerState.type,
         sessionComplete: timerState.sessionComplete,
         pomodoroCount: timerState.pomodoroCount,
@@ -405,7 +398,6 @@ async function startTimer(type) {
 
     console.log('State after start:', {
         isRunning: timerState.isRunning,
-        isBreak: timerState.isBreak,
         currentSession: timerState.type,
         remainingTime: timerState.timeLeft
     });
@@ -421,23 +413,22 @@ async function startNextSession(nextSessionType) {
     console.log('[BG][startNextSession] 진입, 현재 timerState:', timerState);
     // 인자가 없으면 기존 방식으로 타입 결정
     if (!nextSessionType) {
-        if (!timerState.isBreak) {
+        if (timerState.type !== 'focus') {
+            nextSessionType = 'focus';
+        } else {
             if (timerState.pomodoroCount > 0 && timerState.pomodoroCount % validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter) === 0) {
                 nextSessionType = 'longBreak';
             } else {
                 nextSessionType = 'shortBreak';
             }
-        } else {
-            nextSessionType = 'focus';
         }
     }
     timerState.type = nextSessionType;
-    timerState.isBreak = (nextSessionType !== 'focus');
     timerState.isRunning = true;
     timerState.sessionComplete = false;
     timerState.sessionStartTime = new Date().toISOString();
     timerState.currentProjectName = settings.projectName || "N/A";
-    console.log('[BG][startNextSession] 다음 세션 타입:', nextSessionType, 'isBreak:', timerState.isBreak);
+    console.log('[BG][startNextSession] 다음 세션 타입:', nextSessionType, 'isBreak:', nextSessionType !== 'focus');
     // 소리 재생/중지: 세션 타입에 따라
     if (nextSessionType === 'focus') {
         console.log(`[BG][startNextSession] 집중 진입, 사운드 재생: ${settings.focus.soundType}, 볼륨: ${settings.focus.soundVolume}`);
@@ -449,8 +440,7 @@ async function startNextSession(nextSessionType) {
     // 상태 저장 및 타이머 시작
     await chrome.storage.local.set({
         timeLeft: timerState.timeLeft,
-        isBreak: timerState.isBreak,
-        isRunning: true,
+        isRunning: timerState.isRunning,
         sessionComplete: false,
         type: timerState.type,
         sessionStartTime: timerState.sessionStartTime,
@@ -470,7 +460,6 @@ async function toggleTimer() {
     console.log('=== Background toggleTimer called ===');
     console.log('State before toggle:', {
         isRunning: timerState.isRunning,
-        isBreak: timerState.isBreak,
         currentSession: timerState.type
     });
 
@@ -501,7 +490,6 @@ async function toggleTimer() {
 
     console.log('State after toggle:', {
         isRunning: timerState.isRunning,
-        isBreak: timerState.isBreak,
         currentSession: timerState.type
     });
 }
@@ -509,11 +497,11 @@ async function toggleTimer() {
 // 뱃지/툴팁(타이틀) 업데이트 함수
 function updateBadgeForPauseState() {
     const color = timerState.isRunning ? 
-        (timerState.isBreak ? '#2ecc71' : '#3498db') :  // 실행 중: 휴식-초록색, 집중-파란색
+        (timerState.type !== 'focus' ? '#2ecc71' : '#3498db') :  // 실행 중: 휴식-초록색, 집중-파란색
         '#95a5a6';  // 일시정지: 회색
 
     chrome.action.setBadgeBackgroundColor({ color: color });
-    updateBadge(timerState.timeLeft, timerState.isBreak);
+    updateBadge(timerState.timeLeft, timerState.type !== 'focus');
     updateActionTitle(); // 툴팁도 함께 업데이트
 }
 
@@ -523,7 +511,7 @@ function updateBadge(timeLeft, isBreak) {
     if (!timeLeft || isNaN(timeLeft)) {
         chrome.storage.sync.get('settings', (result) => {
             const settings = result.settings || DEFAULT_SETTINGS_BG;
-            if (isBreak) {
+            if (timerState.type !== 'focus') {
                 timeLeft = settings.shortBreak.duration * 60;
             } else {
                 timeLeft = settings.focus.duration * 60;
@@ -575,7 +563,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Message:', message);
     console.log('Current timer state:', {
         isRunning: timerState.isRunning,
-        isBreak: timerState.isBreak,
         currentSession: timerState.type
     });
 
@@ -610,7 +597,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case 'getTimerState':
             sendResponse({
                 isRunning: timerState.isRunning,
-                isBreak: timerState.isBreak,
                 type: timerState.type,
                 timeLeft: timerState.timeLeft,
                 sessionComplete: timerState.sessionComplete
@@ -627,7 +613,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     console.log('Timer state after action:', {
         isRunning: timerState.isRunning,
-        isBreak: timerState.isBreak,
         currentSession: timerState.type
     });
 });
@@ -759,14 +744,12 @@ async function stopTimer() {
     timerState.timeLeft = 0;
     timerState.type = 'focus';
     timerState.pomodoroCount = 0;
-    timerState.isBreak = false;
     timerState.sessionComplete = false;
     
     // 상태 저장
     await chrome.storage.local.set({
         timeLeft: timerState.timeLeft,
         isRunning: timerState.isRunning,
-        isBreak: timerState.isBreak,
         type: timerState.type,
         sessionComplete: timerState.sessionComplete,
         pomodoroCount: timerState.pomodoroCount
@@ -845,7 +828,7 @@ async function timerComplete() {
     };
     await saveSessionData(completedSessionData); // 세션 데이터 저장 함수 호출
     // === 포모도로 카운트 증가 추가 ===
-    if (!timerState.isBreak) {
+    if (timerState.type === 'focus') {
         timerState.pomodoroCount++;
         console.log('[LOG] 포모도로 카운트 증가:', timerState.pomodoroCount);
     }
@@ -858,8 +841,8 @@ async function timerComplete() {
     }
     // --- 저장 로직 끝 ---
     // 다음 세션 타입 결정
-    let nextType, nextDurationMinutes, isBreak;
-    if (!timerState.isBreak) {
+    let nextType, nextDurationMinutes;
+    if (timerState.type === 'focus') {
         // 집중 끝 → 휴식
         if (timerState.pomodoroCount > 0 &&
             timerState.pomodoroCount % validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter) === 0) {
@@ -869,21 +852,18 @@ async function timerComplete() {
             nextType = 'shortBreak';
             nextDurationMinutes = validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS_BG.shortBreak.duration);
         }
-        isBreak = true;
     } else {
         // 휴식 끝 → 집중
         nextType = 'focus';
         nextDurationMinutes = validateDuration(settings.focus.duration, DEFAULT_SETTINGS_BG.focus.duration);
-        isBreak = false;
     }
     // 다음 세션 상태를 미리 timerState에 반영
     timerState.type = nextType;
     timerState.timeLeft = nextDurationMinutes * 60;
-    timerState.isBreak = isBreak;
     timerState.sessionStartTime = new Date().toISOString();
     timerState.currentProjectName = settings.projectName || "N/A";
     // 자동 시작 설정 확인
-    const shouldAutoStart = isBreak
+    const shouldAutoStart = nextType !== 'focus'
         ? settings.general.autoStartBreaks
         : settings.general.autoStartPomodoros;
     if (shouldAutoStart) {
@@ -895,7 +875,6 @@ async function timerComplete() {
         timerState.sessionComplete = true;
         await chrome.storage.local.set({
             timeLeft: timerState.timeLeft,
-            isBreak: timerState.isBreak,
             isRunning: false,
             sessionComplete: true,
             type: timerState.type,
@@ -906,10 +885,10 @@ async function timerComplete() {
         updateBadgeForPauseState();
     }
     // 알림 표시
-    const title = isBreak ? '휴식 시간입니다!' : '집중 시간입니다!';
-    const message = isBreak ?
-        '잠시 휴식을 취하고 기분 전환을 해보세요.' :
-        '이제 집중할 시간입니다. 목표를 향해 화이팅!';
+    let title = nextType !== 'focus' ? '휴식 시간입니다!' : '집중 시간입니다!';
+    let message = nextType !== 'focus'
+        ? '잠시 휴식을 취하고 기분 전환을 해보세요.'
+        : '이제 집중할 시간입니다. 목표를 향해 화이팅!';
     chrome.notifications.create('pomodoroNotification', {
         type: 'basic',
         iconUrl: 'icons/icon128.png',
