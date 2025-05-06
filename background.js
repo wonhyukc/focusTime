@@ -519,7 +519,6 @@ function updateBadge(timeLeft, isBreak) {
 
 // 아이콘 툴팁(타이틀) 업데이트 함수
 function updateActionTitle() {
-    let minutes = Math.floor(timerState.timeLeft / 60);
     let sessionLabel;
     if (timerState.type === 'focus') {
         sessionLabel = '집중세션';
@@ -538,7 +537,8 @@ function updateActionTitle() {
     if (timerState.timeLeft < 60) {
         timeStr = '<1분';
     } else {
-        timeStr = `${minutes}분`;
+        let roundedMinutes = Math.round(timerState.timeLeft / 60);
+        timeStr = `${roundedMinutes}분`;
     }
     chrome.action.setTitle({ title: `${sessionLabel} ${timeStr} 남음` });
 }
