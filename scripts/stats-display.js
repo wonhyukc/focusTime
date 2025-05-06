@@ -9,8 +9,6 @@ let weeklyChartInstance = null;
 let monthlyChartInstance = null;
 let yearlyChartInstance = null;
 
-// 선택된 시간 필터 (분 단위) - 변수 선언 및 초기화
-let selectedDurationFilter = 25; // 기본값 (예: 25분)
 
 // Chart.js 로딩 상태 확인 함수
 function isChartJsLoaded() {
@@ -49,7 +47,7 @@ async function loadAndProcessStats() {
         logTodayFocusDetails(history);
 
         // --- 일 단위 분포 데이터 처리 ---
-        const dailyData = processDailyData(history, selectedDurationFilter);
+        const dailyData = processDailyData(history);
         updateDailyChart(dailyData);
 
         // --- 주 단위 분포 데이터 처리 ---
@@ -298,24 +296,19 @@ function getSessionsThisYear(history) {
     });
 }
 
-function processDailyData(history, durationFilter) {
+function processDailyData(history) {
     try {
         const hourlyTotals = Array(24).fill(0);
         const filteredHistory = history.filter(entry =>
-            entry.type === 'focus' && entry.durationMinutes == durationFilter // 선택된 지속시간 필터 적용
+            entry.type === 'focus'
         );
-
         filteredHistory.forEach(entry => {
-            // 로그 추가: 파싱된 entry의 시간, 분, 원본 startTime
             const entryDate = getDateFromEntry(entry);
             if (entryDate && !isNaN(entryDate)) {
                 const hour = entryDate.getHours();
                 hourlyTotals[hour] += entry.durationMinutes || 0;
-            } else {
-                console.log('[DEBUG] processDailyData entry: INVALID DATE', entry.startTime);
             }
         });
-        console.log('[DEBUG] processDailyData hourlyTotals:', hourlyTotals);
         return hourlyTotals;
     } catch (error) {
         return Array(24).fill(0);
@@ -433,7 +426,6 @@ function updateDailyChart(data) {
                 }]
             },
             options: {
-                responsive: true,
                 maintainAspectRatio: false,
                 animation: {
                     duration: 1000,
@@ -833,7 +825,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     loadAndProcessStats();
                 } else {
                     if (typeof showToast === 'function') {
-                        showToast('차트 라이브러리를 로드하는 데 실패했습니다. 페이지를 새로고침해 보세요.', 'error');
+                        showToast('차트 라이브러리가 로드되지 않았습니다. 페이지를 새로고침하거나 네트워크 연결을 확인하세요.', 'error');
                     }
                 }
             }, 1000);
