@@ -211,11 +211,22 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 // 알림 클릭 이벤트 처리
 chrome.notifications.onClicked.addListener(async (notificationId) => {
     if (notificationId === 'pomodoroNotification') {
-        // 알림 제거
         chrome.notifications.clear(notificationId);
-
-        // 다음 세션 시작
-        await startNextSession();
+        // 다음 세션 타입 명확히 계산
+        let nextType;
+        if (timerState.type === 'focus') {
+            // 집중 끝 → 휴식
+            const settings = await getCurrentSettings();
+            if (timerState.pomodoroCount > 0 && timerState.pomodoroCount % validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter) === 0) {
+                nextType = 'longBreak';
+            } else {
+                nextType = 'shortBreak';
+            }
+        } else {
+            // 휴식 끝 → 집중
+            nextType = 'focus';
+        }
+        await startNextSession(nextType);
     }
 });
 
@@ -334,6 +345,7 @@ async function getCurrentSettings() {
 // 타이머 시작
 async function startTimer(type) {
     console.log('=== Background startTimer called ===', new Error().stack);
+    
     console.log('Parameters:', { type });
     console.log('State before start:', {
         isRunning: timerState.isRunning,
@@ -404,36 +416,17 @@ async function startTimer(type) {
 
 // 다음 세션 시작 (nextSessionType을 인자로 받음)
 async function startNextSession(nextSessionType) {
-    if (timerState.isRunning) {
-        console.log('[BG][startNextSession] 이미 세션이 실행 중이므로 무시');
-        return;
-    }
-    const settings = await getCurrentSettings();
-    console.log('[BG][startNextSession] 진입, 현재 timerState:', timerState);
-    // 인자가 없으면 기존 방식으로 타입 결정
-    if (!nextSessionType) {
-        if (timerState.type !== 'focus') {
-            nextSessionType = 'focus';
-        } else {
-            if (timerState.pomodoroCount > 0 && timerState.pomodoroCount % validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter) === 0) {
-                nextSessionType = 'longBreak';
-            } else {
-                nextSessionType = 'shortBreak';
-            }
-        }
-    }
+    console.log('[LOG h] startNextSession 진입:', nextSessionType, timerState.type, new Error().stack);
     timerState.type = nextSessionType;
     timerState.isRunning = true;
     timerState.sessionComplete = false;
     timerState.sessionStartTime = new Date().toISOString();
+    const settings = await getCurrentSettings();
     timerState.currentProjectName = settings.projectName || "N/A";
-    console.log('[BG][startNextSession] 다음 세션 타입:', nextSessionType, 'isBreak:', nextSessionType !== 'focus');
     // 소리 재생/중지: 세션 타입에 따라
     if (nextSessionType === 'focus') {
-        console.log(`[BG][startNextSession] 집중 진입, 사운드 재생: ${settings.focus.soundType}, 볼륨: ${settings.focus.soundVolume}`);
         await playSound(settings.focus.soundType, false, settings.focus.soundVolume);
     } else {
-        console.log(`[BG][startNextSession] 휴식 진입 (${nextSessionType}), 모든 소리 중지`);
         await playSound('none', false, 0);
     }
     // 상태 저장 및 타이머 시작
@@ -527,9 +520,16 @@ function updateBadge(timeLeft, isBreak) {
 // 아이콘 툴팁(타이틀) 업데이트 함수
 function updateActionTitle() {
     let minutes = Math.floor(timerState.timeLeft / 60);
-    let sessionLabel = '집중세션';
-    if (timerState.type === 'shortBreak') sessionLabel = '휴식세션';
-    if (timerState.type === 'longBreak') sessionLabel = '긴휴식세션';
+    let sessionLabel;
+    if (timerState.type === 'focus') {
+        sessionLabel = '집중세션';
+    } else if (timerState.type === 'shortBreak') {
+        sessionLabel = '휴식세션';
+    } else if (timerState.type === 'longBreak') {
+        sessionLabel = '긴휴식세션';
+    } else {
+        sessionLabel = '알 수 없음';
+    }
     if (timerState.timeLeft <= 0 || isNaN(timerState.timeLeft)) {
         chrome.action.setTitle({ title: '타이머가 정지됨' });
         return;
@@ -557,7 +557,7 @@ function updateBadgeText(timeLeft) {
 }
 
 // 메시지 리스너 설정
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     console.log('=== Background message received ===');
     console.log('Message:', message);
     console.log('Current timer state:', {
@@ -568,37 +568,52 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch (message.action) {
         case 'startTimer':
             console.log('Starting timer for session:', message.sessionType);
-            startTimer(message.sessionType);
+            await startTimer(message.sessionType);
             break;
         case 'toggleTimer':
             console.log('Toggling timer (pause/resume)');
-            toggleTimer();
+            await toggleTimer();
             break;
         case 'stopTimer':
             console.log('Stopping timer');
-            stopTimer();
+            await stopTimer();
             break;
         case 'startNextSession':
-            startNextSession();
+            // 인자 없이 호출될 때도 다음 세션 타입을 명확히 계산해서 넘김
+            let nextType;
+            if (timerState.type === 'focus') {
+                // 집중 끝 → 휴식
+                const settings = await getCurrentSettings();
+                if (timerState.pomodoroCount > 0 && timerState.pomodoroCount % validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter) === 0) {
+                    nextType = 'longBreak';
+                } else {
+                    nextType = 'shortBreak';
+                }
+            } else {
+                // 휴식 끝 → 집중
+                nextType = 'focus';
+            }
+            await startNextSession(nextType);
             break;
         case 'playSound':
-            playSound(message.soundType, message.isPreview, message.volume);
+            await playSound(message.soundType, message.isPreview, message.volume);
             break;
         case 'exportStats':
-            exportStats();
+            await exportStats();
             break;
         case 'importParsedStats':
-            importParsedStats(message.data);
+            await importParsedStats(message.data);
             break;
         case 'resetStats':
-            resetStats();
+            await resetStats();
             break;
         case 'getTimerState':
             sendResponse({
                 isRunning: timerState.isRunning,
                 type: timerState.type,
                 timeLeft: timerState.timeLeft,
-                sessionComplete: timerState.sessionComplete
+                sessionComplete: timerState.sessionComplete,
+                currentSession: timerState.type
             });
             return true;
         case 'OFFSCREEN_LOADED':
@@ -618,7 +633,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Offscreen Document를 통해 소리를 재생하는 함수
 async function playSound(soundType, isPreview = false, volume = undefined) {
-    console.log('[LOG] playSound 호출:', { soundType, isPreview, volume });
+    console.log('[BG][playSound] 호출:', { soundType, isPreview, volume });
     // 오프스크린 문서 존재 여부
     const existingContexts = await chrome.runtime.getContexts({
         contextTypes: ['OFFSCREEN_DOCUMENT'],
@@ -788,7 +803,8 @@ async function timerComplete() {
     let soundType, soundVolume;
     switch (timerState.type) {
         case 'focus':
-            soundType = settings.focus.soundType;
+            // 종료 시에는 종료음(sound)만 재생
+            soundType = settings.focus.sound;
             soundVolume = settings.focus.soundVolume;
             break;
         case 'shortBreak':
@@ -800,10 +816,9 @@ async function timerComplete() {
             soundVolume = settings.longBreak.soundVolume ?? DEFAULT_SETTINGS_BG.longBreak.soundVolume;
             break;
         default:
-            soundType = DEFAULT_SETTINGS_BG.focus.soundType;
+            soundType = DEFAULT_SETTINGS_BG.focus.sound;
             soundVolume = DEFAULT_SETTINGS_BG.focus.soundVolume;
     }
-    console.log('[playSound-call] timerComplete:', { soundType, soundVolume });
     await playSound(soundType, false, soundVolume);
     // --- 완료된 세션 정보 저장 ---
     // durationMinutes를 sessionStartTime과 현재 시각의 차이로 계산
@@ -865,7 +880,7 @@ async function timerComplete() {
         ? settings.general.autoStartBreaks
         : settings.general.autoStartPomodoros;
     if (shouldAutoStart) {
-        // 자동 시작이면 startNextSession 호출
+        // 자동 시작이면 startNextSession 호출 (반드시 nextType 인자로 넘김)
         await startNextSession(nextType);
     } else {
         // 자동 시작이 아니면 sessionComplete만 true로 두고, 알림 클릭에서만 startNextSession 호출
@@ -895,6 +910,7 @@ async function timerComplete() {
         requireInteraction: true,
         silent: true // 소리는 playSound로 제어하므로 알림 자체는 조용히
     });
+    console.error('[LOG h] 다음 세션: nextType, timerState.type ', nextType, timerState.type);
 }
 
 // 세션 데이터 저장 (신규 함수)
