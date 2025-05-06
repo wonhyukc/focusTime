@@ -91,7 +91,6 @@ function getCurrentSettings() {
             tabNotification: document.getElementById('long-break-tab-notification')?.checked
         }
     };
-    console.log("Current settings:", settings);
     return settings;
 }
 
@@ -154,7 +153,6 @@ async function applySettings(settings) {
         }
         // 병합: 누락된 필드는 기본값으로 채움
         const mergedSettings = mergeWithDefaultSettings(settings);
-        console.log('[SETTINGS] 병합 후 저장될 settings:', mergedSettings);
         // 프로젝트 이름 설정
         const projectNameElement = document.getElementById('project-name');
         if (projectNameElement) {
@@ -181,15 +179,11 @@ async function applySettings(settings) {
         if (focusSoundVolumeElement) {
             focusSoundVolumeElement.value = mergedSettings.focus.soundVolume;
             focusSoundVolumeElement.addEventListener('input', (e) => {
-                console.log('[SETTINGS] 볼륨 입력값:', e.target.value);
                 const settings = getCurrentSettings();
-                console.log('[SETTINGS] getCurrentSettings() 볼륨:', settings.focus.soundVolume);
                 applySettings(settings);
             });
             focusSoundVolumeElement.addEventListener('change', (e) => {
-                console.log('[SETTINGS] 볼륨 입력값(변경):', e.target.value);
                 const settings = getCurrentSettings();
-                console.log('[SETTINGS] getCurrentSettings() 볼륨(변경):', settings.focus.soundVolume);
                 applySettings(settings);
             });
         }
@@ -216,15 +210,11 @@ async function applySettings(settings) {
         const shortBreakSoundVolumeElement = document.getElementById('short-break-sound-volume');
         if (shortBreakSoundVolumeElement) {
             shortBreakSoundVolumeElement.addEventListener('input', (e) => {
-                console.log('[SETTINGS] 볼륨 입력값(shortBreak):', e.target.value);
                 const settings = getCurrentSettings();
-                console.log('[SETTINGS] getCurrentSettings() 볼륨(shortBreak):', settings.shortBreak.soundVolume);
                 applySettings(settings);
             });
             shortBreakSoundVolumeElement.addEventListener('change', (e) => {
-                console.log('[SETTINGS] 볼륨 입력값(변경, shortBreak):', e.target.value);
                 const settings = getCurrentSettings();
-                console.log('[SETTINGS] getCurrentSettings() 볼륨(변경, shortBreak):', settings.shortBreak.soundVolume);
                 applySettings(settings);
             });
         }
@@ -242,15 +232,11 @@ async function applySettings(settings) {
         const longBreakSoundVolumeElement = document.getElementById('long-break-sound-volume');
         if (longBreakSoundVolumeElement) {
             longBreakSoundVolumeElement.addEventListener('input', (e) => {
-                console.log('[SETTINGS] 볼륨 입력값(longBreak):', e.target.value);
                 const settings = getCurrentSettings();
-                console.log('[SETTINGS] getCurrentSettings() 볼륨(longBreak):', settings.longBreak.soundVolume);
                 applySettings(settings);
             });
             longBreakSoundVolumeElement.addEventListener('change', (e) => {
-                console.log('[SETTINGS] 볼륨 입력값(변경, longBreak):', e.target.value);
                 const settings = getCurrentSettings();
-                console.log('[SETTINGS] getCurrentSettings() 볼륨(변경, longBreak):', settings.longBreak.soundVolume);
                 applySettings(settings);
             });
         }
@@ -258,14 +244,8 @@ async function applySettings(settings) {
         // 설정을 Chrome storage에 저장
         chrome.storage.sync.set({ settings: mergedSettings }, async () => {
             if (chrome.runtime.lastError) {
-                console.error('Error saving settings:', chrome.runtime.lastError);
                 showToast('설정 저장 중 오류 발생', 'error');
             } else {
-                console.log('[SETTINGS] 저장된 settings:', mergedSettings);
-                // 저장 직후 실제 저장된 값 확인
-                chrome.storage.sync.get('settings', (result) => {
-                    console.log('[SETTINGS] 저장 직후 읽은 settings:', result.settings);
-                });
                 // 프로젝트 이름이 있으면 기록에 추가
                 if (mergedSettings.projectName) {
                     await addProjectToHistory(mergedSettings.projectName);
@@ -273,7 +253,6 @@ async function applySettings(settings) {
             }
         });
     } catch (error) {
-        console.error("Error applying settings:", error);
         showToast('설정 적용 중 오류 발생', 'error');
     }
 }
@@ -296,7 +275,6 @@ async function addProjectToHistory(projectName) {
         }
 
         await chrome.storage.local.set({ [PROJECT_HISTORY_KEY]: history });
-        console.log('Project history updated:', history);
         // datalist 업데이트
         populateDataList(history);
 
@@ -348,7 +326,6 @@ function exportSettings() {
         downloadAnchorNode.remove();
         showToast('설정이 내보내기되었습니다.', 'success');
     } catch (error) {
-        console.error("Error exporting settings:", error);
         showToast('설정 내보내기 중 오류 발생', 'error');
     }
 }
@@ -449,15 +426,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const focusSoundTypeVolumeElement = document.getElementById('focus-sound-type-volume');
     if (focusSoundTypeVolumeElement) {
         focusSoundTypeVolumeElement.addEventListener('input', (e) => {
-            console.log('[SETTINGS] 볼륨 입력값(focus-sound-type):', e.target.value);
             const settings = getCurrentSettings();
-            console.log('[SETTINGS] getCurrentSettings() 볼륨(focus-sound-type):', settings.focus.soundTypeVolume);
             applySettings(settings);
         });
         focusSoundTypeVolumeElement.addEventListener('change', (e) => {
-            console.log('[SETTINGS] 볼륨 입력값(변경, focus-sound-type):', e.target.value);
             const settings = getCurrentSettings();
-            console.log('[SETTINGS] getCurrentSettings() 볼륨(변경, focus-sound-type):', settings.focus.soundTypeVolume);
             applySettings(settings);
         });
     }

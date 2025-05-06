@@ -126,7 +126,6 @@ function formatNumber(n) {
 
 // 요약 카드 업데이트 함수
 function updateSummaryCards(history) {
-    console.log('[LOG] updateSummaryCards 호출:', { historyLength: history.length });
     try {
         // 오늘 카드 업데이트
         const todayFocusSessions = getSessionsToday(history);
@@ -311,11 +310,6 @@ function processDailyData(history, durationFilter) {
             const entryDate = getDateFromEntry(entry);
             if (entryDate && !isNaN(entryDate)) {
                 const hour = entryDate.getHours();
-                console.log('[DEBUG] processDailyData entry:', {
-                    startTime: entry.startTime,
-                    parsedHour: hour,
-                    duration: entry.durationMinutes
-                });
                 hourlyTotals[hour] += entry.durationMinutes || 0;
             } else {
                 console.log('[DEBUG] processDailyData entry: INVALID DATE', entry.startTime);
