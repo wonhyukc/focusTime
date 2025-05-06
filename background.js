@@ -1121,4 +1121,29 @@ function logSoundInfo(soundType, isPreview) {
 }
 
 // 초기화/리셋 시 DEFAULT_SETTINGS_BG 로그
-console.log('[BG][init] DEFAULT_SETTINGS_BG:', DEFAULT_SETTINGS_BG); 
+console.log('[BG][init] DEFAULT_SETTINGS_BG:', DEFAULT_SETTINGS_BG);
+
+function updateActionTitle() {
+    let minutes = Math.floor(timerState.timeLeft / 60);
+    let sessionLabel;
+    if (timerState.type === 'focus') {
+        sessionLabel = '집중세션';
+    } else if (timerState.type === 'shortBreak') {
+        sessionLabel = '휴식세션';
+    } else if (timerState.type === 'longBreak') {
+        sessionLabel = '긴휴식세션';
+    } else {
+        sessionLabel = '알 수 없음';
+    }
+    if (timerState.timeLeft <= 0 || isNaN(timerState.timeLeft)) {
+        chrome.action.setTitle({ title: '타이머가 정지됨' });
+        return;
+    }
+    let timeStr = '';
+    if (timerState.timeLeft < 60) {
+        timeStr = '<1분';
+    } else {
+        timeStr = `${minutes}분`;
+    }
+    chrome.action.setTitle({ title: `${sessionLabel} ${timeStr} 남음` });
+} 

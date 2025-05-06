@@ -132,14 +132,14 @@ function updateSummaryCards(history) {
         const todayFocusSessions = getSessionsToday(history);
         const todayMinutes = calculateTotalFocusMinutes(todayFocusSessions);
         const todayHours = Math.floor(todayMinutes / 60);
-        const todayRemainMinutes = todayMinutes % 60;
+        const todayRemainMinutes = Math.floor(todayMinutes % 60);
         let todayLabel = '';
         if (todayMinutes === 0) {
             todayLabel = '0.00';
         } else {
             todayLabel = todayHours + ':' + String(todayRemainMinutes).padStart(2, '0');
         }
-        document.querySelector('.stats-summary .stat-card:nth-child(1) .stat-value').textContent = formatNumber(todayMinutes);
+        document.querySelector('.stats-summary .stat-card:nth-child(1) .stat-value').textContent = formatNumber(Math.floor(todayMinutes));
         document.querySelector('.stats-summary .stat-card:nth-child(1) .stat-label').textContent = todayLabel;
         
         // 이번 주 카드 업데이트
@@ -147,7 +147,7 @@ function updateSummaryCards(history) {
         const weekMinutes = calculateTotalFocusMinutes(thisWeekSessions);
         const weekHours = weekMinutes / 60;
         
-        document.querySelector('.stats-summary .stat-card:nth-child(2) .stat-value').textContent = formatNumber(weekMinutes);
+        document.querySelector('.stats-summary .stat-card:nth-child(2) .stat-value').textContent = formatNumber(Math.floor(weekMinutes));
         document.querySelector('.stats-summary .stat-card:nth-child(2) .stat-label').textContent = 
             weekHours.toFixed(2);
         
@@ -160,7 +160,7 @@ function updateSummaryCards(history) {
         const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
         
         document.querySelector('.stats-summary .stat-card:nth-child(3) h3').textContent = monthNames[currentMonth];
-        document.querySelector('.stats-summary .stat-card:nth-child(3) .stat-value').textContent = formatNumber(monthMinutes);
+        document.querySelector('.stats-summary .stat-card:nth-child(3) .stat-value').textContent = formatNumber(Math.floor(monthMinutes));
         document.querySelector('.stats-summary .stat-card:nth-child(3) .stat-label').textContent = 
             monthHours.toFixed(2);
 
@@ -170,7 +170,7 @@ function updateSummaryCards(history) {
         const yearHours = yearMinutes / 60;
         const yearCard = document.querySelector('.stats-summary .stat-card:nth-child(4)');
         if (yearCard) {
-            yearCard.querySelector('.stat-value').textContent = formatNumber(yearMinutes);
+            yearCard.querySelector('.stat-value').textContent = formatNumber(Math.floor(yearMinutes));
             yearCard.querySelector('.stat-label').textContent = yearHours.toFixed(2);
         }
 
@@ -181,7 +181,7 @@ function updateSummaryCards(history) {
             const totalMinutes = calculateTotalFocusMinutes(totalFocusSessions);
             const totalHours = totalMinutes / 60;
             
-            totalCard.querySelector('.stat-value').textContent = formatNumber(totalMinutes);
+            totalCard.querySelector('.stat-value').textContent = formatNumber(Math.floor(totalMinutes));
             totalCard.querySelector('.stat-label').textContent = totalHours.toFixed(2);
         }
 
