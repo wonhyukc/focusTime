@@ -434,4 +434,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             applySettings(settings);
         });
     }
+
+    // 프로젝트 이름 입력란: 드롭다운+직접입력 지원 및 기록 반영
+    const projectNameInput = document.getElementById('project-name');
+    if (projectNameInput) {
+        // 사용자가 입력 후 포커스 아웃하거나 엔터 시 기록에 추가
+        projectNameInput.addEventListener('change', async (e) => {
+            const value = e.target.value.trim();
+            if (value) {
+                await addProjectToHistory(value);
+            }
+        });
+        // 입력 후 포커스 아웃 시에도 기록에 추가
+        projectNameInput.addEventListener('blur', async (e) => {
+            const value = e.target.value.trim();
+            if (value) {
+                await addProjectToHistory(value);
+            }
+        });
+    }
 }); 
