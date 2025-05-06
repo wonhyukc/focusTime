@@ -5,9 +5,9 @@
   "description": "집중 시간을 관리하고 생산성을 높이는 도우미",
   "action": {
     "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
+      "16": "icons/pomolog_icon_16x16.png",
+      "48": "icons/pomolog_icon_48x48.png",
+      "128": "icons/pomolog_icon_128x128.png"
     }
   },
   "background": {
@@ -29,9 +29,9 @@
     }
   ],
   "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
+    "16": "icons/pomolog_icon_16x16.png",
+    "48": "icons/pomolog_icon_48x48.png",
+    "128": "icons/pomolog_icon_128x128.png"
   },
   "options_page": "pages/dashboard.html"
 } 
