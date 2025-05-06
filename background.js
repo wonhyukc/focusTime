@@ -341,7 +341,6 @@ async function startTimer(type) {
     });
 
     const settings = await getCurrentSettings();
-    console.log('[BG][startTimer] playSound 직전 focus.soundVolume:', settings.focus.soundVolume);
     timerState.type = type;
     timerState.isRunning = true;
     timerState.sessionComplete = false;
@@ -786,7 +785,6 @@ async function timerComplete() {
     await playSound('none', false, 0);
     // 알림음 재생 (인자 없이 호출 -> playSound가 완료된 세션 타입 기반으로 소리 결정)
     const settings = await getCurrentSettings();
-    console.log('[BG][timerComplete] playSound 직전 focus.soundVolume:', settings.focus.soundVolume);
     let soundType, soundVolume;
     switch (timerState.type) {
         case 'focus':
