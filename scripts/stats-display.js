@@ -46,11 +46,11 @@ async function loadAndProcessStats() {
         // 오늘의 집중 시간(분) 시간대별/프로젝트별 집계 및 콘솔 출력
         logTodayFocusDetails(history);
 
-        // --- 일 단위 분포 데이터 처리 ---
+        // --- 일 단위 차트 데이터 처리 ---
         const dailyData = processDailyData(history);
         updateDailyChart(dailyData);
 
-        // --- 주 단위 분포 데이터 처리 ---
+        // --- 주 단위 차트 데이터 처리 ---
         const weeklyData = processWeeklyData(history);
         updateWeeklyChart(weeklyData);
 
@@ -58,11 +58,11 @@ async function loadAndProcessStats() {
         const heatmapData = processHeatmapData(history);
         renderMonthlyHeatmap(heatmapData);
 
-        // --- 월 단위 분포 데이터 처리 ---
+        // --- 월 단위 차트 데이터 처리 ---
         const monthlyData = processMonthlyData(history);
         updateMonthlyChart(monthlyData);
 
-        // --- 연 단위 분포 데이터 처리 ---
+        // --- 연 단위 차트 데이터 처리 ---
         const yearlyData = processYearlyData(history);
         updateYearlyChart(yearlyData);
 
