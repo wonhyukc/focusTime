@@ -436,38 +436,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // EmailJS 피드백 자동 메일 전송 및 로그 출력 (submit 이벤트에서만)
-    if (typeof emailjs !== 'undefined') {
-        emailjs.init('ZQr4uk52SmhOknp1b');
-        const feedbackForm = document.getElementById('feedback-form');
-        if (feedbackForm) {
-            feedbackForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const feedback = document.getElementById('feedback-text').value.trim();
-                console.log('[FEEDBACK] 보내기 버튼 클릭됨. 입력 내용:', feedback);
-                if (!feedback) {
-                    alert('의견을 입력해주세요.');
-                    return;
-                }
-                console.log('[FEEDBACK] 메일 전송 시도 중...');
-                emailjs.send('service_suec0dl', 'template_n5h6hkc', {
-                    name: '익명 사용자',
-                    title: '피드백',
-                    message: feedback
-                })
-                .then(function(response) {
-                    console.log('[FEEDBACK] 메일 전송 성공:', response);
-                    console.log('[FEEDBACK] 제출된 내용:', feedback);
-                    alert('피드백이 성공적으로 전송되었습니다!');
-                    document.getElementById('feedback-text').value = '';
-                }, function(error) {
-                    console.error('[FEEDBACK] 메일 전송 실패:', error);
-                    alert('피드백 전송에 실패했습니다. 잠시 후 다시 시도해주세요.');
-                });
-            });
-        }
-    }
-
     // 프로젝트 이름 입력란: 드롭다운+직접입력 지원 및 기록 반영
     const projectNameInput = document.getElementById('project-name');
     if (projectNameInput) {
@@ -482,6 +450,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (value) {
                 await addProjectToHistory(value);
             }
+        });
+    }
+
+    // 피드백 폼 제출 이벤트
+    const feedbackForm = document.getElementById('feedback-form');
+    if (feedbackForm) {
+        feedbackForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const feedback = document.getElementById('feedback-text').value.trim();
+            console.log('[FEEDBACK] 보내기 버튼 클릭됨. 입력 내용:', feedback);
+            if (!feedback) {
+                alert('의견을 입력해주세요.');
+                return;
+            }
+            const subject = encodeURIComponent('포모도로 타이머 피드백');
+            const body = encodeURIComponent(feedback);
+            window.location.href = `mailto:willyads@gmail.com?subject=${subject}&body=${body}`;
         });
     }
 }); 
