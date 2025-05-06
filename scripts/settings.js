@@ -387,11 +387,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         let initialSettings;
         if (result.settings) {
             initialSettings = result.settings;
-             // 저장된 설정 적용 (프로젝트 이름 포함)
-             applySettings(initialSettings); // applySettings가 필드 채우도록 변경
+            applySettings(initialSettings);
         } else {
-            initialSettings = DEFAULT_SETTINGS; // 저장된 설정 없으면 새 기본값 사용
-             applySettings(initialSettings); // 기본 설정 적용
+            initialSettings = DEFAULT_SETTINGS;
+            applySettings(initialSettings);
         }
     });
 
@@ -405,8 +404,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         importBtn.onclick = () => fileInput.click();
         fileInput.onchange = (e) => {
             if (e.target.files.length > 0) {
-                importSettings(e); // 반드시 이벤트 객체를 넘김
-                e.target.value = ''; // 입력 초기화
+                importSettings(e);
+                e.target.value = '';
             }
         };
     }
@@ -414,12 +413,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 초기화 버튼
     document.getElementById('reset-settings').addEventListener('click', resetSettings);
 
-    // 설정 변경 시 자동 저장 (applySettings 호출로 변경)
+    // 설정 변경 시 자동 저장 (feedback-text는 제외)
     document.querySelectorAll('input, select').forEach(element => {
-        element.addEventListener('change', () => {
-            const settings = getCurrentSettings();
-            applySettings(settings); // 변경 시 applySettings 호출 (내부에서 저장 및 기록 추가)
-        });
+        if (element.id !== 'feedback-text') {
+            element.addEventListener('change', () => {
+                const settings = getCurrentSettings();
+                applySettings(settings);
+            });
+        }
     });
 
     // Focus sound type volume input
@@ -435,17 +436,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // EmailJS 피드백 자동 메일 전송 및 로그 출력 (submit 이벤트에서만)
+    if (typeof emailjs !== 'undefined') {
+        emailjs.init('ZQr4uk52SmhOknp1b');
+        const feedbackForm = document.getElementById('feedback-form');
+        if (feedbackForm) {
+            feedbackForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const feedback = document.getElementById('feedback-text').value.trim();
+                console.log('[FEEDBACK] 보내기 버튼 클릭됨. 입력 내용:', feedback);
+                if (!feedback) {
+                    alert('의견을 입력해주세요.');
+                    return;
+                }
+                console.log('[FEEDBACK] 메일 전송 시도 중...');
+                emailjs.send('service_suec0dl', 'template_n5h6hkc', {
+                    name: '익명 사용자',
+                    title: '피드백',
+                    message: feedback
+                })
+                .then(function(response) {
+                    console.log('[FEEDBACK] 메일 전송 성공:', response);
+                    console.log('[FEEDBACK] 제출된 내용:', feedback);
+                    alert('피드백이 성공적으로 전송되었습니다!');
+                    document.getElementById('feedback-text').value = '';
+                }, function(error) {
+                    console.error('[FEEDBACK] 메일 전송 실패:', error);
+                    alert('피드백 전송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+                });
+            });
+        }
+    }
+
     // 프로젝트 이름 입력란: 드롭다운+직접입력 지원 및 기록 반영
     const projectNameInput = document.getElementById('project-name');
     if (projectNameInput) {
-        // 사용자가 입력 후 포커스 아웃하거나 엔터 시 기록에 추가
         projectNameInput.addEventListener('change', async (e) => {
             const value = e.target.value.trim();
             if (value) {
                 await addProjectToHistory(value);
             }
         });
-        // 입력 후 포커스 아웃 시에도 기록에 추가
         projectNameInput.addEventListener('blur', async (e) => {
             const value = e.target.value.trim();
             if (value) {
