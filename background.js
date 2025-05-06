@@ -211,11 +211,12 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 // 알림 클릭 이벤트 처리
 chrome.notifications.onClicked.addListener(async (notificationId) => {
     if (notificationId === 'pomodoroNotification') {
+        console.log('[POPUP][onClicked] 알림 클릭됨');
         chrome.notifications.clear(notificationId);
+        
         // 다음 세션 타입 명확히 계산
         let nextType;
         if (timerState.type === 'focus') {
-            // 집중 끝 → 휴식
             const settings = await getCurrentSettings();
             if (timerState.pomodoroCount > 0 && timerState.pomodoroCount % validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter) === 0) {
                 nextType = 'longBreak';
@@ -223,9 +224,12 @@ chrome.notifications.onClicked.addListener(async (notificationId) => {
                 nextType = 'shortBreak';
             }
         } else {
-            // 휴식 끝 → 집중
             nextType = 'focus';
         }
+        console.log('[POPUP][onClicked] 다음 세션 시작:', {
+            previousType: timerState.type,
+            nextType: nextType
+        });
         await startNextSession(nextType);
     }
 });
@@ -344,20 +348,18 @@ async function getCurrentSettings() {
 
 // 타이머 시작
 async function startTimer(type) {
-    console.log('=== Background startTimer called ===', new Error().stack);
-    
-    console.log('Parameters:', { type });
-    console.log('State before start:', {
-        isRunning: timerState.isRunning,
-        currentSession: timerState.type
+    console.log('[TIMER][startTimer] 세션 시작');
+    console.log('[TIMER][startTimer] 세션 정보:', {
+        type: type,
+        startTime: new Date().toISOString()
     });
-
+    
     const settings = await getCurrentSettings();
     timerState.type = type;
     timerState.isRunning = true;
     timerState.sessionComplete = false;
-    timerState.sessionStartTime = new Date().toISOString(); // 세션 시작 시간 기록
-    timerState.currentProjectName = settings.projectName || "N/A"; // 현재 프로젝트 이름 기록
+    timerState.sessionStartTime = new Date().toISOString();
+    timerState.currentProjectName = settings.projectName || "N/A";
 
     // 타입에 따른 시간 설정
     let durationMinutes;
@@ -366,19 +368,25 @@ async function startTimer(type) {
             durationMinutes = validateDuration(settings.focus.duration, DEFAULT_SETTINGS_BG.focus.duration);
             // 집중 세션에서만, 사운드가 설정된 경우에만 재생
             if (settings.focus.soundType && settings.focus.soundType !== 'none') {
+                console.log('[SOUND][startTimer] 집중 세션 사운드 시작:', {
+                    soundType: settings.focus.soundType,
+                    volume: settings.focus.soundVolume,
+                    isPreview: false
+                });
                 await playSound(settings.focus.soundType, false, settings.focus.soundVolume);
             } else {
+                console.log('[SOUND][startTimer] 집중 세션 사운드 없음');
                 await playSound('none', false, 0);
             }
             break;
         case 'shortBreak':
             durationMinutes = validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS_BG.shortBreak.duration);
-            // 휴식 세션에서는 반드시 소리 중지
+            console.log('[SOUND][startTimer] 휴식 세션 - 모든 사운드 중지');
             await playSound('none', false, 0);
             break;
         case 'longBreak':
             durationMinutes = validateDuration(settings.longBreak.duration, DEFAULT_SETTINGS_BG.longBreak.duration);
-            // 휴식 세션에서는 반드시 소리 중지
+            console.log('[SOUND][startTimer] 긴 휴식 세션 - 모든 사운드 중지');
             await playSound('none', false, 0);
             break;
         default:
@@ -416,19 +424,33 @@ async function startTimer(type) {
 
 // 다음 세션 시작 (nextSessionType을 인자로 받음)
 async function startNextSession(nextSessionType) {
-    console.log('[LOG h] startNextSession 진입:', nextSessionType, timerState.type, new Error().stack);
+    console.log('[TIMER][startNextSession] 다음 세션 시작');
+    console.log('[TIMER][startNextSession] 세션 정보:', {
+        previousType: timerState.type,
+        nextType: nextSessionType,
+        startTime: new Date().toISOString()
+    });
+
     timerState.type = nextSessionType;
     timerState.isRunning = true;
     timerState.sessionComplete = false;
     timerState.sessionStartTime = new Date().toISOString();
     const settings = await getCurrentSettings();
     timerState.currentProjectName = settings.projectName || "N/A";
+
     // 소리 재생/중지: 세션 타입에 따라
     if (nextSessionType === 'focus') {
+        console.log('[SOUND][startNextSession] 집중 세션 사운드 시작:', {
+            soundType: settings.focus.soundType,
+            volume: settings.focus.soundVolume,
+            isPreview: false
+        });
         await playSound(settings.focus.soundType, false, settings.focus.soundVolume);
     } else {
+        console.log('[SOUND][startNextSession] 휴식 세션 - 모든 사운드 중지');
         await playSound('none', false, 0);
     }
+
     // 상태 저장 및 타이머 시작
     await chrome.storage.local.set({
         timeLeft: timerState.timeLeft,
@@ -633,7 +655,11 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 
 // Offscreen Document를 통해 소리를 재생하는 함수
 async function playSound(soundType, isPreview = false, volume = undefined) {
-    console.log('[BG][playSound] 호출:', { soundType, isPreview, volume });
+    console.log('[SOUND][playSound] 호출:', {
+        soundType: soundType,
+        volume: volume,
+        isPreview: isPreview
+    });
     // 오프스크린 문서 존재 여부
     const existingContexts = await chrome.runtime.getContexts({
         contextTypes: ['OFFSCREEN_DOCUMENT'],
@@ -737,12 +763,13 @@ async function startNewCycle() {
 
 // 타이머 중지
 async function stopTimer() {
-    console.log('[LOG] stopTimer 호출');
+    console.log('[TIMER][stopTimer] 타이머 중지');
     
     // 알람 중지
     chrome.alarms.clear(timerState.alarmName);
     
     // 모든 소리 중지
+    console.log('[SOUND][stopTimer] 모든 사운드 중지');
     await playSound('none', false, 0);
     
     // 오프스크린 문서에 직접 중지 명령 전송 (백업)
@@ -792,18 +819,26 @@ function updateTimer() {
 
 // 타이머 완료
 async function timerComplete() {
-    console.log('[LOG] timerComplete 호출 (세션 종료)', timerState);
+    console.log('[TIMER][timerComplete] 세션 종료');
+    console.log('[TIMER][timerComplete] 세션 정보:', {
+        type: timerState.type,
+        endTime: new Date().toISOString(),
+        duration: timerState.sessionStartTime ? 
+            Math.round((new Date() - new Date(timerState.sessionStartTime)) / 1000 / 60 * 100) / 100 : 0
+    });
+
     // 알람 중지
     chrome.alarms.clear(timerState.alarmName);
+    
     // 타이머 완료 시 모든 소리 중지
-    console.log('[LOG] timerComplete: 모든 소리 중지 요청');
+    console.log('[SOUND][timerComplete] 세션 종료 - 모든 사운드 중지');
     await playSound('none', false, 0);
-    // 알림음 재생 (인자 없이 호출 -> playSound가 완료된 세션 타입 기반으로 소리 결정)
+
+    // 알림음 재생
     const settings = await getCurrentSettings();
     let soundType, soundVolume;
     switch (timerState.type) {
         case 'focus':
-            // 종료 시에는 종료음(sound)만 재생
             soundType = settings.focus.sound;
             soundVolume = settings.focus.soundVolume;
             break;
@@ -819,7 +854,13 @@ async function timerComplete() {
             soundType = DEFAULT_SETTINGS_BG.focus.sound;
             soundVolume = DEFAULT_SETTINGS_BG.focus.soundVolume;
     }
+    console.log('[SOUND][timerComplete] 종료음 재생:', {
+        soundType: soundType,
+        volume: soundVolume,
+        isPreview: false
+    });
     await playSound(soundType, false, soundVolume);
+
     // --- 완료된 세션 정보 저장 ---
     // durationMinutes를 sessionStartTime과 현재 시각의 차이로 계산
     let durationMinutes = 0;
@@ -902,15 +943,21 @@ async function timerComplete() {
     let message = nextType !== 'focus'
         ? '잠시 휴식을 취하고 기분 전환을 해보세요.'
         : '이제 집중할 시간입니다. 목표를 향해 화이팅!';
+    
+    console.log('[POPUP] 알림 표시:', {
+        title: title,
+        message: message,
+        nextType: nextType
+    });
+    
     chrome.notifications.create('pomodoroNotification', {
         type: 'basic',
         iconUrl: 'icons/icon128.png',
         title: title,
         message: message,
         requireInteraction: true,
-        silent: true // 소리는 playSound로 제어하므로 알림 자체는 조용히
+        silent: true
     });
-    console.error('[LOG h] 다음 세션: nextType, timerState.type ', nextType, timerState.type);
 }
 
 // 세션 데이터 저장 (신규 함수)
@@ -942,15 +989,23 @@ async function saveSessionData(completedSession) {
 // 설정 변경 감지 및 현재 세션 업데이트
 chrome.storage.onChanged.addListener(async (changes, namespace) => {
     if (namespace === 'sync' && changes.settings) {
-        console.log('[BG][onChanged] oldValue:', changes.settings.oldValue);
-        console.log('[BG][onChanged] newValue:', changes.settings.newValue);
+        console.log('[SETTINGS][onChanged] 설정 변경 감지');
+        console.log('[SETTINGS][onChanged] 이전 설정:', changes.settings.oldValue);
+        console.log('[SETTINGS][onChanged] 새로운 설정:', changes.settings.newValue);
+        
         const settings = await getCurrentSettings();
-        console.log('[BG][onChanged] getCurrentSettings()로 읽은 볼륨:', {
-            focus: settings.focus.soundVolume,
-            shortBreak: settings.shortBreak.soundVolume,
-            longBreak: settings.longBreak.soundVolume
+        console.log('[SETTINGS][onChanged] 현재 설정:', {
+            focus: {
+                volume: settings.focus.soundVolume,
+                soundType: settings.focus.soundType
+            },
+            shortBreak: {
+                volume: settings.shortBreak.soundVolume
+            },
+            longBreak: {
+                volume: settings.longBreak.soundVolume
+            }
         });
-        const newSettings = changes.settings.newValue;
         
         // 현재 실행 중인 세션이 있을 경우 시간 업데이트
         if (timerState.timeLeft > 0) {
@@ -983,14 +1038,17 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
             updateBadgeForPauseState();
             // --- 볼륨 즉시 반영 ---
             if (typeof newVolume === 'number') {
-                console.log(`[BG] 볼륨 변경 감지: 세션=${timerState.type}, 새 볼륨=${newVolume}`);
+                console.log('[SOUND][onChanged] 볼륨 변경:', {
+                    session: timerState.type,
+                    newVolume: newVolume,
+                    soundType: newSoundType
+                });
                 chrome.runtime.sendMessage({
                     command: 'playSound',
                     soundType: newSoundType,
                     isPreview: false,
                     volume: newVolume
                 });
-                console.log(`[BG] playSound 메시지 전송: soundType=${newSoundType}, volume=${newVolume}`);
             }
             // --- 볼륨 즉시 반영 끝 ---
         }
