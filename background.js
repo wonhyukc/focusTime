@@ -213,10 +213,15 @@ chrome.notifications.onClicked.addListener(async (notificationId) => {
     if (notificationId === 'pomodoroNotification') {
         console.log('[POPUP][onClicked] 알림 클릭됨');
         chrome.notifications.clear(notificationId);
-        
+        // --- 이전 세션 타입을 storage에서 읽어서 사용 ---
+        let previousType = 'unknown';
+        try {
+            const result = await chrome.storage.local.get('pomodoroPreviousType');
+            if (result.pomodoroPreviousType) previousType = result.pomodoroPreviousType;
+        } catch (e) {}
         // 다음 세션 타입 명확히 계산
         let nextType;
-        if (timerState.type === 'focus') {
+        if (previousType === 'focus') {
             const settings = await getCurrentSettings();
             if (timerState.pomodoroCount > 0 && timerState.pomodoroCount % validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter) === 0) {
                 nextType = 'longBreak';
@@ -227,7 +232,7 @@ chrome.notifications.onClicked.addListener(async (notificationId) => {
             nextType = 'focus';
         }
         console.log('[POPUP][onClicked] 다음 세션 시작:', {
-            previousType: timerState.type,
+            previousType: previousType,
             nextType: nextType
         });
         await startNextSession(nextType);
@@ -237,7 +242,7 @@ chrome.notifications.onClicked.addListener(async (notificationId) => {
 // 확장 프로그램 아이콘 클릭 이벤트 처리
 chrome.action.onClicked.addListener(async () => {
     console.log('[DEBUG] Icon clicked, timerState:', timerState);
-    const { isRunning, timeLeft, sessionComplete } = timerState;
+    const { isRunning, timeLeft, sessionComplete, type } = timerState;
     if (isRunning) {
         // 실행 중이면 일시정지
         console.log('[DEBUG] Icon triggers: toggleTimer (pause)');
@@ -247,9 +252,9 @@ chrome.action.onClicked.addListener(async () => {
         console.log('[DEBUG] Icon triggers: toggleTimer (resume)');
         await toggleTimer();
     } else {
-        // 완전히 정지/종료 상태면 새로 시작
-        console.log('[DEBUG] Icon triggers: startTimer (new session)');
-        await startTimer('focus');
+        // 완전히 정지/종료 상태면 현재 세션 타입으로 시작
+        console.log(`[DEBUG] Icon triggers: startTimer (new session, type: ${type})`);
+        await startTimer(type);
         await createRunningMenus();
     }
 });
@@ -862,13 +867,12 @@ async function timerComplete() {
     await playSound(soundType, false, soundVolume);
 
     // --- 완료된 세션 정보 저장 ---
-    // durationMinutes를 sessionStartTime과 현재 시각의 차이로 계산
     let durationMinutes = 0;
     let endTime = new Date();
     if (timerState.sessionStartTime) {
         try {
             const start = new Date(timerState.sessionStartTime);
-            durationMinutes = Math.round((endTime - start) / 1000 / 60 * 100) / 100; // 소수점 2자리
+            durationMinutes = Math.round((endTime - start) / 1000 / 60 * 100) / 100;
         } catch (e) {
             durationMinutes = 0;
         }
@@ -880,24 +884,17 @@ async function timerComplete() {
         durationMinutes: durationMinutes,
         projectName: timerState.currentProjectName
     };
-    await saveSessionData(completedSessionData); // 세션 데이터 저장 함수 호출
+    await saveSessionData(completedSessionData);
     // === 포모도로 카운트 증가 추가 ===
     if (timerState.type === 'focus') {
         timerState.pomodoroCount++;
-        console.log('[LOG] 포모도로 카운트 증가:', timerState.pomodoroCount);
     }
     // === 통계 데이터 로그 추가 ===
-    try {
-        const result = await chrome.storage.local.get('pomodoroHistory');
-        console.log('[LOG] 현재 통계 데이터(pomodoroHistory):', result.pomodoroHistory);
-    } catch (e) {
-        console.error('[LOG] 통계 데이터 로드 오류:', e);
-    }
+    // [LOG] 현재 통계 데이터(pomodoroHistory): ... 로그 제거
     // --- 저장 로직 끝 ---
     // 다음 세션 타입 결정
     let nextType, nextDurationMinutes;
     if (timerState.type === 'focus') {
-        // 집중 끝 → 휴식
         if (timerState.pomodoroCount > 0 &&
             timerState.pomodoroCount % validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter) === 0) {
             nextType = 'longBreak';
@@ -907,10 +904,11 @@ async function timerComplete() {
             nextDurationMinutes = validateDuration(settings.shortBreak.duration, DEFAULT_SETTINGS_BG.shortBreak.duration);
         }
     } else {
-        // 휴식 끝 → 집중
         nextType = 'focus';
         nextDurationMinutes = validateDuration(settings.focus.duration, DEFAULT_SETTINGS_BG.focus.duration);
     }
+    // --- 이전 세션 타입을 저장 ---
+    await chrome.storage.local.set({ pomodoroPreviousType: timerState.type });
     // 다음 세션 상태를 미리 timerState에 반영
     timerState.type = nextType;
     timerState.timeLeft = nextDurationMinutes * 60;
@@ -921,10 +919,8 @@ async function timerComplete() {
         ? settings.general.autoStartBreaks
         : settings.general.autoStartPomodoros;
     if (shouldAutoStart) {
-        // 자동 시작이면 startNextSession 호출 (반드시 nextType 인자로 넘김)
         await startNextSession(nextType);
     } else {
-        // 자동 시작이 아니면 sessionComplete만 true로 두고, 알림 클릭에서만 startNextSession 호출
         timerState.isRunning = false;
         timerState.sessionComplete = true;
         await chrome.storage.local.set({
