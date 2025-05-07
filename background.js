@@ -73,7 +73,7 @@ async function createInitialMenus() {
 
     chrome.contextMenus.create({
         id: 'focusStart',
-        title: '포모로그 시작',
+        title: '집중 시작',
         contexts: ['action']
     });
 
@@ -132,7 +132,7 @@ async function createRunningMenus() {
     chrome.contextMenus.create({
         id: 'restartFocus',
         parentId: 'restart',
-        title: '포모로그',
+        title: '집중',
         contexts: ['action']
     });
 
@@ -885,7 +885,7 @@ async function timerComplete() {
         projectName: timerState.currentProjectName
     };
     await saveSessionData(completedSessionData);
-    // === 포모로그 카운트 증가 추가 ===
+    // === 집중 카운트 증가 추가 ===
     if (timerState.type === 'focus') {
         timerState.pomodoroCount++;
     }
@@ -935,10 +935,10 @@ async function timerComplete() {
         updateBadgeForPauseState();
     }
     // 알림 표시
-    let title = nextType !== 'focus' ? '휴식 시간입니다!' : '포모로그 시간입니다!';
+    let title = nextType !== 'focus' ? '휴식 시간입니다!' : '집중 시간입니다!';
     let message = nextType !== 'focus'
         ? '잠시 휴식을 취하고 기분 전환을 해보세요.'
-        : '이제 포모로그할 시간입니다. 목표를 향해 화이팅!';
+        : '이제 집중할 시간입니다. 목표를 향해 화이팅!';
     
     console.log('[POPUP] 알림 표시:', {
         title: title,
@@ -1167,7 +1167,7 @@ async function resetStats() {
 }
 
 // Remove all console.log statements and add a single log at the start of the extension
-console.log('\n---포모로그 앱 시작---------------');
+console.log('\n---집중 앱 시작---------------');
 
 // Add a new function to log sound-related information
 function logSoundInfo(soundType, isPreview) {
