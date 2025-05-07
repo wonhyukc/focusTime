@@ -7,67 +7,7 @@
     <link rel="stylesheet" href="../styles/dashboard.css">
     <script src="../scripts/Chart.min.js"></script>
     <link rel="stylesheet" href="../styles/heatmap.css">
-    <script src="../scripts/email.min.js"></script>
-    <script>
-    function getLang() {
-        const lang = (navigator.language || navigator.userLanguage || 'ko').slice(0,2).toLowerCase();
-        return [
-            'ko','en','zh','hi','es','fr','ar','bn','pt','ru','ur'
-        ].includes(lang) ? lang : 'ko';
-    }
-    function getI18nUrl(lang) {
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
-            return chrome.runtime.getURL(`i18n/${lang}.json`);
-        }
-        return '../i18n/' + lang + '.json';
-    }
-    async function loadI18n(lang) {
-        try {
-            const res = await fetch(getI18nUrl(lang));
-            if (!res.ok) throw new Error('not ok');
-            return await res.json();
-        } catch {
-            const res = await fetch(getI18nUrl('ko'));
-            return await res.json();
-        }
-    }
-    async function i18nUpdate(selectedLang) {
-        const lang = selectedLang || getLang();
-        const dict = await loadI18n(lang);
-        document.title = dict.appName + ' (PomoLog)';
-        // 헤더
-        const h1 = document.querySelector('.logo h1');
-        if (h1) h1.innerHTML = dict.appName + ' (PomoLog)';
-        const logo = document.querySelector('.logo img');
-        if (logo) logo.alt = dict.appName + ' 로고';
-        // 프로젝트 이름 라벨
-        const projectLabel = document.querySelector('label[for="project-name"]');
-        if (projectLabel) projectLabel.textContent = dict.currentProject;
-        // 피드백 탭
-        const feedbackTab = document.querySelector('#feedback h2');
-        if (feedbackTab) feedbackTab.textContent = dict.feedback;
-        const feedbackGuide = document.querySelector('#feedback .feedback-container > div');
-        if (feedbackGuide) feedbackGuide.innerHTML = dict.feedbackGuide;
-        const feedbackGuideShort = document.querySelector('#feedback .feedback-container > p');
-        if (feedbackGuideShort) feedbackGuideShort.textContent = dict.feedbackGuideShort;
-        // 사운드 크레딧
-        const credits = document.querySelector('#feedback .credits-section h3');
-        if (credits) credits.textContent = dict.credits;
-        // 드롭다운 값 동기화
-        const langSelect = document.getElementById('lang-select');
-        if (langSelect) langSelect.value = lang;
-    }
-    document.addEventListener('DOMContentLoaded', function() {
-        i18nUpdate();
-        const langSelect = document.getElementById('lang-select');
-        if (langSelect) {
-            langSelect.value = getLang();
-            langSelect.addEventListener('change', function() {
-                i18nUpdate(langSelect.value);
-            });
-        }
-    });
-    </script>
+    <script src="../scripts/i18n.js"></script>
 </head>
 <body>
     <header>
@@ -76,9 +16,9 @@
             <h1>포모로그 (PomoLog)</h1>
         </div>
         <nav>
-            <button class="tab-button active" data-tab="settings">설정</button>
-            <button class="tab-button" data-tab="stats">기록</button>
-            <button class="tab-button" data-tab="feedback">피드백</button>
+            <button class="tab-button active" data-tab="settings" data-i18n="settings">설정</button>
+            <button class="tab-button" data-tab="stats" data-i18n="stats">기록</button>
+            <button class="tab-button" data-tab="feedback" data-i18n="feedback">피드백</button>
             <select id="lang-select" style="margin-left:1em;">
                 <option value="ko">한국어</option>
                 <option value="en">English</option>
@@ -99,10 +39,10 @@
         <!-- 설정 탭 -->
         <section id="settings" class="tab-content active">
             <div class="project-settings">
-                <h2>프로젝트</h2>
+                <h2 data-i18n="project">프로젝트</h2>
                 <div class="setting-group">
-                    <label for="project-name">현재 프로젝트 이름:</label>
-                    <input type="text" id="project-name" placeholder="프로젝트 이름을 입력하세요" list="project-history-list">
+                    <label for="project-name" data-i18n="currentProject">현재 프로젝트 이름:</label>
+                    <input type="text" id="project-name" placeholder="프로젝트 이름을 입력하세요" data-i18n="projectNamePlaceholder" list="project-history-list">
                     <datalist id="project-history-list">
                         <!-- 이전 프로젝트 이름들이 여기에 동적으로 추가됩니다 -->
                     </datalist>
@@ -111,124 +51,124 @@
 
             <div class="settings-container">
                 <div class="timer-settings">
-                    <h2>집중</h2>
+                    <h2 data-i18n="focus">집중</h2>
                     <div class="setting-group">
-                        <label for="focus-duration">지속 시간:</label>
-                        <input type="number" id="focus-duration" min="1" max="60" value="25"> 분
+                        <label for="focus-duration" data-i18n="duration">지속 시간:</label>
+                        <input type="number" id="focus-duration" min="1" max="60" value="25"> <span data-i18n="minutes">분</span>
                     </div>
                     <div class="setting-group">
-                        <label>타이머 소리:</label>
+                        <label data-i18n="timerSound">타이머 소리:</label>
                         <select id="focus-sound">
                             <!-- Options will be populated by JavaScript -->
                         </select>
-                        <button class="preview-sound">▶ 미리듣기</button>
+                        <button class="preview-sound" data-i18n="preview">▶ 미리듣기</button>
                         <input type="number" id="focus-sound-volume" min="0" max="100" value="10">
-                        <label for="focus-sound-volume">볼륨 (0~100):</label>
+                        <label for="focus-sound-volume" data-i18n="volume">볼륨 (0~100):</label>
                     </div>
                     <div class="setting-group">
                         <label>
                             <input type="checkbox" id="focus-desktop-notification">
-                            데스크톱 알림 설정
+                            <span data-i18n="desktopNotification">데스크톱 알림 설정</span>
                         </label>
                     </div>
                     <div class="setting-group">
                         <label>
                             <input type="checkbox" id="focus-tab-notification">
-                            새로운 탭 알림 설정
+                            <span data-i18n="tabNotification">새로운 탭 알림 설정</span>
                         </label>
                     </div>
                     <div class="setting-group">
-                        <label>재생:</label>
+                        <label data-i18n="playSound">재생:</label>
                         <select id="focus-sound-type">
-                            <option value="brown_noise">Brown Noise</option>
-                            <option value="rainy_birds">Rainy Day</option>
-                            <option value="clock_ticking">Clock Ticking</option>
+                            <option value="brown_noise" data-i18n="brownNoise">Brown Noise</option>
+                            <option value="rainy_birds" data-i18n="rainyDay">Rainy Day</option>
+                            <option value="clock_ticking" data-i18n="clockTicking">Clock Ticking</option>
                         </select>
-                        <button class="preview-sound">▶ 미리듣기</button>
+                        <button class="preview-sound" data-i18n="preview">▶ 미리듣기</button>
                         <input type="number" id="focus-sound-type-volume" min="0" max="100" value="10">
-                        <label for="focus-sound-type-volume">볼륨 (0~100):</label>
+                        <label for="focus-sound-type-volume" data-i18n="volume">볼륨 (0~100):</label>
                     </div>
                 </div>
 
                 <div class="timer-settings">
-                    <h2>짧은 휴식</h2>
+                    <h2 data-i18n="shortBreak">짧은 휴식</h2>
                     <div class="setting-group">
-                        <label for="short-break-duration">지속 시간:</label>
-                        <input type="number" id="short-break-duration" min="1" max="30" value="5"> 분
+                        <label for="short-break-duration" data-i18n="duration">지속 시간:</label>
+                        <input type="number" id="short-break-duration" min="1" max="30" value="5"> <span data-i18n="minutes">분</span>
                     </div>
                     <div class="setting-group">
-                        <label>타이머 소리:</label>
+                        <label data-i18n="timerSound">타이머 소리:</label>
                         <select id="short-break-sound">
                             <!-- Options will be populated by JavaScript -->
                         </select>
-                        <button class="preview-sound">▶ 미리듣기</button>
+                        <button class="preview-sound" data-i18n="preview">▶ 미리듣기</button>
                         <input type="number" id="short-break-sound-volume" min="0" max="100" value="10">
-                        <label for="short-break-sound-volume">볼륨 (0~100):</label>
+                        <label for="short-break-sound-volume" data-i18n="volume">볼륨 (0~100):</label>
                     </div>
                     <div class="setting-group">
                         <label>
                             <input type="checkbox" id="short-break-desktop-notification">
-                            데스크톱 알림 설정
+                            <span data-i18n="desktopNotification">데스크톱 알림 설정</span>
                         </label>
                     </div>
                     <div class="setting-group">
                         <label>
                             <input type="checkbox" id="short-break-tab-notification">
-                            새로운 탭 알림 설정
+                            <span data-i18n="tabNotification">새로운 탭 알림 설정</span>
                         </label>
                     </div>
                 </div>
 
                 <div class="timer-settings">
-                    <h2>긴 휴식</h2>
+                    <h2 data-i18n="longBreak">긴 휴식</h2>
                     <div class="setting-group">
-                        <label>긴 휴식 시작하기:</label>
+                        <label data-i18n="startLongBreak">긴 휴식 시작하기:</label>
                         <select id="long-break-start">
-                            <option value="2">2번째 휴식마다</option>
-                            <option value="3">3번째 휴식마다</option>
-                            <option value="4">4번째 휴식마다</option>
-                            <option value="5">5번째 휴식마다</option>
-                            <option value="6">6번째 휴식마다</option>
+                            <option value="2" data-i18n="every2ndBreak">2번째 휴식마다</option>
+                            <option value="3" data-i18n="every3rdBreak">3번째 휴식마다</option>
+                            <option value="4" data-i18n="every4thBreak">4번째 휴식마다</option>
+                            <option value="5" data-i18n="every5thBreak">5번째 휴식마다</option>
+                            <option value="6" data-i18n="every6thBreak">6번째 휴식마다</option>
                         </select>
                     </div>
                     <div class="setting-group">
-                        <label for="long-break-duration">지속 시간:</label>
-                        <input type="number" id="long-break-duration" min="1" max="60" value="15"> 분
+                        <label for="long-break-duration" data-i18n="duration">지속 시간:</label>
+                        <input type="number" id="long-break-duration" min="1" max="60" value="15"> <span data-i18n="minutes">분</span>
                     </div>
                     <div class="setting-group">
-                        <label>타이머 소리:</label>
+                        <label data-i18n="timerSound">타이머 소리:</label>
                         <select id="long-break-sound">
                             <!-- Options will be populated by JavaScript -->
                         </select>
-                        <button class="preview-sound">▶ 미리듣기</button>
+                        <button class="preview-sound" data-i18n="preview">▶ 미리듣기</button>
                         <input type="number" id="long-break-sound-volume" min="0" max="100" value="10">
-                        <label for="long-break-sound-volume">볼륨 (0~100):</label>
+                        <label for="long-break-sound-volume" data-i18n="volume">볼륨 (0~100):</label>
                     </div>
                     <div class="setting-group">
                         <label>
                             <input type="checkbox" id="long-break-desktop-notification">
-                            데스크톱 알림 설정
+                            <span data-i18n="desktopNotification">데스크톱 알림 설정</span>
                         </label>
                     </div>
                     <div class="setting-group">
                         <label>
                             <input type="checkbox" id="long-break-tab-notification">
-                            새로운 탭 알림 설정
+                            <span data-i18n="tabNotification">새로운 탭 알림 설정</span>
                         </label>
                     </div>
                 </div>
             </div>
             <div class="settings-bottom-menu">
                 <div class="bottom-menu-buttons">
-                    <button id="export-settings" class="menu-button">
+                    <button id="export-settings" class="menu-button" data-i18n="exportSettings">
                         <span class="icon">⬇️</span>
                         설정 내보내기
                     </button>
-                    <button id="import-settings" class="menu-button">
+                    <button id="import-settings" class="menu-button" data-i18n="importSettings">
                         <span class="icon">⬆️</span>
                         설정 가져오기
                     </button>
-                    <button id="reset-settings" class="menu-button warning">
+                    <button id="reset-settings" class="menu-button warning" data-i18n="resetSettings">
                         <span class="icon">🔄</span>
                         설정 초기화
                     </button>
@@ -242,27 +182,27 @@
             <div class="stats-container">
                 <div class="stats-summary">
                     <div class="stat-card">
-                        <h3>오늘</h3>
+                        <h3 data-i18n="today">오늘</h3>
                         <div class="stat-value">0</div>
                         <div class="stat-label">0.00</div>
                     </div>
                     <div class="stat-card">
-                        <h3>이번 주</h3>
+                        <h3 data-i18n="thisWeek">이번 주</h3>
                         <div class="stat-value">0</div>
                         <div class="stat-label">0.00</div>
                     </div>
                     <div class="stat-card">
-                        <h3>이번 달</h3>
+                        <h3 data-i18n="thisMonth">이번 달</h3>
                         <div class="stat-value">0</div>
                         <div class="stat-label">0.00</div>
                     </div>
                     <div class="stat-card">
-                        <h3>올해</h3>
+                        <h3 data-i18n="thisYear">올해</h3>
                         <div class="stat-value">0</div>
                         <div class="stat-label">0.00</div>
                     </div>
                     <div class="stat-card">
-                        <h3>총</h3>
+                        <h3 data-i18n="total">총</h3>
                         <div class="stat-value">0</div>
                         <div class="stat-label">0.00</div>
                     </div>
@@ -270,34 +210,34 @@
 
                 <div class="stats-charts">
                     <div class="chart-container">
-                        <h3>일 단위 차트</h3>
+                        <h3 data-i18n="dailyChart">일 단위 차트</h3>
                         <canvas id="daily-chart"></canvas>
                     </div>
                     <div class="chart-container">
-                        <h3>주 단위 차트</h3>
+                        <h3 data-i18n="weeklyChart">주 단위 차트</h3>
                         <canvas id="weekly-chart"></canvas>
                     </div>
                     <div class="chart-container">
-                        <h3>월 단위 차트</h3>
+                        <h3 data-i18n="monthlyChart">월 단위 차트</h3>
                         <canvas id="monthly-chart"></canvas>
                     </div>
                     <div class="chart-container">
-                        <h3>년 단위 차트</h3>
+                        <h3 data-i18n="yearlyChart">년 단위 차트</h3>
                         <canvas id="yearly-chart" height="200"></canvas>
                     </div>
                 </div>
 
                 <div class="stats-bottom-menu">
                     <div class="bottom-menu-buttons">
-                        <button id="export-stats" class="menu-button">
+                        <button id="export-stats" class="menu-button" data-i18n="exportStats">
                             <span class="icon">⬇️</span>
                             통계 내보내기
                         </button>
-                        <button id="import-stats" class="menu-button">
+                        <button id="import-stats" class="menu-button" data-i18n="importStats">
                             <span class="icon">⬆️</span>
                             통계 가져오기
                         </button>
-                        <button id="reset-stats" class="menu-button warning">
+                        <button id="reset-stats" class="menu-button warning" data-i18n="resetStats">
                             <span class="icon">🔄</span>
                             통계 초기화
                         </button>
@@ -310,19 +250,13 @@
         <!-- 피드백 탭 -->
         <section id="feedback" class="tab-content">
             <div class="feedback-container">
-                <h2>피드백</h2>
-                <p>여러분의 소중한 의견을 들려주세요!</p>
-                <div style="margin-bottom: 1em; color: #444; font-size: 1.1em;">
+                <h2 data-i18n="feedback">피드백</h2>
+                <p data-i18n="feedbackGuideShort">여러분의 소중한 의견을 들려주세요!</p>
+                <div style="margin-bottom: 1em; color: #444; font-size: 1.1em;" data-i18n="feedbackGuide">
                     향후 개선하겠습니다. 피드백은 <b><a href="mailto:willyads@gmail.com">willyads@gmail.com</a></b> 으로 메일 보내주세요.
                 </div>
-                <!--
-                <form id="feedback-form">
-                    <textarea id="feedback-text" rows="5" placeholder="의견을 작성해주세요..."></textarea>
-                    <button type="submit" class="submit-feedback">보내기</button>
-                </form>
-                -->
                 <div class="credits-section">
-                    <h3>사운드 크레딧</h3>
+                    <h3 data-i18n="credits">사운드 크레딧</h3>
                     <ul>
                         <li>Gong 002.wav by tec_studio -- <a href="https://freesound.org/s/361494/" target="_blank">https://freesound.org/s/361494/</a> -- License: Creative Commons 0</li>
                         <li>Brown Noise 2 minutes by Jagadamba -- <a href="https://freesound.org/s/253922/" target="_blank">https://freesound.org/s/253922/</a> -- License: Attribution NonCommercial 4.0</li>

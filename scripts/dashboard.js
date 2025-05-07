@@ -21,10 +21,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // 타이머 소리 옵션 동적 생성 함수 호출
-    populateTimerSoundOptions('focus-sound');
-    populateTimerSoundOptions('short-break-sound');
-    populateTimerSoundOptions('long-break-sound');
-    populateFocusSoundTypeOptions('focus-sound-type');
+    populateTimerSoundOptions('focus-sound', currentI18nDict);
+    populateTimerSoundOptions('short-break-sound', currentI18nDict);
+    populateTimerSoundOptions('long-break-sound', currentI18nDict);
+    populateFocusSoundTypeOptions('focus-sound-type', currentI18nDict);
 
     // 설정 저장 기능
     const settingsForm = document.querySelectorAll('.timer-settings input, .timer-settings select');
@@ -103,46 +103,48 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// '타이머 소리' 드롭다운 옵션 생성 함수
-function populateTimerSoundOptions(selectElementId) {
+// --- i18n 연동을 위한 글로벌 dict 보관 ---
+let currentI18nDict = null;
+
+function populateTimerSoundOptions(selectElementId, dict) {
     const selectElement = document.getElementById(selectElementId);
     if (!selectElement) return;
-
+    const prevValue = selectElement.value;
     const timerSoundOptions = [
-        { value: 'none', text: 'None' },
-        { value: 'beep', text: '짧은 beep' },
-        { value: 'gong', text: '공(Gong)' }
+        { value: 'none', text: dict?.none || 'None' },
+        { value: 'beep', text: dict?.beep || 'Short low beep' },
+        { value: 'gong', text: dict?.gong || 'Gong' }
     ];
-
     selectElement.innerHTML = '';
-
     timerSoundOptions.forEach(optionData => {
         const option = document.createElement('option');
         option.value = optionData.value;
         option.textContent = optionData.text;
         selectElement.appendChild(option);
     });
+    // 기존 선택값 복원
+    if (prevValue) selectElement.value = prevValue;
 }
 
-function populateFocusSoundTypeOptions(selectElementId) {
+function populateFocusSoundTypeOptions(selectElementId, dict) {
     const selectElement = document.getElementById(selectElementId);
     if (!selectElement) return;
-
+    const prevValue = selectElement.value;
     const focusSoundTypeOptions = [
-        { value: 'none', text: 'None' },
-        { value: 'brown_noise', text: 'Brown Noise' },
-        { value: 'rainy_birds', text: 'Rainy Day' },
-        { value: 'clock_ticking', text: 'Clock Ticking' }
+        { value: 'none', text: dict?.none || 'None' },
+        { value: 'brown_noise', text: dict?.brownNoise || 'Brown Noise' },
+        { value: 'rainy_birds', text: dict?.rainyDay || 'Rainy Day' },
+        { value: 'clock_ticking', text: dict?.clockTicking || 'Clock Ticking' }
     ];
-
     selectElement.innerHTML = '';
-
     focusSoundTypeOptions.forEach(optionData => {
         const option = document.createElement('option');
         option.value = optionData.value;
         option.textContent = optionData.text;
         selectElement.appendChild(option);
     });
+    // 기존 선택값 복원
+    if (prevValue) selectElement.value = prevValue;
 }
 
 // 설정 저장
@@ -327,15 +329,6 @@ function initializeCharts() {
         });
     } catch (error) {}
 }
-
-// 피드백 제출
-document.getElementById('feedback-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const feedback = document.getElementById('feedback-text').value;
-    // 여기에 피드백 제출 로직 추가
-    document.getElementById('feedback-text').value = '';
-    alert('피드백이 제출되었습니다. 감사합니다!');
-});
 
 // 설정 내보내기
 function exportSettings() {
@@ -571,4 +564,12 @@ function formatNumber(n) {
     if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + 'M';
     if (n >= 1_000) return (n / 1_000).toFixed(2) + 'K';
     return n.toLocaleString();
-} 
+}
+
+// i18n.js에서 호출할 수 있도록 글로벌 함수로 노출
+window.updateAllSoundOptionsWithI18n = function(dict) {
+    populateTimerSoundOptions('focus-sound', dict);
+    populateTimerSoundOptions('short-break-sound', dict);
+    populateTimerSoundOptions('long-break-sound', dict);
+    populateFocusSoundTypeOptions('focus-sound-type', dict);
+}; 
