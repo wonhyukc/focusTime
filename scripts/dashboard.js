@@ -20,12 +20,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // 타이머 소리 옵션 동적 생성 함수 호출
-    populateTimerSoundOptions('focus-sound', currentI18nDict);
-    populateTimerSoundOptions('short-break-sound', currentI18nDict);
-    populateTimerSoundOptions('long-break-sound', currentI18nDict);
-    populateFocusSoundTypeOptions('focus-sound-type', currentI18nDict);
-
     // 설정 저장 기능
     const settingsForm = document.querySelectorAll('.timer-settings input, .timer-settings select');
     settingsForm.forEach(input => {
@@ -108,8 +102,14 @@ let currentI18nDict = null;
 
 function populateTimerSoundOptions(selectElementId, dict) {
     const selectElement = document.getElementById(selectElementId);
+    console.log('[i18n][populateTimerSoundOptions] selectElementId:', selectElementId, 'selectElement:', selectElement);
     if (!selectElement) return;
     const prevValue = selectElement.value;
+    // 디버깅
+    console.log('[i18n][populateTimerSoundOptions] dict:', dict);
+    console.log('[i18n][populateTimerSoundOptions] dict.none:', dict?.none);
+    console.log('[i18n][populateTimerSoundOptions] dict.beep:', dict?.beep);
+    console.log('[i18n][populateTimerSoundOptions] dict.gong:', dict?.gong);
     const timerSoundOptions = [
         { value: 'none', text: dict?.none || 'None' },
         { value: 'beep', text: dict?.beep || 'Short low beep' },
@@ -122,14 +122,20 @@ function populateTimerSoundOptions(selectElementId, dict) {
         option.textContent = optionData.text;
         selectElement.appendChild(option);
     });
-    // 기존 선택값 복원
     if (prevValue) selectElement.value = prevValue;
 }
 
 function populateFocusSoundTypeOptions(selectElementId, dict) {
     const selectElement = document.getElementById(selectElementId);
+    console.log('[i18n][populateFocusSoundTypeOptions] selectElementId:', selectElementId, 'selectElement:', selectElement);
     if (!selectElement) return;
     const prevValue = selectElement.value;
+    // 디버깅
+    console.log('[i18n][populateFocusSoundTypeOptions] dict:', dict);
+    console.log('[i18n][populateFocusSoundTypeOptions] dict.none:', dict?.none);
+    console.log('[i18n][populateFocusSoundTypeOptions] dict.brownNoise:', dict?.brownNoise);
+    console.log('[i18n][populateFocusSoundTypeOptions] dict.rainyDay:', dict?.rainyDay);
+    console.log('[i18n][populateFocusSoundTypeOptions] dict.clockTicking:', dict?.clockTicking);
     const focusSoundTypeOptions = [
         { value: 'none', text: dict?.none || 'None' },
         { value: 'brown_noise', text: dict?.brownNoise || 'Brown Noise' },
@@ -143,7 +149,6 @@ function populateFocusSoundTypeOptions(selectElementId, dict) {
         option.textContent = optionData.text;
         selectElement.appendChild(option);
     });
-    // 기존 선택값 복원
     if (prevValue) selectElement.value = prevValue;
 }
 

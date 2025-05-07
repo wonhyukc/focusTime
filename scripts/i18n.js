@@ -60,6 +60,7 @@ function updateElement(element, key, dict) {
 async function i18nUpdate(selectedLang) {
     const lang = selectedLang || getLang();
     const dict = await loadI18n(lang);
+    window.currentI18nDict = dict;
     console.log('[i18n] Applying language:', lang);
     
     // Update document title
@@ -82,6 +83,12 @@ async function i18nUpdate(selectedLang) {
     // Sync language dropdown
     const langSelect = document.getElementById('lang-select');
     if (langSelect) langSelect.value = lang;
+    
+    // 드롭다운 옵션도 번역
+    console.log('[i18n] updateAllSoundOptionsWithI18n 호출, dict:', dict);
+    if (window.updateAllSoundOptionsWithI18n) {
+        window.updateAllSoundOptionsWithI18n(dict);
+    }
     
     console.log('[i18n] UI updated to language:', lang);
 }
