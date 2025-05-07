@@ -174,7 +174,7 @@ async function createRunningMenus() {
 }
 
 function openDashboardPage() {
-    chrome.tabs.create({ url: chrome.runtime.getURL('pages/dashboard.html') });
+    chrome.tabs.create({ url: chrome.runtime.getURL('dashboard.html') });
 }
 
 // 초기 설정
@@ -741,7 +741,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
             await createRunningMenus();
             break;
         case 'openDashboard':
-            chrome.tabs.create({ url: 'pages/dashboard.html' });
+            chrome.tabs.create({ url: chrome.runtime.getURL('dashboard.html') });
             break;
     }
 });

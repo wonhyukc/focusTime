@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 새로고침 시 dashboard.html이 아닌 경우 자동으로 dashboard.html로 이동
     if (!window.location.pathname.endsWith('dashboard.html')) {
-        window.location.href = chrome.runtime.getURL('pages/dashboard.html');
+        window.location.href = chrome.runtime.getURL('dashboard.html');
     }
 });
 
@@ -337,14 +337,18 @@ function initializeCharts() {
 
 // 설정 내보내기
 function exportSettings() {
-    chrome.storage.sync.get('settings', (data) => {
+    chrome.storage.sync.get(['settings', 'selectedLanguage'], (data) => {
         if (data.settings) {
             // 볼륨 값이 없으면 100으로 보정
             if (typeof data.settings.focus.soundVolume !== 'number') data.settings.focus.soundVolume = 100;
             if (typeof data.settings.focus.soundTypeVolume !== 'number') data.settings.focus.soundTypeVolume = 100;
             if (typeof data.settings.shortBreak.soundVolume !== 'number') data.settings.shortBreak.soundVolume = 100;
             if (typeof data.settings.longBreak.soundVolume !== 'number') data.settings.longBreak.soundVolume = 100;
-            const jsonContent = JSON.stringify(data.settings, null, 2);
+            const exportData = {
+                settings: data.settings,
+                selectedLanguage: data.selectedLanguage || 'ko'
+            };
+            const jsonContent = JSON.stringify(exportData, null, 2);
             const blob = new Blob([jsonContent], { type: 'application/json' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
@@ -577,4 +581,42 @@ window.updateAllSoundOptionsWithI18n = function(dict) {
     populateTimerSoundOptions('short-break-sound', dict);
     populateTimerSoundOptions('long-break-sound', dict);
     populateFocusSoundTypeOptions('focus-sound-type', dict);
-}; 
+};
+
+// 설정 가져오기 (import) 로직에 selectedLanguage 반영
+function handleSettingsFileImport(event) {
+    if (event.target.files && event.target.files.length > 0) {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const fileContent = event.target.result;
+                const parsed = JSON.parse(fileContent);
+                if (parsed.settings) {
+                    chrome.storage.sync.set({ settings: parsed.settings }, () => {
+                        showToast('설정이 가져오기되었습니다.');
+                        loadSettings();
+                    });
+                }
+                if (parsed.selectedLanguage) {
+                    chrome.storage.sync.set({ selectedLanguage: parsed.selectedLanguage }, () => {
+                        showToast('언어 설정이 적용되었습니다.');
+                        // 언어 즉시 반영 (옵션)
+                        if (typeof updateLanguage === 'function') {
+                            updateLanguage(parsed.selectedLanguage);
+                        }
+                    });
+                }
+            } catch (error) {
+                showToast('설정 파일이 올바르지 않습니다.', 'error');
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+}
+
+document.getElementById('import-settings').addEventListener('click', () => {
+    document.getElementById('settings-file-input').click();
+});
+document.getElementById('settings-file-input').addEventListener('change', handleSettingsFileImport); 
