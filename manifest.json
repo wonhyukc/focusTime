@@ -33,5 +33,5 @@
     "48": "icons/pomolog_icon_48x48.png",
     "128": "icons/pomolog_icon_128x128.png"
   },
-  "options_page": "pages/dashboard.html"
+  "options_page": "dashboard.html"
 } 
