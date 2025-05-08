@@ -43,7 +43,7 @@ function getInputNumberOrDefault(id, defaultValue = 100) {
 }
 
 // 현재 설정 가져오기
-function getCurrentSettings() {
+async function getCurrentSettings() {
     const getNumberOrDefault = (id, def) => {
         const el = document.getElementById(id);
         if (!el) return def;
@@ -91,6 +91,13 @@ function getCurrentSettings() {
             tabNotification: document.getElementById('long-break-tab-notification')?.checked
         }
     };
+    // lang 필드 추가 (chrome.storage.sync에서 selectedLanguage 읽기)
+    const lang = await new Promise(resolve => {
+        chrome.storage.sync.get(['selectedLanguage'], data => {
+            resolve(data.selectedLanguage || 'ko');
+        });
+    });
+    settings.lang = lang;
     return settings;
 }
 
@@ -147,6 +154,7 @@ function mergeWithDefaultSettings(userSettings) {
 // 설정 적용하기
 async function applySettings(settings) {
     try {
+        console.log('[settings.js][applySettings] 호출됨, 설정:', settings);
         // version 필드 강제 추가
         if (!settings.version) {
             settings.version = '1.0';
@@ -178,13 +186,13 @@ async function applySettings(settings) {
         const focusSoundVolumeElement = document.getElementById('focus-sound-volume');
         if (focusSoundVolumeElement) {
             focusSoundVolumeElement.value = mergedSettings.focus.soundVolume;
-            focusSoundVolumeElement.addEventListener('input', (e) => {
-                const settings = getCurrentSettings();
-                applySettings(settings);
+            focusSoundVolumeElement.addEventListener('input', async () => {
+                const settings = await getCurrentSettings();
+                await applySettings(settings);
             });
-            focusSoundVolumeElement.addEventListener('change', (e) => {
-                const settings = getCurrentSettings();
-                applySettings(settings);
+            focusSoundVolumeElement.addEventListener('change', async () => {
+                const settings = await getCurrentSettings();
+                await applySettings(settings);
             });
         }
 
@@ -209,13 +217,13 @@ async function applySettings(settings) {
 
         const shortBreakSoundVolumeElement = document.getElementById('short-break-sound-volume');
         if (shortBreakSoundVolumeElement) {
-            shortBreakSoundVolumeElement.addEventListener('input', (e) => {
-                const settings = getCurrentSettings();
-                applySettings(settings);
+            shortBreakSoundVolumeElement.addEventListener('input', async () => {
+                const settings = await getCurrentSettings();
+                await applySettings(settings);
             });
-            shortBreakSoundVolumeElement.addEventListener('change', (e) => {
-                const settings = getCurrentSettings();
-                applySettings(settings);
+            shortBreakSoundVolumeElement.addEventListener('change', async () => {
+                const settings = await getCurrentSettings();
+                await applySettings(settings);
             });
         }
 
@@ -231,13 +239,13 @@ async function applySettings(settings) {
 
         const longBreakSoundVolumeElement = document.getElementById('long-break-sound-volume');
         if (longBreakSoundVolumeElement) {
-            longBreakSoundVolumeElement.addEventListener('input', (e) => {
-                const settings = getCurrentSettings();
-                applySettings(settings);
+            longBreakSoundVolumeElement.addEventListener('input', async () => {
+                const settings = await getCurrentSettings();
+                await applySettings(settings);
             });
-            longBreakSoundVolumeElement.addEventListener('change', (e) => {
-                const settings = getCurrentSettings();
-                applySettings(settings);
+            longBreakSoundVolumeElement.addEventListener('change', async () => {
+                const settings = await getCurrentSettings();
+                await applySettings(settings);
             });
         }
 
@@ -317,7 +325,7 @@ function importSettings(e) {
     }
     console.log('[importSettings] 파일 선택됨:', file.name);
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
         try {
             console.log('[importSettings] 파일 읽기 완료');
             let settings = JSON.parse(e.target.result);
@@ -326,7 +334,16 @@ function importSettings(e) {
             if (settings.focus) delete settings.focus.playSound;
             if (settings.shortBreak) delete settings.shortBreak.playSound;
             if (settings.longBreak) delete settings.longBreak.playSound;
-            applySettings(settings);
+            await applySettings(settings);
+            // 언어 설정 반영
+            if (settings.lang) {
+                chrome.storage.sync.set({ selectedLanguage: settings.lang }, () => {
+                    console.log('[importSettings] 언어 설정 반영:', settings.lang);
+                    if (typeof updateLanguage === 'function') {
+                        updateLanguage(settings.lang);
+                    }
+                });
+            }
             showToast('설정이 가져오기되었습니다.', 'success');
             console.log('[importSettings] 설정 적용 및 완료');
         } catch (error) {
@@ -353,14 +370,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadProjectHistory(); // 프로젝트 기록 로드 먼저
 
     // 초기 설정 로드 및 적용
-    chrome.storage.sync.get('settings', (result) => {
+    chrome.storage.sync.get('settings', async (result) => {
         let initialSettings;
         if (result.settings) {
             initialSettings = result.settings;
-            applySettings(initialSettings);
+            await applySettings(initialSettings);
         } else {
             initialSettings = DEFAULT_SETTINGS;
-            applySettings(initialSettings);
+            await applySettings(initialSettings);
         }
     });
 
@@ -369,12 +386,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const fileInput = document.getElementById('settings-file-input');
     if (importBtn && fileInput) {
         importBtn.onclick = () => fileInput.click();
-        fileInput.onchange = (e) => {
-            if (e.target.files.length > 0) {
-                importSettings(e);
-                e.target.value = '';
-            }
-        };
     }
 
     // 초기화 버튼
@@ -383,9 +394,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 설정 변경 시 자동 저장 (feedback-text는 제외)
     document.querySelectorAll('input, select').forEach(element => {
         if (element.id !== 'feedback-text') {
-            element.addEventListener('change', () => {
-                const settings = getCurrentSettings();
-                applySettings(settings);
+            element.addEventListener('change', async () => {
+                const settings = await getCurrentSettings();
+                await applySettings(settings);
             });
         }
     });
@@ -393,13 +404,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Focus sound type volume input
     const focusSoundTypeVolumeElement = document.getElementById('focus-sound-type-volume');
     if (focusSoundTypeVolumeElement) {
-        focusSoundTypeVolumeElement.addEventListener('input', (e) => {
-            const settings = getCurrentSettings();
-            applySettings(settings);
+        focusSoundTypeVolumeElement.addEventListener('input', async () => {
+            const settings = await getCurrentSettings();
+            await applySettings(settings);
         });
-        focusSoundTypeVolumeElement.addEventListener('change', (e) => {
-            const settings = getCurrentSettings();
-            applySettings(settings);
+        focusSoundTypeVolumeElement.addEventListener('change', async () => {
+            const settings = await getCurrentSettings();
+            await applySettings(settings);
         });
     }
 
