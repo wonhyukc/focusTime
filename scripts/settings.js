@@ -307,48 +307,37 @@ function populateDataList(history) {
     });
 }
 
-// 설정 내보내기
-function exportSettings() {
-    try {
-        let settings = getCurrentSettings();
-        // playSound 필드 제거
-        if (settings.focus) delete settings.focus.playSound;
-        if (settings.shortBreak) delete settings.shortBreak.playSound;
-        if (settings.longBreak) delete settings.longBreak.playSound;
-        console.log("Settings to export in exportSettings.settings():", lang, settings);
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(settings, null, 2));
-        console.log("Data string:", dataStr.substring(0, 100) + "...");
-        const downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href", dataStr);
-        downloadAnchorNode.setAttribute("download", "pomodoro_settings.json");
-        document.body.appendChild(downloadAnchorNode);
-        downloadAnchorNode.click();
-        downloadAnchorNode.remove();
-        showToast('설정이 내보내기되었습니다.', 'success');
-    } catch (error) {
-        showToast('설정 내보내기 중 오류 발생', 'error');
-    }
-}
-
 // 설정 가져오기
 function importSettings(e) {
+    console.log('[importSettings] 호출됨, 이벤트:', e);
     const file = e.target.files && e.target.files[0];
-    if (!file) return;
+    if (!file) {
+        console.log('[importSettings] 파일이 선택되지 않음');
+        return;
+    }
+    console.log('[importSettings] 파일 선택됨:', file.name);
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
+            console.log('[importSettings] 파일 읽기 완료');
             let settings = JSON.parse(e.target.result);
+            console.log('[importSettings] 파싱된 설정:', settings);
             // playSound 필드 제거
             if (settings.focus) delete settings.focus.playSound;
             if (settings.shortBreak) delete settings.shortBreak.playSound;
             if (settings.longBreak) delete settings.longBreak.playSound;
             applySettings(settings);
             showToast('설정이 가져오기되었습니다.', 'success');
+            console.log('[importSettings] 설정 적용 및 완료');
         } catch (error) {
+            console.error('[importSettings] 잘못된 설정 파일:', error);
             showToast('잘못된 설정 파일입니다.', 'error');
         }
     };
     reader.readAsText(file);
+    // 파일 입력 초기화
+    e.target.value = '';
+    console.log('[importSettings] 파일 입력 초기화 완료');
 }
 
 // 설정 초기화

@@ -344,27 +344,37 @@ function initializeCharts() {
 
 // 설정 내보내기
 function exportSettings() {
-    chrome.storage.sync.get(['settings', 'selectedLanguage'], (data) => {
-        // version, lang이 없으면 강제로 추가
-        let version = (data.settings && data.settings.version) ? data.settings.version : '1.0';
-        let lang = (data.settings && data.settings.lang) ? data.settings.lang : (data.selectedLanguage || 'ko');
+    try {
+        let settings = getCurrentSettings ? getCurrentSettings() : undefined;
+        console.log('[exportSettings] settings:', settings);
+        // playSound 필드 제거
+        if (settings && settings.focus) delete settings.focus.playSound;
+        if (settings && settings.shortBreak) delete settings.shortBreak.playSound;
+        if (settings && settings.longBreak) delete settings.longBreak.playSound;
+        // version, lang 보정
+        let version = (settings && settings.version) ? settings.version : '1.0';
+        let lang = (settings && settings.lang) ? settings.lang : 'ko';
         const exportData = {
-            projectName: data.settings?.projectName || "포모로그 설정",
+            projectName: settings?.projectName || "포모로그 설정",
             version: version,
             lang: lang,
-            focus: { ...data.settings?.focus },
-            shortBreak: { ...data.settings?.shortBreak },
-            longBreak: { ...data.settings?.longBreak }
+            focus: { ...settings?.focus },
+            shortBreak: { ...settings?.shortBreak },
+            longBreak: { ...settings?.longBreak }
         };
-        console.log('Settings to export in exportSettings.dashboard():', lang, exportData);
+        console.log('[exportSettings] exportData:', exportData);
         const jsonContent = JSON.stringify(exportData, null, 2);
+        console.log('[exportSettings] jsonContent:', jsonContent);
         const blob = new Blob([jsonContent], { type: 'application/json' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = 'focus_timer_settings.json';
         link.click();
         showToast('설정을 내보냈습니다.');
-    });
+    } catch (error) {
+        console.error('exportSettings() 설정 내보내기 중 오류:', error);
+        showToast('dashboards.exportSettings() 설정 내보내기 중 오류 발생', 'error');
+    }
 }
 
 // 설정 초기화
