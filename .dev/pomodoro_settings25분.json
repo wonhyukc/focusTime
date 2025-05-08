@@ -1,5 +1,6 @@
 {
-  "projectName": "포로로그 설정",
+  "projectName": "집중 시간 도우미 설정",
+  "version": "1.0",
   "lang": "ko",
   "focus": {
     "duration": 25,
@@ -14,16 +15,16 @@
     "duration": 5,
     "sound": "gong",
     "soundVolume": 100,
-    "soundTypeVolume": 15,
+    "soundTypeVolume": 100,
     "desktopNotification": true,
     "tabNotification": false
   },
   "longBreak": {
-    "duration": 15,
+    "duration": 100,
     "startAfter": 4,
     "sound": "gong",
     "soundVolume": 100,
-    "soundTypeVolume": 15,
+    "soundTypeVolume": 100,
     "desktopNotification": true,
     "tabNotification": false
   }

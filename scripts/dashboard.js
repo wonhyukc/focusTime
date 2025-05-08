@@ -1,5 +1,11 @@
 // 탭 전환 기능
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async () => {
+    chrome.storage.sync.get(['selectedLanguage'], (data) => {
+        const lang = data.selectedLanguage || 'ko';
+        if (typeof updateLanguage === 'function') {
+            updateLanguage(lang);
+        }
+    });
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
 
@@ -154,41 +160,42 @@ function populateFocusSoundTypeOptions(selectElementId, dict) {
 
 // 설정 저장
 function saveSettings() {
-    const settings = {
-        version: '1.0', // background.js의 DEFAULT_SETTINGS_BG.version과 동일하게
-        focus: {
-            duration: parseInt(document.getElementById('focus-duration').value),
-            sound: document.getElementById('focus-sound').value,
-            soundVolume: parseInt(document.getElementById('focus-sound-volume').value),
-            soundType: document.getElementById('focus-sound-type').value,
-            soundTypeVolume: parseInt(document.getElementById('focus-sound-type-volume').value),
-            desktopNotification: document.getElementById('focus-desktop-notification').checked,
-            tabNotification: document.getElementById('focus-tab-notification').checked
-        },
-        shortBreak: {
-            duration: parseInt(document.getElementById('short-break-duration').value),
-            sound: document.getElementById('short-break-sound').value,
-            soundVolume: parseInt(document.getElementById('short-break-sound-volume').value),
-            desktopNotification: document.getElementById('short-break-desktop-notification').checked,
-            tabNotification: document.getElementById('short-break-tab-notification').checked
-        },
-        longBreak: {
-            duration: parseInt(document.getElementById('long-break-duration').value),
-            startAfter: parseInt(document.getElementById('long-break-start').value),
-            sound: document.getElementById('long-break-sound').value,
-            soundVolume: parseInt(document.getElementById('long-break-sound-volume').value),
-            desktopNotification: document.getElementById('long-break-desktop-notification').checked,
-            tabNotification: document.getElementById('long-break-tab-notification').checked
-        },
-        general: {
-            soundEnabled: true,
-            autoStartBreaks: false,
-            autoStartPomodoros: false
-        }
-    };
-
-    chrome.storage.sync.set({ settings }, () => {
-        showToast('설정이 저장되었습니다.');
+    chrome.storage.sync.get(['selectedLanguage'], (data) => {
+        const lang = data.selectedLanguage || 'ko';
+        const settings = {
+            projectName: document.getElementById('project-name')?.value || '포모로그 설정',
+            version: '1.0',
+            lang: lang,
+            focus: {
+                duration: parseInt(document.getElementById('focus-duration').value),
+                sound: document.getElementById('focus-sound').value,
+                soundType: document.getElementById('focus-sound-type').value,
+                soundVolume: parseInt(document.getElementById('focus-sound-volume').value),
+                soundTypeVolume: parseInt(document.getElementById('focus-sound-type-volume').value),
+                desktopNotification: document.getElementById('focus-desktop-notification').checked,
+                tabNotification: document.getElementById('focus-tab-notification').checked
+            },
+            shortBreak: {
+                duration: parseInt(document.getElementById('short-break-duration').value),
+                sound: document.getElementById('short-break-sound').value,
+                soundVolume: parseInt(document.getElementById('short-break-sound-volume').value),
+                soundTypeVolume: parseInt(document.getElementById('short-break-sound-type-volume')?.value) || 100,
+                desktopNotification: document.getElementById('short-break-desktop-notification').checked,
+                tabNotification: document.getElementById('short-break-tab-notification').checked
+            },
+            longBreak: {
+                duration: parseInt(document.getElementById('long-break-duration').value),
+                startAfter: parseInt(document.getElementById('long-break-start').value),
+                sound: document.getElementById('long-break-sound').value,
+                soundVolume: parseInt(document.getElementById('long-break-sound-volume').value),
+                soundTypeVolume: parseInt(document.getElementById('long-break-sound-type-volume')?.value) || 100,
+                desktopNotification: document.getElementById('long-break-desktop-notification').checked,
+                tabNotification: document.getElementById('long-break-tab-notification').checked
+            }
+        };
+        chrome.storage.sync.set({ settings }, () => {
+            showToast('설정이 저장되었습니다.');
+        });
     });
 }
 
@@ -338,46 +345,25 @@ function initializeCharts() {
 // 설정 내보내기
 function exportSettings() {
     chrome.storage.sync.get(['settings', 'selectedLanguage'], (data) => {
-        if (data.settings) {
-            const exportData = {
-                projectName: data.settings.projectName || "포모로그 설정",
-                lang: data.selectedLanguage || 'ko',
-                focus: {
-                    duration: data.settings.focus.duration || 25,
-                    sound: data.settings.focus.sound || "beep",
-                    soundType: data.settings.focus.soundType || "brown_noise",
-                    soundVolume: data.settings.focus.soundVolume || 100,
-                    soundTypeVolume: data.settings.focus.soundTypeVolume || 15,
-                    desktopNotification: data.settings.focus.desktopNotification ?? true,
-                    tabNotification: data.settings.focus.tabNotification ?? false
-                },
-                shortBreak: {
-                    duration: data.settings.shortBreak.duration || 5,
-                    sound: data.settings.shortBreak.sound || "beep",
-                    soundVolume: data.settings.shortBreak.soundVolume || 100,
-                    soundTypeVolume: data.settings.shortBreak.soundTypeVolume || 15,
-                    desktopNotification: data.settings.shortBreak.desktopNotification ?? true,
-                    tabNotification: data.settings.shortBreak.tabNotification ?? false
-                },
-                longBreak: {
-                    duration: data.settings.longBreak.duration || 15,
-                    startAfter: data.settings.longBreak.startAfter || 4,
-                    sound: data.settings.longBreak.sound || "beep",
-                    soundVolume: data.settings.longBreak.soundVolume || 100,
-                    soundTypeVolume: data.settings.longBreak.soundTypeVolume || 15,
-                    desktopNotification: data.settings.longBreak.desktopNotification ?? true,
-                    tabNotification: data.settings.longBreak.tabNotification ?? false
-                }
-            };
-            console.log('[설정 내보내기] 현재 언어:', data.selectedLanguage || 'ko');
-            const jsonContent = JSON.stringify(exportData, null, 2);
-            const blob = new Blob([jsonContent], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'focus_timer_settings.json';
-            link.click();
-            showToast('설정을 내보냈습니다.');
-        }
+        // version, lang이 없으면 강제로 추가
+        let version = (data.settings && data.settings.version) ? data.settings.version : '1.0';
+        let lang = (data.settings && data.settings.lang) ? data.settings.lang : (data.selectedLanguage || 'ko');
+        const exportData = {
+            projectName: data.settings?.projectName || "포모로그 설정",
+            version: version,
+            lang: lang,
+            focus: { ...data.settings?.focus },
+            shortBreak: { ...data.settings?.shortBreak },
+            longBreak: { ...data.settings?.longBreak }
+        };
+        console.log('Settings to export in exportSettings.dashboard():', lang, exportData);
+        const jsonContent = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([jsonContent], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'focus_timer_settings.json';
+        link.click();
+        showToast('설정을 내보냈습니다.');
     });
 }
 
@@ -408,24 +394,6 @@ function validateSettings(settings) {
         longBreakRequired.every(key => key in settings.longBreak) &&
         generalRequired.every(key => key in settings.general)
     );
-}
-
-// 토스트 메시지 표시
-function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.classList.add('show');
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => {
-                document.body.removeChild(toast);
-            }, 300);
-        }, 2000);
-    }, 100);
 }
 
 // 통계 가져오기 (중복 함수 제거: importStats 대신 handleStatsFileImport 사용)
@@ -605,7 +573,7 @@ window.updateAllSoundOptionsWithI18n = function(dict) {
     populateFocusSoundTypeOptions('focus-sound-type', dict);
 };
 
-// 설정 가져오기 (import) 로직에 selectedLanguage 반영
+// 설정 가져오기
 function handleSettingsFileImport(event) {
     if (event.target.files && event.target.files.length > 0) {
         const file = event.target.files[0];
@@ -614,42 +582,32 @@ function handleSettingsFileImport(event) {
             try {
                 const fileContent = event.target.result;
                 const parsed = JSON.parse(fileContent);
-                console.log('[설정 가져오기] 파일 언어:', parsed.lang);
-                
-                // 현재 언어 설정 가져오기
-                chrome.storage.sync.get('selectedLanguage', (data) => {
-                    const currentLang = data.selectedLanguage;
-                    console.log('[설정 가져오기] 현재 언어:', currentLang);
-                    
-                    // 설정 저장
-                    const settings = {
-                        projectName: parsed.projectName,
-                        focus: parsed.focus,
-                        shortBreak: parsed.shortBreak,
-                        longBreak: parsed.longBreak
-                    };
-                    
-                    chrome.storage.sync.set({ 
-                        settings: settings,
-                        selectedLanguage: parsed.lang || currentLang 
-                    }, () => {
-                        console.log('[설정 가져오기] 새로 설정된 언어:', parsed.lang || currentLang);
-                        showToast('설정이 가져오기되었습니다.');
-                        loadSettings();
-                        
-                        // 언어 즉시 반영
-                        if (typeof updateLanguage === 'function') {
-                            updateLanguage(parsed.lang || currentLang);
-                        }
-                    });
+                const lang = parsed.lang || 'ko';
+                const version = parsed.version || '1.0';
+                const settings = {
+                    projectName: parsed.projectName,
+                    version: version,
+                    lang: lang,
+                    focus: parsed.focus,
+                    shortBreak: parsed.shortBreak,
+                    longBreak: parsed.longBreak
+                };
+                chrome.storage.sync.set({
+                    settings: settings,
+                    selectedLanguage: lang
+                }, () => {
+                    showToast('설정이 가져오기되었습니다.');
+                    loadSettings();
+                    if (typeof updateLanguage === 'function') {
+                        updateLanguage(lang);
+                    }
                 });
             } catch (error) {
-                console.error('[설정 가져오기] 오류:', error);
                 showToast('설정 파일이 올바르지 않습니다.', 'error');
             }
         };
         reader.readAsText(file);
-        event.target.value = ''; // 파일 입력 초기화
+        event.target.value = '';
     }
 }
 

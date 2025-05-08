@@ -1,9 +1,10 @@
 {
   "projectName": "집중 시간 도우미 설정",
+  "version": "1.0",
   "lang": "ko",
   "focus": {
     "duration": 1,
-    "sound": "beep",
+    "sound": "gong",
     "soundType": "brown_noise",
     "soundVolume": 100,
     "soundTypeVolume": 15,
@@ -12,18 +13,18 @@
   },
   "shortBreak": {
     "duration": 1,
-    "sound": "beep",
+    "sound": "gong",
     "soundVolume": 100,
-    "soundTypeVolume": 10,
+    "soundTypeVolume": 100,
     "desktopNotification": true,
     "tabNotification": false
   },
   "longBreak": {
     "duration": 2,
-    "startAfter": 4,
-    "sound": "beep",
+    "startAfter": 3,
+    "sound": "gong",
     "soundVolume": 100,
-    "soundTypeVolume": 10,
+    "soundTypeVolume": 100,
     "desktopNotification": true,
     "tabNotification": false
   }

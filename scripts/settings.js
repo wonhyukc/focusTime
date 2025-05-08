@@ -315,7 +315,7 @@ function exportSettings() {
         if (settings.focus) delete settings.focus.playSound;
         if (settings.shortBreak) delete settings.shortBreak.playSound;
         if (settings.longBreak) delete settings.longBreak.playSound;
-        console.log("Settings to export:", settings);
+        console.log("Settings to export in exportSettings.settings():", lang, settings);
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(settings, null, 2));
         console.log("Data string:", dataStr.substring(0, 100) + "...");
         const downloadAnchorNode = document.createElement('a');
@@ -359,25 +359,6 @@ function resetSettings() {
     }
 }
 
-// 토스트 메시지 표시
-function showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.classList.add('show');
-    }, 100);
-
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => {
-            document.body.removeChild(toast);
-        }, 300);
-    }, 3000);
-}
-
 // 이벤트 리스너 등록
 document.addEventListener('DOMContentLoaded', async () => {
     await loadProjectHistory(); // 프로젝트 기록 로드 먼저
@@ -393,9 +374,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             applySettings(initialSettings);
         }
     });
-
-    // 내보내기 버튼
-    document.getElementById('export-settings').addEventListener('click', exportSettings);
 
     // 가져오기 버튼 및 파일 input 이벤트(중복 방지)
     const importBtn = document.getElementById('import-settings');
