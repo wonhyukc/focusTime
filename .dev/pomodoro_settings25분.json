@@ -1,5 +1,6 @@
 {
   "projectName": "집중 시간 도우미 설정",
+  "lang": "ko",
   "focus": {
     "duration": 25,
     "sound": "gong",
