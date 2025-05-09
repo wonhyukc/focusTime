@@ -389,15 +389,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // 가져오기 버튼 및 파일 input 이벤트(중복 방지)
-    const importBtn = document.getElementById('import-settings');
-    const fileInput = document.getElementById('settings-file-input');
-    console.log('[settings.js][document.addEventListener] importBtn: if 전', importBtn);
-    if (importBtn && fileInput) {
-        console.log('[settings.js][document.addEventListener] importBtn:', importBtn);
-        importBtn.onclick = () => fileInput.click();
-    }
-
     // 초기화 버튼
     document.getElementById('reset-settings').addEventListener('click', resetSettings);
 
