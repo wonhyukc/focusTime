@@ -202,9 +202,9 @@ chrome.alarms.onAlarm.addListener((alarm) => {
             timerState.timeLeft--;
             chrome.storage.local.set({ timeLeft: timerState.timeLeft });
             updateBadge(timerState.timeLeft, timerState.type !== 'focus');
-        } else {
+                } else {
             timerComplete();
-        }
+            }
     }
 });
 
@@ -212,7 +212,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 chrome.notifications.onClicked.addListener(async (notificationId) => {
     if (notificationId === 'pomodoroNotification') {
         console.log('[POPUP][onClicked] 알림 클릭됨');
-        chrome.notifications.clear(notificationId);
+                chrome.notifications.clear(notificationId);
         // --- 이전 세션 타입을 storage에서 읽어서 사용 ---
         let previousType = 'unknown';
         try {

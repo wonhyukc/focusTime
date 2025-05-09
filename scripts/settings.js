@@ -5,6 +5,8 @@ const MAX_HISTORY_SIZE = 10; // 기록 최대 개수 (선택 사항)
 // 기본 설정값 정의
 const DEFAULT_SETTINGS = {
     projectName: "포모로그 설정",
+    "version": "1.0",
+    "lang": "en",
     focus: {
         duration: 25,
         sound: "beep",
@@ -374,9 +376,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         let initialSettings;
         if (result.settings) {
             initialSettings = result.settings;
+            // version, lang 누락 보완
+            if (!initialSettings.version) initialSettings.version = '1.0';
+            if (!initialSettings.lang) initialSettings.lang = 'ko';
             await applySettings(initialSettings);
         } else {
             initialSettings = DEFAULT_SETTINGS;
+            // version, lang 보완
+            initialSettings.version = '1.0';
+            initialSettings.lang = 'ko';
             await applySettings(initialSettings);
         }
     });
