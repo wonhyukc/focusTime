@@ -302,7 +302,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             const feedback = document.getElementById('feedback-text').value.trim();
             if (!feedback) {
-                alert('의견을 입력해주세요.');
+                showToast('의견을 입력해주세요.', 'error');
                 return;
             }
             const subject = encodeURIComponent('포모도로 타이머 피드백');
@@ -330,91 +330,11 @@ const EventHandlers = {
         e.preventDefault();
         const feedback = document.getElementById('feedback-text').value.trim();
         if (!feedback) {
-            alert('의견을 입력해주세요.');
+            showToast('의견을 입력해주세요.', 'error');
             return;
         }
         const subject = encodeURIComponent('포모도로 타이머 피드백');
         const body = encodeURIComponent(feedback);
         window.location.href = `mailto:willyads@gmail.com?subject=${subject}&body=${body}`;
-    },
-
-    async handleImportSettings(e) {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            try {
-                let settings = JSON.parse(e.target.result);
-                ['focus', 'shortBreak', 'longBreak'].forEach(sessionType => {
-                    if (settings[sessionType]) delete settings[sessionType].playSound;
-                });
-                await SettingsManager.applySettings(normalizeSettings(settings));
-                if (settings.lang) {
-                    chrome.storage.sync.set({ selectedLanguage: settings.lang }, () => {
-                        if (typeof updateLanguage === 'function') {
-                            updateLanguage(settings.lang);
-                        }
-                    });
-                }
-                showToast('설정이 가져오기되었습니다.', 'success');
-            } catch (error) {
-                console.error('[importSettings] 잘못된 설정 파일:', error);
-                showToast('잘못된 설정 파일입니다.', 'error');
-            }
-        };
-        reader.readAsText(file);
-        e.target.value = '';
-    },
-
-    async handleResetSettings() {
-        if (confirm('모든 설정을 초기값으로 되돌리시겠습니까?')) {
-            await SettingsManager.applySettings(DEFAULT_SETTINGS);
-            showToast('설정이 초기화되었습니다.', 'success');
-        }
     }
 };
-
-// 초기화 함수
-async function initializeSettings() {
-    await ProjectHistoryManager.loadProjectHistory();
-
-    // 초기 설정 로드 및 적용
-    return new Promise((resolve) => {
-        chrome.storage.sync.get('settings', async (result) => {
-            let initialSettings = result.settings || DEFAULT_SETTINGS;
-            if (!initialSettings.version) initialSettings.version = CONSTANTS.DEFAULT_VERSION;
-            if (!initialSettings.lang) initialSettings.lang = CONSTANTS.DEFAULT_LANG;
-            await SettingsManager.applySettings(normalizeSettings(initialSettings));
-            resolve();
-        });
-    });
-}
-
-// 이벤트 리스너 등록 함수
-function registerEventListeners() {
-    document.getElementById('reset-settings')?.addEventListener('click', EventHandlers.handleResetSettings);
-
-    // 설정 변경 시 자동 저장
-    document.querySelectorAll('input, select').forEach(element => {
-        if (element.id !== 'feedback-text') {
-            element.addEventListener('change', EventHandlers.handleSettingsChange);
-        }
-    });
-
-    // 프로젝트 이름 입력란
-    const projectNameInput = document.getElementById('project-name');
-    if (projectNameInput) {
-        projectNameInput.addEventListener('change', EventHandlers.handleProjectNameChange);
-        projectNameInput.addEventListener('blur', EventHandlers.handleProjectNameChange);
-    }
-
-    // 피드백 폼
-    document.getElementById('feedback-form')?.addEventListener('submit', EventHandlers.handleFeedbackSubmit);
-}
-
-// DOMContentLoaded 이벤트 핸들러
-document.addEventListener('DOMContentLoaded', async () => {
-    await initializeSettings();
-    registerEventListeners();
-}); 
