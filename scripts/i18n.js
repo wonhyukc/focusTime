@@ -96,11 +96,9 @@ async function i18nUpdate(selectedLang) {
 // Initialize i18n when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     i18nUpdate();
-    
     // Add language change listener
     const langSelect = document.getElementById('lang-select');
     if (langSelect) {
-        langSelect.value = getLang();
         langSelect.addEventListener('change', function() {
             i18nUpdate(langSelect.value);
         });
