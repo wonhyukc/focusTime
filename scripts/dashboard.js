@@ -606,6 +606,7 @@ function handleSettingsFileImport(event) {
                         updateLanguage(lang);
                     }
                 });
+                console.log('[dashboard.js][handleSettingsFileImport] 설정 불러오기 완료', lang, parsed);
             } catch (error) {
                 showToast('설정 파일이 올바르지 않습니다.', 'error');
             }

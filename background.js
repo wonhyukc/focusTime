@@ -187,7 +187,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     chrome.storage.sync.get(['settings'], (result) => {
         if (!result.settings) {
             chrome.storage.sync.set({ settings: DEFAULT_SETTINGS_BG }, () => {
-                console.log('기본 설정이 초기화되었습니다.');
+                console.log('기본 설정이 초기화되었습니다.', DEFAULT_SETTINGS_BG);
             });
         }
     });
@@ -315,8 +315,9 @@ async function getCurrentSettings() {
         const projectName = settings.projectName !== undefined ? settings.projectName : DEFAULT_SETTINGS_BG.projectName;
 
         // 설정값 유효성 검사 및 보정
-        return {
+        const resultSettings = {
             projectName: projectName,
+            lang: settings.lang || 'ko',
             focus: {
                 ...DEFAULT_SETTINGS_BG.focus,
                 ...(settings.focus || {}),
@@ -341,6 +342,8 @@ async function getCurrentSettings() {
             },
              general: settings.general || DEFAULT_SETTINGS_BG.general
         };
+        console.log('[BG][getCurrentSettings] 리턴할때 설정값:', resultSettings);
+        return resultSettings;
     } catch (error) {
         console.error('[BG] 설정 로드 중 오류:', error);
         // 오류 발생 시 BG 기본 설정 반환 (soundType 없는 버전)
@@ -990,18 +993,19 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
         console.log('[SETTINGS][onChanged] 새로운 설정:', changes.settings.newValue);
         
         const settings = await getCurrentSettings();
-        console.log('[SETTINGS][onChanged] 현재 설정:', {
-            focus: {
-                volume: settings.focus.soundVolume,
-                soundType: settings.focus.soundType
-            },
-            shortBreak: {
-                volume: settings.shortBreak.soundVolume
-            },
-            longBreak: {
-                volume: settings.longBreak.soundVolume
-            }
-        });
+        console.log('[SETTINGS][onChanged] getCurrentSettings() 호출 후:', settings);
+        // console.log('[SETTINGS][onChanged] 현재 설정:', {
+        //     focus: {
+        //         volume: settings.focus.soundVolume,
+        //         soundType: settings.focus.soundType
+        //     },
+        //     shortBreak: {
+        //         volume: settings.shortBreak.soundVolume
+        //     },
+        //     longBreak: {
+        //         volume: settings.longBreak.soundVolume
+        //     }
+        // });
         
         // 현재 실행 중인 세션이 있을 경우 시간 업데이트
         if (timerState.timeLeft > 0) {
