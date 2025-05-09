@@ -600,13 +600,18 @@ function handleSettingsFileImport(event) {
                     settings: settings,
                     selectedLanguage: lang
                 }, () => {
-                    showToast('설정이 가져오기되었습니다.');
+                    showToast('handleSettingsFileImport() 설정이 불러오기 완료.');
                     loadSettings();
                     if (typeof updateLanguage === 'function') {
                         updateLanguage(lang);
+                        console.log('[dashboard.js][handleSettingsFileImport] updateLanguage 호출 후:', lang);
                     }
                 });
-                console.log('[dashboard.js][handleSettingsFileImport] 설정 불러오기 완료', lang, parsed);
+                console.log('[dashboard.js][handleSettingsFileImport] updateLanguage 호출:', lang);
+                
+                if (typeof i18nUpdate === 'function') {
+                    i18nUpdate(lang);
+                }
             } catch (error) {
                 showToast('설정 파일이 올바르지 않습니다.', 'error');
             }
