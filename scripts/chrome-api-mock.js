@@ -6,8 +6,6 @@
     const isExtension = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
 
     if (!isExtension) {
-        console.log('Running outside of Chrome extension context - using mock APIs');
-
         // Create chrome namespace if it doesn't exist
         window.chrome = window.chrome || {};
 
@@ -29,7 +27,6 @@
                             setTimeout(() => callback(data), 10);
                         }
                     } catch (error) {
-                        console.error('Error in mock chrome.storage.local.get:', error);
                         setTimeout(() => callback({}), 10);
                     }
                 },
@@ -40,7 +37,6 @@
                         localStorage.setItem('mock_storage_local', JSON.stringify(data));
                         if (callback) setTimeout(callback, 10);
                     } catch (error) {
-                        console.error('Error in mock chrome.storage.local.set:', error);
                         if (callback) setTimeout(callback, 10);
                     }
                 }
@@ -61,7 +57,6 @@
                             setTimeout(() => callback(data), 10);
                         }
                     } catch (error) {
-                        console.error('Error in mock chrome.storage.sync.get:', error);
                         setTimeout(() => callback({}), 10);
                     }
                 },
@@ -72,7 +67,6 @@
                         localStorage.setItem('mock_storage_sync', JSON.stringify(data));
                         if (callback) setTimeout(callback, 10);
                     } catch (error) {
-                        console.error('Error in mock chrome.storage.sync.set:', error);
                         if (callback) setTimeout(callback, 10);
                     }
                 }
@@ -82,7 +76,6 @@
         // Mock chrome.runtime
         window.chrome.runtime = {
             sendMessage: function(message, callback) {
-                console.log('Mock sendMessage:', message);
                 if (message.action === 'playSound') {
                     // Beep sound implementation
                     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -113,9 +106,7 @@
         window.dispatchMockMessage = function(message) {
             if (window._mockMessageListeners) {
                 window._mockMessageListeners.forEach(listener => {
-                    listener(message, {}, function(response) {
-                        console.log('Mock message response:', response);
-                    });
+                    listener(message, {}, function(response) {});
                 });
             }
         };

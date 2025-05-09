@@ -3,7 +3,6 @@ console.log('\n---집중시간 앱 시작---------------');
 
 // 문서 로드 완료 시 background로 메시지 전송
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Offscreen document fully loaded');
     chrome.runtime.sendMessage({ action: 'OFFSCREEN_LOADED' });
 });
 
@@ -14,11 +13,9 @@ let currentAudioContext = null; // Web Audio API용 전역 컨텍스트
 
 // 백그라운드 스크립트로부터 메시지를 받기 위한 리스너
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log("[OFFSCREEN] onMessage 리스너 진입", message);
     if (message.command === "playSound") {
         // 사운드 중지 명령 처리
         if (message.soundType === 'none') {
-            console.log('[OFFSCREEN] 사운드 중지 명령 수신. currentAudio:', currentAudio, 'currentAudioContext:', currentAudioContext);
             // 모든 audio 태그 정지 및 제거
             document.querySelectorAll('audio').forEach(audio => {
                 audio.pause();
@@ -30,16 +27,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 currentAudio.src = "";
                 if (currentAudio.remove) currentAudio.remove();
                 currentAudio = null;
-                console.log('[OFFSCREEN] 모든 사운드 중지됨 (soundType=none, Audio 객체)');
             }
             if (currentAudioContext) {
                 try {
-                    console.log('[OFFSCREEN] currentAudioContext 상태 - state:', currentAudioContext.state);
                     currentAudioContext.close();
-                    console.log('[OFFSCREEN] Web Audio API 컨텍스트 종료 (soundType=none)');
-                } catch (e) {
-                    console.error('[OFFSCREEN] Web Audio API 종료 중 오류', e);
-                }
+                } catch (e) {}
                 currentAudioContext = null;
             }
             sendResponse(true);
@@ -53,7 +45,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             message.isPreview === currentIsPreview
         ) {
             currentAudio.volume = (message.volume ?? 50) / 100;
-            console.log("[OFFSCREEN] 기존 오디오 볼륨만 조정", message.volume, '실제 적용:', currentAudio.volume);
             sendResponse(true);
             return;
         }
@@ -74,10 +65,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Web Audio API를 사용하여 알림음 생성 및 재생
 function playNotificationSound(soundType = 'low-short-beep', isPreview = false, volume = 50) {
-    console.log('[LOG] playNotificationSound 호출:', { soundType, isPreview, volume });
     try {
-        console.log("Offscreen: playNotificationSound 함수 실행", { soundType, isPreview, volume });
-        
         // 사운드 타입에 따라 다른 소리 재생
         switch (soundType) {
             case 'gong':
@@ -97,14 +85,12 @@ function playNotificationSound(soundType = 'low-short-beep', isPreview = false, 
                 playBeepSound(isPreview, volume);
         }
     } catch (error) {
-        console.error('Offscreen: 알림음 재생 중 오류 발생:', error);
         window.close(); // 오류 발생 시 창 닫기
     }
 }
 
 // 기본 beep 소리 재생
 function playBeepSound(isPreview = false, volume = 50) {
-    console.log('[LOG] playBeepSound 호출:', { isPreview, volume });
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
     currentAudioContext = audioContext;
     const oscillator = audioContext.createOscillator();
@@ -122,16 +108,12 @@ function playBeepSound(isPreview = false, volume = 50) {
 
     oscillator.start(audioContext.currentTime);
     oscillator.stop(audioContext.currentTime + 1.0); // 비프음은 짧으므로 3초 제한 불필요
-
-    console.log("Offscreen: beep 알림음 재생 시작됨");
     
     // 오디오 컨텍스트와 문서 정리 (미리듣기든 아니든 1.5초 후 정리)
     setTimeout(() => {
         audioContext.close();
         if (currentAudioContext === audioContext) currentAudioContext = null;
-        console.log("Offscreen: 오디오 컨텍스트 종료");
         setTimeout(() => {
-            console.log("Offscreen: 문서 종료 (beep)");
             window.close();
         }, 100);
     }, 1500); 
@@ -139,13 +121,9 @@ function playBeepSound(isPreview = false, volume = 50) {
 
 // 오디오 파일 재생 (공통 함수)
 function playAudioFile(soundPath, isPreview = false, volume = 50) {
-    console.log('[LOG] playAudioFile 호출:', { soundPath, isPreview, volume });
-    console.log(`Offscreen: ${soundPath} 소리 재생 시도`, { isPreview, volume });
-    
     const audio = new Audio();
     audio.src = chrome.runtime.getURL(soundPath);
     audio.volume = volume / 100; // 볼륨 설정 적용
-    console.log('Offscreen: playAudioFile 볼륨 적용', volume, audio.volume);
     let previewTimeoutId = null; // 미리듣기 타이머
     let closeTimeoutId = null; // 창 닫기 타이머
 
@@ -161,21 +139,17 @@ function playAudioFile(soundPath, isPreview = false, volume = 50) {
     currentAudio = audio;
 
     audio.oncanplaythrough = () => {
-        console.log(`Offscreen: ${soundPath} 소리 로드 완료, 재생 시작`);
         audio.play()
             .then(() => {
-                console.log(`Offscreen: ${soundPath} 재생 성공`);
                 if (isPreview) {
                     // 3초 후 재생 중지 타이머 설정
                     previewTimeoutId = setTimeout(() => {
-                        console.log("Offscreen: 미리듣기 3초 경과, 재생 중지");
                         audio.pause();
                         audio.currentTime = 0; // 시간 초기화 (선택 사항)
                         previewTimeoutId = null; // ID 초기화
 
                         // 재생 중지 후 창 닫기 타이머 (0.5초 후)
                         closeTimeoutId = setTimeout(() => {
-                            console.log("Offscreen: 문서 종료 (preview timeout)");
                             window.close();
                         }, 500); 
 
@@ -186,25 +160,21 @@ function playAudioFile(soundPath, isPreview = false, volume = 50) {
                 }
             })
             .catch(error => {
-                console.error(`Offscreen: ${soundPath} 재생 실패`, error);
                 clearTimeouts();
                 playBeepSound(); // 실패하면 기본 beep으로 폴백 (미리듣기 여부 전달 안 함)
             });
     };
     
     audio.onerror = (e) => {
-        console.error(`Offscreen: ${soundPath} 소리 로드 실패`, e);
         clearTimeouts();
         playBeepSound(); // 오류 시 기본 beep으로 폴백
     };
     
     // 재생이 끝난 후 정리 (미리듣기가 아닐 때 또는 미리듣기 타임아웃 전에 끝날 때)
     audio.onended = () => {
-        console.log(`Offscreen: ${soundPath} 재생 완료 (onended)`);
         clearTimeouts(); // 모든 타이머 클리어
         // 약간의 지연 후 창 닫기
         closeTimeoutId = setTimeout(() => {
-            console.log("Offscreen: 문서 종료 (onended)");
             window.close();
         }, 500);
     };
@@ -217,5 +187,4 @@ function playGongSound(isPreview = false) {
 
 // Add a new function to log sound-related information
 function logSoundInfo(soundType, isPreview) {
-    console.log(`사운드 재생: 타입=${soundType}, 미리듣기=${isPreview}`);
 } 

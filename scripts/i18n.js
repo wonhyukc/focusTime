@@ -4,39 +4,32 @@ function getLang() {
         'ko','en','zh','hi','es','fr','ar','bn','pt','ru','ur'
     ];
     const result = supported.includes(lang) ? lang : 'ko';
-    console.log('[i18n] Detected browser language:', lang, '-> Using:', result);
     return result;
 }
 
 function getI18nUrl(lang) {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
         const url = chrome.runtime.getURL(`i18n/${lang}.json`);
-        console.log('[i18n] Using Chrome extension URL for', lang, ':', url);
         return url;
     }
     const url = '../i18n/' + lang + '.json';
-    console.log('[i18n] Using relative URL for', lang, ':', url);
     return url;
 }
 
 async function loadI18n(lang) {
     try {
         const url = getI18nUrl(lang);
-        console.log('[i18n] Fetching i18n JSON:', url);
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const json = await res.json();
-        console.log('[i18n] Loaded i18n JSON for', lang, ':', json);
         return json;
     } catch (e) {
-        console.error('[i18n] Failed to load i18n for', lang, ', falling back to ko. Error:', e);
         try {
             const url = getI18nUrl('ko');
             const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
             return await res.json();
         } catch (fallbackError) {
-            console.error('[i18n] Failed to load fallback (ko) i18n:', fallbackError);
             return {
                 appName: 'PomoLog',
                 error: 'Failed to load translations'
@@ -61,7 +54,6 @@ async function i18nUpdate(selectedLang) {
     const lang = selectedLang || getLang();
     const dict = await loadI18n(lang);
     window.currentI18nDict = dict;
-    console.log('[i18n] Applying language:', lang);
     
     // Update document title
     document.title = dict.appName + ' (PomoLog)';
@@ -85,12 +77,11 @@ async function i18nUpdate(selectedLang) {
     if (langSelect) langSelect.value = lang;
     
     // 드롭다운 옵션도 번역
-    console.log('[i18n] updateAllSoundOptionsWithI18n 호출, dict:', dict);
     if (window.updateAllSoundOptionsWithI18n) {
         window.updateAllSoundOptionsWithI18n(dict);
     }
     
-    console.log('[i18n] UI updated to language:', lang);
+    return dict;
 }
 
 // Initialize i18n when DOM is loaded

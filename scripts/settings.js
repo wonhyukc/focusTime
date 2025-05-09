@@ -156,7 +156,6 @@ function mergeWithDefaultSettings(userSettings) {
 // 설정 적용하기
 async function applySettings(settings) {
     try {
-        console.log('[settings.js][applySettings] 호출됨, 설정:', settings);
         // version 필드 강제 추가
         if (!settings.version) {
             settings.version = '1.0';
@@ -319,19 +318,14 @@ function populateDataList(history) {
 
 // 설정 가져오기
 function importSettings(e) {
-    console.log('[importSettings] 호출됨, 이벤트:', e);
     const file = e.target.files && e.target.files[0];
     if (!file) {
-        console.log('[importSettings] 파일이 선택되지 않음');
         return;
     }
-    console.log('[importSettings] 파일 선택됨:', file.name);
     const reader = new FileReader();
     reader.onload = async function(e) {
         try {
-            console.log('[importSettings] 파일 읽기 완료');
             let settings = JSON.parse(e.target.result);
-            console.log('[importSettings] 파싱된 설정:', settings);
             // playSound 필드 제거
             if (settings.focus) delete settings.focus.playSound;
             if (settings.shortBreak) delete settings.shortBreak.playSound;
@@ -340,14 +334,12 @@ function importSettings(e) {
             // 언어 설정 반영
             if (settings.lang) {
                 chrome.storage.sync.set({ selectedLanguage: settings.lang }, () => {
-                    console.log('[importSettings] 언어 설정 반영:', settings.lang);
                     if (typeof updateLanguage === 'function') {
                         updateLanguage(settings.lang);
                     }
                 });
             }
             showToast('설정이 가져오기되었습니다.', 'success');
-            console.log('[importSettings] 설정 적용 및 완료');
         } catch (error) {
             console.error('[importSettings] 잘못된 설정 파일:', error);
             showToast('잘못된 설정 파일입니다.', 'error');
@@ -356,7 +348,6 @@ function importSettings(e) {
     reader.readAsText(file);
     // 파일 입력 초기화
     e.target.value = '';
-    console.log('[importSettings] 파일 입력 초기화 완료');
 }
 
 // 설정 초기화
@@ -438,7 +429,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         feedbackForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const feedback = document.getElementById('feedback-text').value.trim();
-            console.log('[FEEDBACK] 보내기 버튼 클릭됨. 입력 내용:', feedback);
             if (!feedback) {
                 alert('의견을 입력해주세요.');
                 return;

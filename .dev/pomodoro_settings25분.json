@@ -20,7 +20,7 @@
     "tabNotification": false
   },
   "longBreak": {
-    "duration": 100,
+    "duration": 15,
     "startAfter": 4,
     "sound": "gong",
     "soundVolume": 100,

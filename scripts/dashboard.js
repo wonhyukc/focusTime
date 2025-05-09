@@ -108,14 +108,8 @@ let currentI18nDict = null;
 
 function populateTimerSoundOptions(selectElementId, dict) {
     const selectElement = document.getElementById(selectElementId);
-    // console.log('[i18n][populateTimerSoundOptions] selectElementId:', selectElementId, 'selectElement:', selectElement);
     if (!selectElement) return;
     const prevValue = selectElement.value;
-    // 디버깅
-    // console.log('[i18n][populateTimerSoundOptions] dict:', dict);
-    // console.log('[i18n][populateTimerSoundOptions] dict.none:', dict?.none);
-    // console.log('[i18n][populateTimerSoundOptions] dict.beep:', dict?.beep);
-    // console.log('[i18n][populateTimerSoundOptions] dict.gong:', dict?.gong);
     const timerSoundOptions = [
         { value: 'none', text: dict?.none || 'None' },
         { value: 'beep', text: dict?.beep || 'Short low beep' },
@@ -133,15 +127,8 @@ function populateTimerSoundOptions(selectElementId, dict) {
 
 function populateFocusSoundTypeOptions(selectElementId, dict) {
     const selectElement = document.getElementById(selectElementId);
-    console.log('[i18n][populateFocusSoundTypeOptions] selectElementId:', selectElementId, 'selectElement:', selectElement);
     if (!selectElement) return;
     const prevValue = selectElement.value;
-    // 디버깅
-    // console.log('[i18n][populateFocusSoundTypeOptions] dict:', dict);
-    // console.log('[i18n][populateFocusSoundTypeOptions] dict.none:', dict?.none);
-    // console.log('[i18n][populateFocusSoundTypeOptions] dict.brownNoise:', dict?.brownNoise);
-    // console.log('[i18n][populateFocusSoundTypeOptions] dict.rainyDay:', dict?.rainyDay);
-    // console.log('[i18n][populateFocusSoundTypeOptions] dict.clockTicking:', dict?.clockTicking);
     const focusSoundTypeOptions = [
         { value: 'none', text: dict?.none || 'None' },
         { value: 'brown_noise', text: dict?.brownNoise || 'Brown Noise' },
@@ -259,7 +246,6 @@ document.querySelectorAll('.preview-sound').forEach(button => {
                 sibling = sibling.nextElementSibling;
             }
             const soundType = soundSelect.value;
-            console.log('[PREVIEW] 미리듣기 요청: soundType=' + soundType + ', volume=' + volume);
             chrome.runtime.sendMessage({ 
                 action: 'playSound',
                 soundType: soundType,
@@ -356,9 +342,7 @@ async function exportSettings() {
             shortBreak: { ...settings?.shortBreak },
             longBreak: { ...settings?.longBreak }
         };
-        console.log('[exportSettings] exportData:', exportData);
         const jsonContent = JSON.stringify(exportData, null, 2);
-        console.log('[exportSettings] jsonContent:', jsonContent);
         const blob = new Blob([jsonContent], { type: 'application/json' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
@@ -604,10 +588,8 @@ function handleSettingsFileImport(event) {
                     loadSettings();
                     if (typeof updateLanguage === 'function') {
                         updateLanguage(lang);
-                        console.log('[dashboard.js][handleSettingsFileImport] updateLanguage 호출 후:', lang);
                     }
                 });
-                console.log('[dashboard.js][handleSettingsFileImport] updateLanguage 호출:', lang);
                 
                 if (typeof i18nUpdate === 'function') {
                     i18nUpdate(lang);
