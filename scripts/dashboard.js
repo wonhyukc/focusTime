@@ -108,14 +108,14 @@ let currentI18nDict = null;
 
 function populateTimerSoundOptions(selectElementId, dict) {
     const selectElement = document.getElementById(selectElementId);
-    console.log('[i18n][populateTimerSoundOptions] selectElementId:', selectElementId, 'selectElement:', selectElement);
+    // console.log('[i18n][populateTimerSoundOptions] selectElementId:', selectElementId, 'selectElement:', selectElement);
     if (!selectElement) return;
     const prevValue = selectElement.value;
     // 디버깅
-    console.log('[i18n][populateTimerSoundOptions] dict:', dict);
-    console.log('[i18n][populateTimerSoundOptions] dict.none:', dict?.none);
-    console.log('[i18n][populateTimerSoundOptions] dict.beep:', dict?.beep);
-    console.log('[i18n][populateTimerSoundOptions] dict.gong:', dict?.gong);
+    // console.log('[i18n][populateTimerSoundOptions] dict:', dict);
+    // console.log('[i18n][populateTimerSoundOptions] dict.none:', dict?.none);
+    // console.log('[i18n][populateTimerSoundOptions] dict.beep:', dict?.beep);
+    // console.log('[i18n][populateTimerSoundOptions] dict.gong:', dict?.gong);
     const timerSoundOptions = [
         { value: 'none', text: dict?.none || 'None' },
         { value: 'beep', text: dict?.beep || 'Short low beep' },
@@ -137,11 +137,11 @@ function populateFocusSoundTypeOptions(selectElementId, dict) {
     if (!selectElement) return;
     const prevValue = selectElement.value;
     // 디버깅
-    console.log('[i18n][populateFocusSoundTypeOptions] dict:', dict);
-    console.log('[i18n][populateFocusSoundTypeOptions] dict.none:', dict?.none);
-    console.log('[i18n][populateFocusSoundTypeOptions] dict.brownNoise:', dict?.brownNoise);
-    console.log('[i18n][populateFocusSoundTypeOptions] dict.rainyDay:', dict?.rainyDay);
-    console.log('[i18n][populateFocusSoundTypeOptions] dict.clockTicking:', dict?.clockTicking);
+    // console.log('[i18n][populateFocusSoundTypeOptions] dict:', dict);
+    // console.log('[i18n][populateFocusSoundTypeOptions] dict.none:', dict?.none);
+    // console.log('[i18n][populateFocusSoundTypeOptions] dict.brownNoise:', dict?.brownNoise);
+    // console.log('[i18n][populateFocusSoundTypeOptions] dict.rainyDay:', dict?.rainyDay);
+    // console.log('[i18n][populateFocusSoundTypeOptions] dict.clockTicking:', dict?.clockTicking);
     const focusSoundTypeOptions = [
         { value: 'none', text: dict?.none || 'None' },
         { value: 'brown_noise', text: dict?.brownNoise || 'Brown Noise' },
@@ -343,15 +343,9 @@ function initializeCharts() {
 }
 
 // 설정 내보내기
-function exportSettings() {
+async function exportSettings() {
     try {
-        let settings = getCurrentSettings ? getCurrentSettings() : undefined;
-        console.log('[exportSettings] settings:', settings);
-        // playSound 필드 제거
-        if (settings && settings.focus) delete settings.focus.playSound;
-        if (settings && settings.shortBreak) delete settings.shortBreak.playSound;
-        if (settings && settings.longBreak) delete settings.longBreak.playSound;
-        // version, lang 보정
+        const settings = await getCurrentSettings();
         let version = (settings && settings.version) ? settings.version : '1.0';
         let lang = (settings && settings.lang) ? settings.lang : 'ko';
         const exportData = {
