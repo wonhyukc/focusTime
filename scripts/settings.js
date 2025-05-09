@@ -1,9 +1,11 @@
+import { PROJECT_HISTORY_KEY, MAX_HISTORY_SIZE, DEFAULT_VERSION, DEFAULT_LANG, DEFAULT_SETTINGS_BG, validateDuration, ProjectHistoryManager } from './common.js';
+
 // 상수 정의
 const CONSTANTS = {
-    PROJECT_HISTORY_KEY: 'projectHistory',
-    MAX_HISTORY_SIZE: 10,
-    DEFAULT_VERSION: '1.0',
-    DEFAULT_LANG: 'ko'
+    PROJECT_HISTORY_KEY: PROJECT_HISTORY_KEY,
+    MAX_HISTORY_SIZE: MAX_HISTORY_SIZE,
+    DEFAULT_VERSION: DEFAULT_VERSION,
+    DEFAULT_LANG: DEFAULT_LANG
 };
 
 // 기본 설정값 정의
@@ -107,45 +109,6 @@ class SettingsManager {
     }
 
     static mergeWithDefaultSettings(userSettings) {
-        const DEFAULT_SETTINGS_BG = {
-            projectName: "포모로그 설정",
-            version: "1.0",
-            focus: {
-                duration: 25,
-                sound: "beep",
-                soundVolume: 100,
-                soundType: "brown_noise",
-                desktopNotification: true,
-                tabNotification: true
-            },
-            shortBreak: {
-                duration: 5,
-                sound: "beep",
-                soundVolume: 100,
-                desktopNotification: true,
-                tabNotification: true
-            },
-            longBreak: {
-                duration: 15,
-                startAfter: 4,
-                sound: "beep",
-                soundVolume: 100,
-                desktopNotification: true,
-                tabNotification: true
-            },
-            general: {
-                soundEnabled: true,
-                autoStartBreaks: false,
-                autoStartPomodoros: false,
-                availableSounds: [
-                    { name: "기본 비프음", value: "low-short-beep" },
-                    { name: "공(Gong)", value: "gong" },
-                    { name: "Brown Noise", value: "brown_noise" },
-                    { name: "Rainy Day", value: "rainy_birds" },
-                    { name: "Clock Ticking", value: "clock_ticking" }
-                ]
-            }
-        };
         return {
             projectName: userSettings.projectName ?? DEFAULT_SETTINGS_BG.projectName,
             version: DEFAULT_SETTINGS_BG.version,
@@ -221,47 +184,6 @@ class SettingsManager {
                     resolve();
                 }
             });
-        });
-    }
-}
-
-// 프로젝트 기록 관리 클래스
-class ProjectHistoryManager {
-    static async addProjectToHistory(projectName) {
-        if (!projectName) return;
-        try {
-            const result = await chrome.storage.local.get([CONSTANTS.PROJECT_HISTORY_KEY]);
-            let history = result[CONSTANTS.PROJECT_HISTORY_KEY] || [];
-            history = history.filter(item => item !== projectName);
-            history.unshift(projectName);
-            if (history.length > CONSTANTS.MAX_HISTORY_SIZE) {
-                history = history.slice(0, CONSTANTS.MAX_HISTORY_SIZE);
-            }
-            await chrome.storage.local.set({ [CONSTANTS.PROJECT_HISTORY_KEY]: history });
-            ProjectHistoryManager.populateDataList(history);
-        } catch (error) {
-            console.error("Error adding project to history:", error);
-        }
-    }
-
-    static async loadProjectHistory() {
-        try {
-            const result = await chrome.storage.local.get([CONSTANTS.PROJECT_HISTORY_KEY]);
-            const history = result[CONSTANTS.PROJECT_HISTORY_KEY] || [];
-            ProjectHistoryManager.populateDataList(history);
-        } catch (error) {
-            console.error("Error loading project history:", error);
-        }
-    }
-
-    static populateDataList(history) {
-        const dataList = document.getElementById('project-history-list');
-        if (!dataList) return;
-        dataList.innerHTML = '';
-        history.forEach(item => {
-            const option = document.createElement('option');
-            option.value = item;
-            dataList.appendChild(option);
         });
     }
 }

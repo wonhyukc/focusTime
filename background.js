@@ -1,3 +1,5 @@
+import { PROJECT_HISTORY_KEY, MAX_HISTORY_SIZE, DEFAULT_VERSION, DEFAULT_LANG, DEFAULT_SETTINGS_BG, validateDuration, escapeCsvField, formatDateToYMDHM, ProjectHistoryManager } from './scripts/common.js';
+
 // 프로젝트 기록 저장 키 (settings.js와 동일하게 사용)
 const PROJECT_HISTORY_KEY = 'projectHistory';
 const MAX_HISTORY_SIZE = 10; // 기록 최대 개수 (선택 사항)
@@ -276,12 +278,6 @@ async function addProjectToHistoryBackground(projectName) {
     } catch (error) {
         console.error("[Background] Error adding project to history:", error);
     }
-}
-
-// 설정값 유효성 검사 함수 추가
-function validateDuration(duration, defaultValue) {
-    const num = parseInt(duration);
-    return (!isNaN(num) && num > 0) ? num : defaultValue;
 }
 
 // 현재 설정 가져오기 (Promise 버전)
