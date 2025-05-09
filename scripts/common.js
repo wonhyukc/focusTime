@@ -110,4 +110,36 @@ export class ProjectHistoryManager {
             dataList.appendChild(option);
         });
     }
+}
+
+// settings 구조 보정 함수
+export function normalizeSettings(settings) {
+    if (!settings || typeof settings !== 'object') settings = {};
+    const normalized = {
+        projectName: settings.projectName ?? DEFAULT_SETTINGS_BG.projectName,
+        version: settings.version ?? DEFAULT_SETTINGS_BG.version,
+        lang: settings.lang ?? DEFAULT_LANG,
+        focus: {
+            ...DEFAULT_SETTINGS_BG.focus,
+            ...(settings.focus || {})
+        },
+        shortBreak: {
+            ...DEFAULT_SETTINGS_BG.shortBreak,
+            ...(settings.shortBreak || {})
+        },
+        longBreak: {
+            ...DEFAULT_SETTINGS_BG.longBreak,
+            ...(settings.longBreak || {})
+        },
+        general: {
+            ...DEFAULT_SETTINGS_BG.general,
+            ...(settings.general || {})
+        }
+    };
+    // 필수 필드 타입 보정
+    if (typeof normalized.focus.duration !== 'number') normalized.focus.duration = DEFAULT_SETTINGS_BG.focus.duration;
+    if (typeof normalized.shortBreak.duration !== 'number') normalized.shortBreak.duration = DEFAULT_SETTINGS_BG.shortBreak.duration;
+    if (typeof normalized.longBreak.duration !== 'number') normalized.longBreak.duration = DEFAULT_SETTINGS_BG.longBreak.duration;
+    if (typeof normalized.longBreak.startAfter !== 'number') normalized.longBreak.startAfter = DEFAULT_SETTINGS_BG.longBreak.startAfter;
+    return normalized;
 } 

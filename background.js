@@ -1,4 +1,4 @@
-import { PROJECT_HISTORY_KEY, MAX_HISTORY_SIZE, DEFAULT_VERSION, DEFAULT_LANG, DEFAULT_SETTINGS_BG, validateDuration, escapeCsvField, formatDateToYMDHM, ProjectHistoryManager } from './scripts/common.js';
+import { PROJECT_HISTORY_KEY, MAX_HISTORY_SIZE, DEFAULT_VERSION, DEFAULT_LANG, DEFAULT_SETTINGS_BG, validateDuration, escapeCsvField, formatDateToYMDHM, ProjectHistoryManager, normalizeSettings } from './scripts/common.js';
 
 // 프로젝트 기록 저장 키 (settings.js와 동일하게 사용)
 const PROJECT_HISTORY_KEY = 'projectHistory';
@@ -285,6 +285,7 @@ async function getCurrentSettings() {
     try {
         const result = await chrome.storage.sync.get('settings');
         let settings = result.settings;
+        settings = normalizeSettings(settings);
         // 설정이 없거나 버전이 다르면 기본값(BG용)으로 병합
         if (!settings || settings.version !== DEFAULT_SETTINGS_BG.version) {
             // settings.js의 DEFAULT_SETTINGS와 구조 맞추기 (short/long break의 soundType 제외)

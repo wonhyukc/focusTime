@@ -1,4 +1,4 @@
-import { PROJECT_HISTORY_KEY, MAX_HISTORY_SIZE, DEFAULT_VERSION, DEFAULT_LANG, DEFAULT_SETTINGS_BG, validateDuration, ProjectHistoryManager } from './common.js';
+import { PROJECT_HISTORY_KEY, MAX_HISTORY_SIZE, DEFAULT_VERSION, DEFAULT_LANG, DEFAULT_SETTINGS_BG, validateDuration, ProjectHistoryManager, normalizeSettings } from './common.js';
 
 // 상수 정의
 const CONSTANTS = {
@@ -202,7 +202,7 @@ function importSettings(e) {
             if (settings.focus) delete settings.focus.playSound;
             if (settings.shortBreak) delete settings.shortBreak.playSound;
             if (settings.longBreak) delete settings.longBreak.playSound;
-            await SettingsManager.applySettings(settings);
+            await SettingsManager.applySettings(normalizeSettings(settings));
             // 언어 설정 반영
             if (settings.lang) {
                 chrome.storage.sync.set({ selectedLanguage: settings.lang }, () => {
@@ -242,13 +242,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             // version, lang 누락 보완
             if (!initialSettings.version) initialSettings.version = '1.0';
             if (!initialSettings.lang) initialSettings.lang = 'ko';
-            await SettingsManager.applySettings(initialSettings);
+            await SettingsManager.applySettings(normalizeSettings(initialSettings));
         } else {
             initialSettings = DEFAULT_SETTINGS;
             // version, lang 보완
             initialSettings.version = '1.0';
             initialSettings.lang = 'ko';
-            await SettingsManager.applySettings(initialSettings);
+            await SettingsManager.applySettings(normalizeSettings(initialSettings));
         }
     });
 
@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (element.id !== 'feedback-text') {
             element.addEventListener('change', async () => {
                 const settings = await SettingsManager.getCurrentSettings();
-                await SettingsManager.applySettings(settings);
+                await SettingsManager.applySettings(normalizeSettings(settings));
             });
         }
     });
@@ -270,11 +270,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (focusSoundTypeVolumeElement) {
         focusSoundTypeVolumeElement.addEventListener('input', async () => {
             const settings = await SettingsManager.getCurrentSettings();
-            await SettingsManager.applySettings(settings);
+            await SettingsManager.applySettings(normalizeSettings(settings));
         });
         focusSoundTypeVolumeElement.addEventListener('change', async () => {
             const settings = await SettingsManager.getCurrentSettings();
-            await SettingsManager.applySettings(settings);
+            await SettingsManager.applySettings(normalizeSettings(settings));
         });
     }
 
@@ -316,7 +316,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 const EventHandlers = {
     async handleSettingsChange() {
         const settings = await SettingsManager.getCurrentSettings();
-        await SettingsManager.applySettings(settings);
+        await SettingsManager.applySettings(normalizeSettings(settings));
     },
 
     async handleProjectNameChange(e) {
@@ -349,7 +349,7 @@ const EventHandlers = {
                 ['focus', 'shortBreak', 'longBreak'].forEach(sessionType => {
                     if (settings[sessionType]) delete settings[sessionType].playSound;
                 });
-                await SettingsManager.applySettings(settings);
+                await SettingsManager.applySettings(normalizeSettings(settings));
                 if (settings.lang) {
                     chrome.storage.sync.set({ selectedLanguage: settings.lang }, () => {
                         if (typeof updateLanguage === 'function') {
@@ -385,7 +385,7 @@ async function initializeSettings() {
             let initialSettings = result.settings || DEFAULT_SETTINGS;
             if (!initialSettings.version) initialSettings.version = CONSTANTS.DEFAULT_VERSION;
             if (!initialSettings.lang) initialSettings.lang = CONSTANTS.DEFAULT_LANG;
-            await SettingsManager.applySettings(initialSettings);
+            await SettingsManager.applySettings(normalizeSettings(initialSettings));
             resolve();
         });
     });
