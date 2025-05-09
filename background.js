@@ -288,11 +288,9 @@ function validateDuration(duration, defaultValue) {
 async function getCurrentSettings() {
     try {
         const result = await chrome.storage.sync.get('settings');
-        console.log('[BG][getCurrentSettings] chrome.storage.sync.get:', result.settings);
         let settings = result.settings;
         // 설정이 없거나 버전이 다르면 기본값(BG용)으로 병합
         if (!settings || settings.version !== DEFAULT_SETTINGS_BG.version) {
-            console.log('[BG] 저장된 설정이 없거나 버전이 달라 기본 설정과 병합합니다.');
             // settings.js의 DEFAULT_SETTINGS와 구조 맞추기 (short/long break의 soundType 제외)
              const baseSettings = {
                 projectName: DEFAULT_SETTINGS_BG.projectName,
@@ -310,7 +308,6 @@ async function getCurrentSettings() {
         }
         // 병합 후 focus 로그
         const mergedFocus = { ...DEFAULT_SETTINGS_BG.focus, ...(settings.focus || {}) };
-        console.log('[BG][getCurrentSettings] 병합 후 focus:', mergedFocus);
         // 프로젝트 이름 처리 (없으면 BG 기본값 사용)
         const projectName = settings.projectName !== undefined ? settings.projectName : DEFAULT_SETTINGS_BG.projectName;
 
@@ -342,10 +339,8 @@ async function getCurrentSettings() {
             },
              general: settings.general || DEFAULT_SETTINGS_BG.general
         };
-        console.log('[BG][getCurrentSettings] 리턴할때 설정값:', resultSettings);
         return resultSettings;
     } catch (error) {
-        console.error('[BG] 설정 로드 중 오류:', error);
         // 오류 발생 시 BG 기본 설정 반환 (soundType 없는 버전)
         const errorDefaults = { ...DEFAULT_SETTINGS_BG };
         delete errorDefaults.shortBreak?.soundType;
@@ -988,12 +983,12 @@ async function saveSessionData(completedSession) {
 // 설정 변경 감지 및 현재 세션 업데이트
 chrome.storage.onChanged.addListener(async (changes, namespace) => {
     if (namespace === 'sync' && changes.settings) {
-        console.log('[SETTINGS][onChanged] 설정 변경 감지');
-        console.log('[SETTINGS][onChanged] 이전 설정:', changes.settings.oldValue);
-        console.log('[SETTINGS][onChanged] 새로운 설정:', changes.settings.newValue);
+        // console.log('[SETTINGS][onChanged] 설정 변경 감지');
+        // console.log('[SETTINGS][onChanged] 이전 설정:', changes.settings.oldValue);
+        // console.log('[SETTINGS][onChanged] 새로운 설정:', changes.settings.newValue);
         
         const settings = await getCurrentSettings();
-        console.log('[SETTINGS][onChanged] getCurrentSettings() 호출 후:', settings);
+        // console.log('[SETTINGS][onChanged] getCurrentSettings() 호출 후:', settings);
         // console.log('[SETTINGS][onChanged] 현재 설정:', {
         //     focus: {
         //         volume: settings.focus.soundVolume,
@@ -1038,11 +1033,11 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
             updateBadgeForPauseState();
             // --- 볼륨 즉시 반영 ---
             if (typeof newVolume === 'number') {
-                console.log('[SOUND][onChanged] 볼륨 변경:', {
-                    session: timerState.type,
-                    newVolume: newVolume,
-                    soundType: newSoundType
-                });
+                // console.log('[SOUND][onChanged] 볼륨 변경:', {
+                //     session: timerState.type,
+                //     newVolume: newVolume,
+                //     soundType: newSoundType
+                // });
                 chrome.runtime.sendMessage({
                     command: 'playSound',
                     soundType: newSoundType,
@@ -1124,7 +1119,7 @@ async function exportStats() {
 
 // 파싱된 통계 데이터 가져오기 (신규 함수)
 async function importParsedStats(historyArray) {
-    console.log("[Background] Received data for importParsedStats:", JSON.stringify(historyArray?.slice(0, 5))); // 수신 데이터 로그 추가
+    // console.log("[Background] Received data for importParsedStats:", JSON.stringify(historyArray?.slice(0, 5))); // 수신 데이터 로그 추가
     try {
         // 간단한 유효성 검사
         if (!Array.isArray(historyArray)) {
@@ -1137,20 +1132,20 @@ async function importParsedStats(historyArray) {
             historyArray[0].durationMinutes === undefined ||
             historyArray[0].projectName === undefined)
         ) {
-             console.warn("Imported data structure mismatch:", historyArray[0]);
+             // console.warn("Imported data structure mismatch:", historyArray[0]);
             // throw new Error('Imported data structure mismatch.'); // 필요시 더 엄격하게
         }
 
         // 기존 기록을 덮어쓰기
         await chrome.storage.local.set({ pomodoroHistory: historyArray });
-        console.log("Parsed pomodoro history imported successfully. Count:", historyArray.length);
+        // console.log("Parsed pomodoro history imported successfully. Count:", historyArray.length);
 
         // 통계 업데이트 알림
         chrome.runtime.sendMessage({ action: "statsUpdated" });
         return { success: true, message: `통계 ${historyArray.length}건 가져오기 완료` };
 
     } catch (error) {
-        console.error("Error importing parsed stats:", error);
+        // console.error("Error importing parsed stats:", error);
         return { success: false, message: `통계 가져오기 실패: ${error.message}` };
     }
 }
@@ -1160,12 +1155,12 @@ async function resetStats() {
     try {
         // 사용자 확인은 dashboard에서 처리 가정
         await chrome.storage.local.remove('pomodoroHistory');
-        console.log("Pomodoro history reset.");
+        // console.log("Pomodoro history reset.");
         // 통계 업데이트 알림
         chrome.runtime.sendMessage({ action: "statsUpdated" });
         return { success: true, message: '통계 초기화 완료' };
     } catch (error) {
-        console.error("Error resetting stats:", error);
+        // console.error("Error resetting stats:", error);
         return { success: false, message: '통계 초기화 중 오류 발생' };
     }
 }

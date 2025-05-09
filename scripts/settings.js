@@ -1,27 +1,31 @@
-// 프로젝트 기록 저장 키
-const PROJECT_HISTORY_KEY = 'projectHistory';
-const MAX_HISTORY_SIZE = 10; // 기록 최대 개수 (선택 사항)
+// 상수 정의
+const CONSTANTS = {
+    PROJECT_HISTORY_KEY: 'projectHistory',
+    MAX_HISTORY_SIZE: 10,
+    DEFAULT_VERSION: '1.0',
+    DEFAULT_LANG: 'ko'
+};
 
 // 기본 설정값 정의
 const DEFAULT_SETTINGS = {
     projectName: "포모로그 설정",
-    "version": "1.0",
-    "lang": "en",
+    version: CONSTANTS.DEFAULT_VERSION,
+    lang: CONSTANTS.DEFAULT_LANG,
     focus: {
         duration: 25,
         sound: "beep",
-        soundVolume: 100, // 종료음 볼륨
+        soundVolume: 100,
         soundType: "low-short-beep",
-        soundTypeVolume: 15, // 재생음 볼륨
+        soundTypeVolume: 15,
         desktopNotification: true,
         tabNotification: false
     },
     shortBreak: {
         duration: 5,
         sound: "beep",
-        soundVolume: 100, // 종료음 볼륨
+        soundVolume: 100,
         soundType: "low-short-beep",
-        soundTypeVolume: 15, // 재생음 볼륨
+        soundTypeVolume: 15,
         desktopNotification: true,
         tabNotification: false
     },
@@ -29,31 +33,24 @@ const DEFAULT_SETTINGS = {
         duration: 15,
         startAfter: 4,
         sound: "beep",
-        soundVolume: 100, // 종료음 볼륨
+        soundVolume: 100,
         soundType: "low-short-beep",
-        soundTypeVolume: 15, // 재생음 볼륨
+        soundTypeVolume: 15,
         desktopNotification: true,
         tabNotification: false
     }
 };
 
-function getInputNumberOrDefault(id, defaultValue = 100) {
-    const el = document.getElementById(id);
-    if (!el) return defaultValue;
-    const v = parseInt(el.value);
-    return isNaN(v) ? defaultValue : v;
-}
-
-// 현재 설정 가져오기
-async function getCurrentSettings() {
-    const getNumberOrDefault = (id, def) => {
+// 유틸리티 함수들
+const Utils = {
+    getInputNumberOrDefault(id, defaultValue = 100) {
         const el = document.getElementById(id);
-        if (!el) return def;
+        if (!el) return defaultValue;
         const v = parseInt(el.value);
-        return isNaN(v) ? def : v;
-    };
-    // 볼륨 유효성 검사 함수
-    const clampVolume = (v, el, def = 10) => {
+        return isNaN(v) ? defaultValue : v;
+    },
+
+    clampVolume(v, el, def = 10) {
         if (typeof v !== 'number' || isNaN(v)) return def;
         if (v < 0 || v > 100) {
             showToast('볼륨은 0~100 사이의 값만 입력할 수 있습니다.', 'error');
@@ -61,259 +58,212 @@ async function getCurrentSettings() {
             return def;
         }
         return v;
-    };
-    const settings = {
-        projectName: document.getElementById('project-name')?.value || DEFAULT_SETTINGS.projectName,
-        focus: {
-            duration: getNumberOrDefault('focus-duration', DEFAULT_SETTINGS.focus.duration),
-            sound: document.getElementById('focus-sound')?.value,
-            soundType: document.getElementById('focus-sound-type')?.value,
-            soundVolume: clampVolume(getNumberOrDefault('focus-sound-volume', DEFAULT_SETTINGS.focus.soundVolume), document.getElementById('focus-sound-volume'), DEFAULT_SETTINGS.focus.soundVolume),
-            soundTypeVolume: clampVolume(getNumberOrDefault('focus-sound-type-volume', DEFAULT_SETTINGS.focus.soundTypeVolume), document.getElementById('focus-sound-type-volume'), DEFAULT_SETTINGS.focus.soundTypeVolume),
-            desktopNotification: document.getElementById('focus-desktop-notification')?.checked,
-            tabNotification: document.getElementById('focus-tab-notification')?.checked
-        },
-        shortBreak: {
-            duration: getNumberOrDefault('short-break-duration', DEFAULT_SETTINGS.shortBreak.duration),
-            sound: document.getElementById('short-break-sound')?.value,
-            soundType: document.getElementById('short-break-sound-type')?.value,
-            soundVolume: clampVolume(getNumberOrDefault('short-break-sound-volume', DEFAULT_SETTINGS.shortBreak.soundVolume), document.getElementById('short-break-sound-volume'), DEFAULT_SETTINGS.shortBreak.soundVolume),
-            soundTypeVolume: clampVolume(getNumberOrDefault('short-break-sound-type-volume', DEFAULT_SETTINGS.shortBreak.soundTypeVolume), document.getElementById('short-break-sound-type-volume'), DEFAULT_SETTINGS.shortBreak.soundTypeVolume),
-            desktopNotification: document.getElementById('short-break-desktop-notification')?.checked,
-            tabNotification: document.getElementById('short-break-tab-notification')?.checked
-        },
-        longBreak: {
-            duration: getNumberOrDefault('long-break-duration', DEFAULT_SETTINGS.longBreak.duration),
-            startAfter: getNumberOrDefault('long-break-start', DEFAULT_SETTINGS.longBreak.startAfter),
-            sound: document.getElementById('long-break-sound')?.value,
-            soundType: document.getElementById('long-break-sound-type')?.value,
-            soundVolume: clampVolume(getNumberOrDefault('long-break-sound-volume', DEFAULT_SETTINGS.longBreak.soundVolume), document.getElementById('long-break-sound-volume'), DEFAULT_SETTINGS.longBreak.soundVolume),
-            soundTypeVolume: clampVolume(getNumberOrDefault('long-break-sound-type-volume', DEFAULT_SETTINGS.longBreak.soundTypeVolume), document.getElementById('long-break-sound-type-volume'), DEFAULT_SETTINGS.longBreak.soundTypeVolume),
-            desktopNotification: document.getElementById('long-break-desktop-notification')?.checked,
-            tabNotification: document.getElementById('long-break-tab-notification')?.checked
-        }
-    };
-    // lang 필드 추가 (chrome.storage.sync에서 selectedLanguage 읽기)
-    const lang = await new Promise(resolve => {
-        chrome.storage.sync.get(['selectedLanguage'], data => {
-            resolve(data.selectedLanguage || 'ko');
+    },
+
+    async getLanguage() {
+        return new Promise(resolve => {
+            chrome.storage.sync.get(['selectedLanguage'], data => {
+                resolve(data.selectedLanguage || CONSTANTS.DEFAULT_LANG);
+            });
         });
-    });
-    settings.lang = lang;
-    return settings;
-}
+    }
+};
 
-function mergeWithDefaultSettings(userSettings) {
-    const DEFAULT_SETTINGS_BG = {
-        projectName: "포모로그 설정",
-        version: "1.0",
-        focus: {
-            duration: 25,
-            sound: "beep",
-            soundVolume: 100,
-            soundType: "brown_noise",
-            desktopNotification: true,
-            tabNotification: true
-        },
-        shortBreak: {
-            duration: 5,
-            sound: "beep",
-            soundVolume: 100,
-            desktopNotification: true,
-            tabNotification: true
-        },
-        longBreak: {
-            duration: 15,
-            startAfter: 4,
-            sound: "beep",
-            soundVolume: 100,
-            desktopNotification: true,
-            tabNotification: true
-        },
-        general: {
-            soundEnabled: true,
-            autoStartBreaks: false,
-            autoStartPomodoros: false,
-            availableSounds: [
-                { name: "기본 비프음", value: "low-short-beep" },
-                { name: "공(Gong)", value: "gong" },
-                { name: "Brown Noise", value: "brown_noise" },
-                { name: "Rainy Day", value: "rainy_birds" },
-                { name: "Clock Ticking", value: "clock_ticking" }
-            ]
-        }
-    };
-    return {
-        projectName: userSettings.projectName ?? DEFAULT_SETTINGS_BG.projectName,
-        version: DEFAULT_SETTINGS_BG.version,
-        focus: { ...DEFAULT_SETTINGS_BG.focus, ...(userSettings.focus || {}) },
-        shortBreak: { ...DEFAULT_SETTINGS_BG.shortBreak, ...(userSettings.shortBreak || {}) },
-        longBreak: { ...DEFAULT_SETTINGS_BG.longBreak, ...(userSettings.longBreak || {}) },
-        general: { ...DEFAULT_SETTINGS_BG.general, ...(userSettings.general || {}) }
-    };
-}
+// 설정 관리 클래스
+class SettingsManager {
+    static async getCurrentSettings() {
+        const settings = {
+            projectName: document.getElementById('project-name')?.value || DEFAULT_SETTINGS.projectName,
+            focus: this.getSessionSettings('focus'),
+            shortBreak: this.getSessionSettings('shortBreak'),
+            longBreak: this.getSessionSettings('longBreak')
+        };
+        settings.lang = await Utils.getLanguage();
+        return settings;
+    }
 
-// 설정 적용하기
-async function applySettings(settings) {
-    try {
-        // version 필드 강제 추가
-        if (!settings.version) {
-            settings.version = '1.0';
+    static getSessionSettings(sessionType) {
+        const prefix = sessionType === 'longBreak' ? 'long-break' : `${sessionType}-break`;
+        return {
+            duration: Utils.getInputNumberOrDefault(`${sessionType}-duration`, DEFAULT_SETTINGS[sessionType].duration),
+            sound: document.getElementById(`${sessionType}-sound`)?.value,
+            soundType: document.getElementById(`${sessionType}-sound-type`)?.value,
+            soundVolume: Utils.clampVolume(
+                Utils.getInputNumberOrDefault(`${sessionType}-sound-volume`, DEFAULT_SETTINGS[sessionType].soundVolume),
+                document.getElementById(`${sessionType}-sound-volume`),
+                DEFAULT_SETTINGS[sessionType].soundVolume
+            ),
+            soundTypeVolume: Utils.clampVolume(
+                Utils.getInputNumberOrDefault(`${sessionType}-sound-type-volume`, DEFAULT_SETTINGS[sessionType].soundTypeVolume),
+                document.getElementById(`${sessionType}-sound-type-volume`),
+                DEFAULT_SETTINGS[sessionType].soundTypeVolume
+            ),
+            desktopNotification: document.getElementById(`${sessionType}-desktop-notification`)?.checked,
+            tabNotification: document.getElementById(`${sessionType}-tab-notification`)?.checked,
+            ...(sessionType === 'longBreak' && {
+                startAfter: Utils.getInputNumberOrDefault('long-break-start', DEFAULT_SETTINGS.longBreak.startAfter)
+            })
+        };
+    }
+
+    static mergeWithDefaultSettings(userSettings) {
+        const DEFAULT_SETTINGS_BG = {
+            projectName: "포모로그 설정",
+            version: "1.0",
+            focus: {
+                duration: 25,
+                sound: "beep",
+                soundVolume: 100,
+                soundType: "brown_noise",
+                desktopNotification: true,
+                tabNotification: true
+            },
+            shortBreak: {
+                duration: 5,
+                sound: "beep",
+                soundVolume: 100,
+                desktopNotification: true,
+                tabNotification: true
+            },
+            longBreak: {
+                duration: 15,
+                startAfter: 4,
+                sound: "beep",
+                soundVolume: 100,
+                desktopNotification: true,
+                tabNotification: true
+            },
+            general: {
+                soundEnabled: true,
+                autoStartBreaks: false,
+                autoStartPomodoros: false,
+                availableSounds: [
+                    { name: "기본 비프음", value: "low-short-beep" },
+                    { name: "공(Gong)", value: "gong" },
+                    { name: "Brown Noise", value: "brown_noise" },
+                    { name: "Rainy Day", value: "rainy_birds" },
+                    { name: "Clock Ticking", value: "clock_ticking" }
+                ]
+            }
+        };
+        return {
+            projectName: userSettings.projectName ?? DEFAULT_SETTINGS_BG.projectName,
+            version: DEFAULT_SETTINGS_BG.version,
+            focus: { ...DEFAULT_SETTINGS_BG.focus, ...(userSettings.focus || {}) },
+            shortBreak: { ...DEFAULT_SETTINGS_BG.shortBreak, ...(userSettings.shortBreak || {}) },
+            longBreak: { ...DEFAULT_SETTINGS_BG.longBreak, ...(userSettings.longBreak || {}) },
+            general: { ...DEFAULT_SETTINGS_BG.general, ...(userSettings.general || {}) }
+        };
+    }
+
+    static async applySettings(settings) {
+        try {
+            if (!settings.version) {
+                settings.version = CONSTANTS.DEFAULT_VERSION;
+            }
+            const mergedSettings = this.mergeWithDefaultSettings(settings);
+            await this.updateUIElements(mergedSettings);
+            await this.saveSettings(mergedSettings);
+        } catch (error) {
+            showToast('설정 적용 중 오류 발생', 'error');
         }
-        // 병합: 누락된 필드는 기본값으로 채움
-        const mergedSettings = mergeWithDefaultSettings(settings);
+    }
+
+    static async updateUIElements(settings) {
         // 프로젝트 이름 설정
         const projectNameElement = document.getElementById('project-name');
         if (projectNameElement) {
-            projectNameElement.value = mergedSettings.projectName || DEFAULT_SETTINGS.projectName;
+            projectNameElement.value = settings.projectName || DEFAULT_SETTINGS.projectName;
         }
 
-        // Focus 설정
-        const focusDurationElement = document.getElementById('focus-duration');
-        if (focusDurationElement) {
-            focusDurationElement.value = mergedSettings.focus.duration;
-        }
-
-        const focusSoundElement = document.getElementById('focus-sound');
-        if (focusSoundElement) {
-            focusSoundElement.value = mergedSettings.focus.sound;
-        }
-
-        const focusSoundTypeElement = document.getElementById('focus-sound-type');
-        if (focusSoundTypeElement) {
-            focusSoundTypeElement.value = mergedSettings.focus.soundType;
-        }
-
-        const focusSoundVolumeElement = document.getElementById('focus-sound-volume');
-        if (focusSoundVolumeElement) {
-            focusSoundVolumeElement.value = mergedSettings.focus.soundVolume;
-            focusSoundVolumeElement.addEventListener('input', async () => {
-                const settings = await getCurrentSettings();
-                await applySettings(settings);
-            });
-            focusSoundVolumeElement.addEventListener('change', async () => {
-                const settings = await getCurrentSettings();
-                await applySettings(settings);
-            });
-        }
-
-        const focusDesktopNotificationElement = document.getElementById('focus-desktop-notification');
-        if (focusDesktopNotificationElement) {
-            focusDesktopNotificationElement.checked = mergedSettings.focus.desktopNotification;
-        }
-
-        const focusTabNotificationElement = document.getElementById('focus-tab-notification');
-        if (focusTabNotificationElement) {
-            focusTabNotificationElement.checked = mergedSettings.focus.tabNotification;
-        }
-
-        // Short Break 설정
-        document.getElementById('short-break-duration').value = mergedSettings.shortBreak.duration;
-        const shortBreakSoundEl = document.getElementById('short-break-sound');
-        if (shortBreakSoundEl) shortBreakSoundEl.value = mergedSettings.shortBreak.sound;
-        const shortBreakSoundTypeEl = document.getElementById('short-break-sound-type');
-        if (shortBreakSoundTypeEl) shortBreakSoundTypeEl.value = mergedSettings.shortBreak.soundType;
-        document.getElementById('short-break-desktop-notification').checked = mergedSettings.shortBreak.desktopNotification;
-        document.getElementById('short-break-tab-notification').checked = mergedSettings.shortBreak.tabNotification;
-
-        const shortBreakSoundVolumeElement = document.getElementById('short-break-sound-volume');
-        if (shortBreakSoundVolumeElement) {
-            shortBreakSoundVolumeElement.addEventListener('input', async () => {
-                const settings = await getCurrentSettings();
-                await applySettings(settings);
-            });
-            shortBreakSoundVolumeElement.addEventListener('change', async () => {
-                const settings = await getCurrentSettings();
-                await applySettings(settings);
-            });
-        }
-
-        // Long Break 설정
-        document.getElementById('long-break-duration').value = mergedSettings.longBreak.duration;
-        document.getElementById('long-break-start').value = mergedSettings.longBreak.startAfter;
-        const longBreakSoundEl = document.getElementById('long-break-sound');
-        if (longBreakSoundEl) longBreakSoundEl.value = mergedSettings.longBreak.sound;
-        const longBreakSoundTypeEl = document.getElementById('long-break-sound-type');
-        if (longBreakSoundTypeEl) longBreakSoundTypeEl.value = mergedSettings.longBreak.soundType;
-        document.getElementById('long-break-desktop-notification').checked = mergedSettings.longBreak.desktopNotification;
-        document.getElementById('long-break-tab-notification').checked = mergedSettings.longBreak.tabNotification;
-
-        const longBreakSoundVolumeElement = document.getElementById('long-break-sound-volume');
-        if (longBreakSoundVolumeElement) {
-            longBreakSoundVolumeElement.addEventListener('input', async () => {
-                const settings = await getCurrentSettings();
-                await applySettings(settings);
-            });
-            longBreakSoundVolumeElement.addEventListener('change', async () => {
-                const settings = await getCurrentSettings();
-                await applySettings(settings);
-            });
-        }
-
-        // 설정을 Chrome storage에 저장
-        chrome.storage.sync.set({ settings: mergedSettings }, async () => {
-            if (chrome.runtime.lastError) {
-                showToast('설정 저장 중 오류 발생', 'error');
-            } else {
-                // 프로젝트 이름이 있으면 기록에 추가
-                if (mergedSettings.projectName) {
-                    await addProjectToHistory(mergedSettings.projectName);
-                }
-            }
+        // 각 세션 타입별 설정 업데이트
+        ['focus', 'shortBreak', 'longBreak'].forEach(sessionType => {
+            this.updateSessionUI(sessionType, settings[sessionType]);
         });
-    } catch (error) {
-        showToast('설정 적용 중 오류 발생', 'error');
     }
-}
 
-// 프로젝트 기록에 이름 추가
-async function addProjectToHistory(projectName) {
-    if (!projectName) return; // 빈 이름은 추가하지 않음
+    static updateSessionUI(sessionType, sessionSettings) {
+        const prefix = sessionType === 'longBreak' ? 'long-break' : `${sessionType}-break`;
+        const elements = {
+            duration: document.getElementById(`${sessionType}-duration`),
+            sound: document.getElementById(`${sessionType}-sound`),
+            soundType: document.getElementById(`${sessionType}-sound-type`),
+            soundVolume: document.getElementById(`${sessionType}-sound-volume`),
+            soundTypeVolume: document.getElementById(`${sessionType}-sound-type-volume`),
+            desktopNotification: document.getElementById(`${sessionType}-desktop-notification`),
+            tabNotification: document.getElementById(`${sessionType}-tab-notification`)
+        };
 
-    try {
-        const result = await chrome.storage.local.get([PROJECT_HISTORY_KEY]);
-        let history = result[PROJECT_HISTORY_KEY] || [];
+        if (elements.duration) elements.duration.value = sessionSettings.duration;
+        if (elements.sound) elements.sound.value = sessionSettings.sound;
+        if (elements.soundType) elements.soundType.value = sessionSettings.soundType;
+        if (elements.soundVolume) elements.soundVolume.value = sessionSettings.soundVolume;
+        if (elements.soundTypeVolume) elements.soundTypeVolume.value = sessionSettings.soundTypeVolume;
+        if (elements.desktopNotification) elements.desktopNotification.checked = sessionSettings.desktopNotification;
+        if (elements.tabNotification) elements.tabNotification.checked = sessionSettings.tabNotification;
 
-        // 중복 제거 및 최신화 (기존 이름이 있으면 맨 앞으로)
-        history = history.filter(item => item !== projectName);
-        history.unshift(projectName);
-
-        // 최대 크기 제한
-        if (history.length > MAX_HISTORY_SIZE) {
-            history = history.slice(0, MAX_HISTORY_SIZE);
+        if (sessionType === 'longBreak') {
+            const startAfterElement = document.getElementById('long-break-start');
+            if (startAfterElement) startAfterElement.value = sessionSettings.startAfter;
         }
+    }
 
-        await chrome.storage.local.set({ [PROJECT_HISTORY_KEY]: history });
-        // datalist 업데이트
-        populateDataList(history);
-
-    } catch (error) {
-        console.error("Error adding project to history:", error);
+    static async saveSettings(settings) {
+        return new Promise((resolve, reject) => {
+            chrome.storage.sync.set({ settings }, async () => {
+                if (chrome.runtime.lastError) {
+                    showToast('설정 저장 중 오류 발생', 'error');
+                    reject(chrome.runtime.lastError);
+                } else {
+                    if (settings.projectName) {
+                        await ProjectHistoryManager.addProjectToHistory(settings.projectName);
+                    }
+                    resolve();
+                }
+            });
+        });
     }
 }
 
-// 프로젝트 기록 불러와서 datalist 채우기
-async function loadProjectHistory() {
-    try {
-        const result = await chrome.storage.local.get([PROJECT_HISTORY_KEY]);
-        const history = result[PROJECT_HISTORY_KEY] || [];
-        populateDataList(history);
-    } catch (error) {
-        console.error("Error loading project history:", error);
+// 프로젝트 기록 관리 클래스
+class ProjectHistoryManager {
+    static async addProjectToHistory(projectName) {
+        if (!projectName) return;
+        try {
+            const result = await chrome.storage.local.get([CONSTANTS.PROJECT_HISTORY_KEY]);
+            let history = result[CONSTANTS.PROJECT_HISTORY_KEY] || [];
+            history = history.filter(item => item !== projectName);
+            history.unshift(projectName);
+            if (history.length > CONSTANTS.MAX_HISTORY_SIZE) {
+                history = history.slice(0, CONSTANTS.MAX_HISTORY_SIZE);
+            }
+            await chrome.storage.local.set({ [CONSTANTS.PROJECT_HISTORY_KEY]: history });
+            ProjectHistoryManager.populateDataList(history);
+        } catch (error) {
+            console.error("Error adding project to history:", error);
+        }
     }
-}
 
-// datalist 채우는 헬퍼 함수
-function populateDataList(history) {
-    const dataList = document.getElementById('project-history-list');
-    if (!dataList) return;
+    static async loadProjectHistory() {
+        try {
+            const result = await chrome.storage.local.get([CONSTANTS.PROJECT_HISTORY_KEY]);
+            const history = result[CONSTANTS.PROJECT_HISTORY_KEY] || [];
+            ProjectHistoryManager.populateDataList(history);
+        } catch (error) {
+            console.error("Error loading project history:", error);
+        }
+    }
 
-    dataList.innerHTML = ''; // 기존 옵션 제거
-    history.forEach(item => {
-        const option = document.createElement('option');
-        option.value = item;
-        dataList.appendChild(option);
-    });
+    static populateDataList(history) {
+        const dataList = document.getElementById('project-history-list');
+        if (!dataList) return;
+        dataList.innerHTML = '';
+        history.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item;
+            dataList.appendChild(option);
+        });
+    }
 }
 
 // 설정 가져오기
@@ -330,7 +280,7 @@ function importSettings(e) {
             if (settings.focus) delete settings.focus.playSound;
             if (settings.shortBreak) delete settings.shortBreak.playSound;
             if (settings.longBreak) delete settings.longBreak.playSound;
-            await applySettings(settings);
+            await SettingsManager.applySettings(settings);
             // 언어 설정 반영
             if (settings.lang) {
                 chrome.storage.sync.set({ selectedLanguage: settings.lang }, () => {
@@ -353,14 +303,14 @@ function importSettings(e) {
 // 설정 초기화
 function resetSettings() {
     if (confirm('모든 설정을 초기값으로 되돌리시겠습니까?')) {
-        applySettings(DEFAULT_SETTINGS);
+        SettingsManager.applySettings(DEFAULT_SETTINGS);
         showToast('설정이 초기화되었습니다.', 'success');
     }
 }
 
 // 이벤트 리스너 등록
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadProjectHistory(); // 프로젝트 기록 로드 먼저
+    await ProjectHistoryManager.loadProjectHistory(); // 프로젝트 기록 로드 먼저
 
     // 초기 설정 로드 및 적용
     chrome.storage.sync.get('settings', async (result) => {
@@ -370,13 +320,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             // version, lang 누락 보완
             if (!initialSettings.version) initialSettings.version = '1.0';
             if (!initialSettings.lang) initialSettings.lang = 'ko';
-            await applySettings(initialSettings);
+            await SettingsManager.applySettings(initialSettings);
         } else {
             initialSettings = DEFAULT_SETTINGS;
             // version, lang 보완
             initialSettings.version = '1.0';
             initialSettings.lang = 'ko';
-            await applySettings(initialSettings);
+            await SettingsManager.applySettings(initialSettings);
         }
     });
 
@@ -387,8 +337,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('input, select').forEach(element => {
         if (element.id !== 'feedback-text') {
             element.addEventListener('change', async () => {
-                const settings = await getCurrentSettings();
-                await applySettings(settings);
+                const settings = await SettingsManager.getCurrentSettings();
+                await SettingsManager.applySettings(settings);
             });
         }
     });
@@ -397,12 +347,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const focusSoundTypeVolumeElement = document.getElementById('focus-sound-type-volume');
     if (focusSoundTypeVolumeElement) {
         focusSoundTypeVolumeElement.addEventListener('input', async () => {
-            const settings = await getCurrentSettings();
-            await applySettings(settings);
+            const settings = await SettingsManager.getCurrentSettings();
+            await SettingsManager.applySettings(settings);
         });
         focusSoundTypeVolumeElement.addEventListener('change', async () => {
-            const settings = await getCurrentSettings();
-            await applySettings(settings);
+            const settings = await SettingsManager.getCurrentSettings();
+            await SettingsManager.applySettings(settings);
         });
     }
 
@@ -412,13 +362,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         projectNameInput.addEventListener('change', async (e) => {
             const value = e.target.value.trim();
             if (value) {
-                await addProjectToHistory(value);
+                await ProjectHistoryManager.addProjectToHistory(value);
             }
         });
         projectNameInput.addEventListener('blur', async (e) => {
             const value = e.target.value.trim();
             if (value) {
-                await addProjectToHistory(value);
+                await ProjectHistoryManager.addProjectToHistory(value);
             }
         });
     }
@@ -438,4 +388,111 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.location.href = `mailto:willyads@gmail.com?subject=${subject}&body=${body}`;
         });
     }
+});
+
+// 이벤트 핸들러
+const EventHandlers = {
+    async handleSettingsChange() {
+        const settings = await SettingsManager.getCurrentSettings();
+        await SettingsManager.applySettings(settings);
+    },
+
+    async handleProjectNameChange(e) {
+        const value = e.target.value.trim();
+        if (value) {
+            await ProjectHistoryManager.addProjectToHistory(value);
+        }
+    },
+
+    handleFeedbackSubmit(e) {
+        e.preventDefault();
+        const feedback = document.getElementById('feedback-text').value.trim();
+        if (!feedback) {
+            alert('의견을 입력해주세요.');
+            return;
+        }
+        const subject = encodeURIComponent('포모도로 타이머 피드백');
+        const body = encodeURIComponent(feedback);
+        window.location.href = `mailto:willyads@gmail.com?subject=${subject}&body=${body}`;
+    },
+
+    async handleImportSettings(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                let settings = JSON.parse(e.target.result);
+                ['focus', 'shortBreak', 'longBreak'].forEach(sessionType => {
+                    if (settings[sessionType]) delete settings[sessionType].playSound;
+                });
+                await SettingsManager.applySettings(settings);
+                if (settings.lang) {
+                    chrome.storage.sync.set({ selectedLanguage: settings.lang }, () => {
+                        if (typeof updateLanguage === 'function') {
+                            updateLanguage(settings.lang);
+                        }
+                    });
+                }
+                showToast('설정이 가져오기되었습니다.', 'success');
+            } catch (error) {
+                console.error('[importSettings] 잘못된 설정 파일:', error);
+                showToast('잘못된 설정 파일입니다.', 'error');
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    },
+
+    async handleResetSettings() {
+        if (confirm('모든 설정을 초기값으로 되돌리시겠습니까?')) {
+            await SettingsManager.applySettings(DEFAULT_SETTINGS);
+            showToast('설정이 초기화되었습니다.', 'success');
+        }
+    }
+};
+
+// 초기화 함수
+async function initializeSettings() {
+    await ProjectHistoryManager.loadProjectHistory();
+
+    // 초기 설정 로드 및 적용
+    return new Promise((resolve) => {
+        chrome.storage.sync.get('settings', async (result) => {
+            let initialSettings = result.settings || DEFAULT_SETTINGS;
+            if (!initialSettings.version) initialSettings.version = CONSTANTS.DEFAULT_VERSION;
+            if (!initialSettings.lang) initialSettings.lang = CONSTANTS.DEFAULT_LANG;
+            await SettingsManager.applySettings(initialSettings);
+            resolve();
+        });
+    });
+}
+
+// 이벤트 리스너 등록 함수
+function registerEventListeners() {
+    document.getElementById('reset-settings')?.addEventListener('click', EventHandlers.handleResetSettings);
+
+    // 설정 변경 시 자동 저장
+    document.querySelectorAll('input, select').forEach(element => {
+        if (element.id !== 'feedback-text') {
+            element.addEventListener('change', EventHandlers.handleSettingsChange);
+        }
+    });
+
+    // 프로젝트 이름 입력란
+    const projectNameInput = document.getElementById('project-name');
+    if (projectNameInput) {
+        projectNameInput.addEventListener('change', EventHandlers.handleProjectNameChange);
+        projectNameInput.addEventListener('blur', EventHandlers.handleProjectNameChange);
+    }
+
+    // 피드백 폼
+    document.getElementById('feedback-form')?.addEventListener('submit', EventHandlers.handleFeedbackSubmit);
+}
+
+// DOMContentLoaded 이벤트 핸들러
+document.addEventListener('DOMContentLoaded', async () => {
+    await initializeSettings();
+    registerEventListeners();
 }); 
