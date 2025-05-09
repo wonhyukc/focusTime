@@ -276,7 +276,7 @@ async function addProjectToHistoryBackground(projectName) {
         await chrome.storage.local.set({ [PROJECT_HISTORY_KEY]: history });
         console.log('[Background] Project history updated:', history);
     } catch (error) {
-        console.error("[Background] Error adding project to history:", error);
+        showToast('Error adding project to history: ' + error.message, 'error');
     }
 }
 
@@ -973,7 +973,7 @@ async function saveSessionData(completedSession) {
        await chrome.storage.local.set({ pomodoroHistory: history });
        console.log("Session history saved:", pomodoroEntry);
    } catch (error) {
-       console.error("Error saving session history:", error);
+       showToast('Error saving session history: ' + error.message, 'error');
    }
 }
 
