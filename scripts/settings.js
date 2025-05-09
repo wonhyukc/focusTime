@@ -1,3 +1,9 @@
+/**
+ * settings.js - Handles the settings UI and logic for the Pomodoro Chrome Extension.
+ * Manages user settings, project history, and feedback form interactions.
+ * Relies on shared logic from common.js.
+ */
+
 import { PROJECT_HISTORY_KEY, MAX_HISTORY_SIZE, DEFAULT_VERSION, DEFAULT_LANG, DEFAULT_SETTINGS_BG, validateDuration, ProjectHistoryManager, normalizeSettings, showToast } from './common.js';
 
 // 상수 정의
@@ -71,8 +77,14 @@ const Utils = {
     }
 };
 
-// 설정 관리 클래스
+/**
+ * SettingsManager handles reading, merging, and applying user settings to the UI and storage.
+ */
 class SettingsManager {
+    /**
+     * Gets the current settings from the UI.
+     * @returns {Promise<object>} The current settings object.
+     */
     static async getCurrentSettings() {
         const settings = {
             projectName: document.getElementById('project-name')?.value || DEFAULT_SETTINGS.projectName,
@@ -84,6 +96,11 @@ class SettingsManager {
         return settings;
     }
 
+    /**
+     * Gets the session settings for a given session type from the UI.
+     * @param {string} sessionType
+     * @returns {object}
+     */
     static getSessionSettings(sessionType) {
         const prefix = sessionType === 'longBreak' ? 'long-break' : `${sessionType}-break`;
         return {
@@ -108,6 +125,11 @@ class SettingsManager {
         };
     }
 
+    /**
+     * Merges user settings with defaults, ensuring all fields are present.
+     * @param {object} userSettings
+     * @returns {object}
+     */
     static mergeWithDefaultSettings(userSettings) {
         return {
             projectName: userSettings.projectName ?? DEFAULT_SETTINGS_BG.projectName,
@@ -119,6 +141,10 @@ class SettingsManager {
         };
     }
 
+    /**
+     * Applies the given settings to the UI and saves them to storage.
+     * @param {object} settings
+     */
     static async applySettings(settings) {
         try {
             if (!settings.version) {
@@ -132,6 +158,10 @@ class SettingsManager {
         }
     }
 
+    /**
+     * Updates the UI elements with the given settings.
+     * @param {object} settings
+     */
     static async updateUIElements(settings) {
         // 프로젝트 이름 설정
         const projectNameElement = document.getElementById('project-name');
@@ -145,6 +175,11 @@ class SettingsManager {
         });
     }
 
+    /**
+     * Updates the UI for a specific session type.
+     * @param {string} sessionType
+     * @param {object} sessionSettings
+     */
     static updateSessionUI(sessionType, sessionSettings) {
         const prefix = sessionType === 'longBreak' ? 'long-break' : `${sessionType}-break`;
         const elements = {
@@ -171,6 +206,11 @@ class SettingsManager {
         }
     }
 
+    /**
+     * Saves the settings to chrome.storage.sync and updates project history.
+     * @param {object} settings
+     * @returns {Promise<void>}
+     */
     static async saveSettings(settings) {
         return new Promise((resolve, reject) => {
             chrome.storage.sync.set({ settings }, async () => {
@@ -230,8 +270,11 @@ function resetSettings() {
     }
 }
 
-// 이벤트 리스너 등록
-document.addEventListener('DOMContentLoaded', async () => {
+/**
+ * Initializes settings and project history on DOMContentLoaded.
+ * @returns {Promise<void>}
+ */
+async function initializeSettings() {
     await ProjectHistoryManager.loadProjectHistory(); // 프로젝트 기록 로드 먼저
 
     // 초기 설정 로드 및 적용
@@ -310,31 +353,36 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.location.href = `mailto:willyads@gmail.com?subject=${subject}&body=${body}`;
         });
     }
-});
+}
 
-// 이벤트 핸들러
-const EventHandlers = {
-    async handleSettingsChange() {
-        const settings = await SettingsManager.getCurrentSettings();
-        await SettingsManager.applySettings(normalizeSettings(settings));
-    },
+/**
+ * Registers all event listeners for the settings page.
+ */
+function registerEventListeners() {
+    // 이벤트 핸들러
+    const EventHandlers = {
+        async handleSettingsChange() {
+            const settings = await SettingsManager.getCurrentSettings();
+            await SettingsManager.applySettings(normalizeSettings(settings));
+        },
 
-    async handleProjectNameChange(e) {
-        const value = e.target.value.trim();
-        if (value) {
-            await ProjectHistoryManager.addProjectToHistory(value);
+        async handleProjectNameChange(e) {
+            const value = e.target.value.trim();
+            if (value) {
+                await ProjectHistoryManager.addProjectToHistory(value);
+            }
+        },
+
+        handleFeedbackSubmit(e) {
+            e.preventDefault();
+            const feedback = document.getElementById('feedback-text').value.trim();
+            if (!feedback) {
+                showToast('의견을 입력해주세요.', 'error');
+                return;
+            }
+            const subject = encodeURIComponent('포모도로 타이머 피드백');
+            const body = encodeURIComponent(feedback);
+            window.location.href = `mailto:willyads@gmail.com?subject=${subject}&body=${body}`;
         }
-    },
-
-    handleFeedbackSubmit(e) {
-        e.preventDefault();
-        const feedback = document.getElementById('feedback-text').value.trim();
-        if (!feedback) {
-            showToast('의견을 입력해주세요.', 'error');
-            return;
-        }
-        const subject = encodeURIComponent('포모도로 타이머 피드백');
-        const body = encodeURIComponent(feedback);
-        window.location.href = `mailto:willyads@gmail.com?subject=${subject}&body=${body}`;
-    }
-};
+    };
+}

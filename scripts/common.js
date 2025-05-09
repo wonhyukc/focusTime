@@ -1,9 +1,36 @@
-// 공통 상수 및 기본 설정
+/**
+ * common.js - Shared constants, utility functions, and classes for Pomodoro Chrome Extension.
+ * Used by both settings.js and background.js to ensure DRY and consistent logic.
+ */
+
+/**
+ * Key for storing project history in chrome.storage.local
+ * @type {string}
+ */
 export const PROJECT_HISTORY_KEY = 'projectHistory';
+
+/**
+ * Maximum number of project history entries to keep
+ * @type {number}
+ */
 export const MAX_HISTORY_SIZE = 10;
+
+/**
+ * Default version string for settings
+ * @type {string}
+ */
 export const DEFAULT_VERSION = '1.0';
+
+/**
+ * Default language code
+ * @type {string}
+ */
 export const DEFAULT_LANG = 'ko';
 
+/**
+ * Default settings object for background/settings
+ * @type {object}
+ */
 export const DEFAULT_SETTINGS_BG = {
     projectName: "포모로그 설정",
     version: DEFAULT_VERSION,
@@ -44,12 +71,22 @@ export const DEFAULT_SETTINGS_BG = {
     }
 };
 
-// 유틸 함수
+/**
+ * Validates and returns a positive integer duration, or a default value.
+ * @param {any} duration
+ * @param {number} defaultValue
+ * @returns {number}
+ */
 export function validateDuration(duration, defaultValue) {
     const num = parseInt(duration);
     return (!isNaN(num) && num > 0) ? num : defaultValue;
 }
 
+/**
+ * Escapes a field for CSV output.
+ * @param {any} field
+ * @returns {string}
+ */
 export function escapeCsvField(field) {
     if (field === null || field === undefined) {
         return '';
@@ -61,6 +98,11 @@ export function escapeCsvField(field) {
     return str;
 }
 
+/**
+ * Formats a date string as 'YYYY-MM-DD HH:mm'.
+ * @param {string} dateString
+ * @returns {string}
+ */
 export function formatDateToYMDHM(dateString) {
     const date = new Date(dateString);
     const year = date.getFullYear();
@@ -71,8 +113,14 @@ export function formatDateToYMDHM(dateString) {
     return `${year}-${month}-${day} ${hour}:${minute}`;
 }
 
-// 프로젝트 기록 관리 클래스
+/**
+ * Manages project history in chrome.storage.local and updates the datalist UI.
+ */
 export class ProjectHistoryManager {
+    /**
+     * Adds a project name to history, updates storage and datalist.
+     * @param {string} projectName
+     */
     static async addProjectToHistory(projectName) {
         if (!projectName) return;
         try {
@@ -86,20 +134,27 @@ export class ProjectHistoryManager {
             await chrome.storage.local.set({ [PROJECT_HISTORY_KEY]: history });
             ProjectHistoryManager.populateDataList(history);
         } catch (error) {
-            console.error("Error adding project to history:", error);
+            showToast('Error adding project to history: ' + error.message, 'error');
         }
     }
 
+    /**
+     * Loads project history from storage and updates the datalist.
+     */
     static async loadProjectHistory() {
         try {
             const result = await chrome.storage.local.get([PROJECT_HISTORY_KEY]);
             const history = result[PROJECT_HISTORY_KEY] || [];
             ProjectHistoryManager.populateDataList(history);
         } catch (error) {
-            console.error("Error loading project history:", error);
+            showToast('Error loading project history: ' + error.message, 'error');
         }
     }
 
+    /**
+     * Populates the datalist UI with project history.
+     * @param {string[]} history
+     */
     static populateDataList(history) {
         const dataList = document.getElementById('project-history-list');
         if (!dataList) return;
@@ -112,7 +167,11 @@ export class ProjectHistoryManager {
     }
 }
 
-// settings 구조 보정 함수
+/**
+ * Ensures a settings object has all required fields and types, filling in defaults as needed.
+ * @param {object} settings
+ * @returns {object}
+ */
 export function normalizeSettings(settings) {
     if (!settings || typeof settings !== 'object') settings = {};
     const normalized = {
@@ -144,7 +203,11 @@ export function normalizeSettings(settings) {
     return normalized;
 }
 
-// 사용자 피드백용 토스트 함수 (간단 버전)
+/**
+ * Shows a toast message to the user, or falls back to alert/console if unavailable.
+ * @param {string} message
+ * @param {'info'|'success'|'error'} [type='info']
+ */
 export function showToast(message, type = 'info') {
     // type: 'info', 'success', 'error'
     if (typeof window !== 'undefined' && window.showToast) {

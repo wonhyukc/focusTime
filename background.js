@@ -1,3 +1,9 @@
+/**
+ * background.js - Main background script for Pomodoro Chrome Extension.
+ * Handles timer state, alarms, notifications, project history, and communication with other parts of the extension.
+ * Relies on shared logic from scripts/common.js.
+ */
+
 import { PROJECT_HISTORY_KEY, MAX_HISTORY_SIZE, DEFAULT_VERSION, DEFAULT_LANG, DEFAULT_SETTINGS_BG, validateDuration, escapeCsvField, formatDateToYMDHM, ProjectHistoryManager, normalizeSettings, showToast } from './scripts/common.js';
 
 // 프로젝트 기록 저장 키 (settings.js와 동일하게 사용)
@@ -61,7 +67,10 @@ let isCreatingMenus = false;
 let lastPlayedSoundType = null;
 let lastPlayedVolume = null;
 
-// 컨텍스트 메뉴 생성
+/**
+ * Creates the initial context menus for the extension.
+ * @returns {Promise<void>}
+ */
 async function createInitialMenus() {
     if (isCreatingMenus) return;
     isCreatingMenus = true;
@@ -107,7 +116,10 @@ async function createInitialMenus() {
     isCreatingMenus = false;
 }
 
-// 실행 중일 때의 메뉴 생성
+/**
+ * Creates the context menus for when the timer is running.
+ * @returns {Promise<void>}
+ */
 async function createRunningMenus() {
     if (isCreatingMenus) return;
     isCreatingMenus = true;
@@ -175,6 +187,9 @@ async function createRunningMenus() {
     isCreatingMenus = false;
 }
 
+/**
+ * Opens the dashboard page in a new tab.
+ */
 function openDashboardPage() {
     chrome.tabs.create({ url: chrome.runtime.getURL('dashboard.html') });
 }
@@ -261,7 +276,11 @@ chrome.action.onClicked.addListener(async () => {
     }
 });
 
-// 프로젝트 기록에 이름 추가 (background용)
+/**
+ * Adds a project name to the project history in storage (background use).
+ * @param {string} projectName
+ * @returns {Promise<void>}
+ */
 async function addProjectToHistoryBackground(projectName) {
     if (!projectName) return;
 
@@ -280,7 +299,10 @@ async function addProjectToHistoryBackground(projectName) {
     }
 }
 
-// 현재 설정 가져오기 (Promise 버전)
+/**
+ * Gets the current settings from chrome.storage.sync, normalized.
+ * @returns {Promise<object>}
+ */
 async function getCurrentSettings() {
     try {
         const result = await chrome.storage.sync.get('settings');
@@ -346,7 +368,11 @@ async function getCurrentSettings() {
     }
 }
 
-// 타이머 시작
+/**
+ * Starts the timer for a given session type.
+ * @param {string} type
+ * @returns {Promise<void>}
+ */
 async function startTimer(type) {
     console.log('[TIMER][startTimer] 세션 시작');
     console.log('[TIMER][startTimer] 세션 정보:', {
@@ -422,7 +448,11 @@ async function startTimer(type) {
     });
 }
 
-// 다음 세션 시작 (nextSessionType을 인자로 받음)
+/**
+ * Starts the next session, given the next session type.
+ * @param {string} nextSessionType
+ * @returns {Promise<void>}
+ */
 async function startNextSession(nextSessionType) {
     console.log('[TIMER][startNextSession] 다음 세션 시작');
     console.log('[TIMER][startNextSession] 세션 정보:', {
@@ -469,7 +499,10 @@ async function startNextSession(nextSessionType) {
     await createRunningMenus();
 }
 
-// 타이머 시작/일시정지/재개
+/**
+ * Toggles the timer between running and paused states.
+ * @returns {Promise<void>}
+ */
 async function toggleTimer() {
     console.log('=== Background toggleTimer called ===');
     console.log('State before toggle:', {
@@ -508,7 +541,9 @@ async function toggleTimer() {
     });
 }
 
-// 뱃지/툴팁(타이틀) 업데이트 함수
+/**
+ * Updates the badge and tooltip for the current timer state.
+ */
 function updateBadgeForPauseState() {
     const color = timerState.isRunning ? 
         (timerState.type !== 'focus' ? '#2ecc71' : '#3498db') :  // 실행 중: 휴식-초록색, 집중-파란색
@@ -519,7 +554,10 @@ function updateBadgeForPauseState() {
     updateActionTitle(); // 툴팁도 함께 업데이트
 }
 
-// 기존 updateBadge 함수 수정
+/**
+ * Updates the badge text for the timer.
+ * @param {number} timeLeft
+ */
 function updateBadge(timeLeft, isBreak) {
     // timeLeft가 유효하지 않은 경우 기본 설정값을 사용
     if (!timeLeft || isNaN(timeLeft)) {
@@ -539,7 +577,9 @@ function updateBadge(timeLeft, isBreak) {
     updateActionTitle(); // 툴팁도 함께 업데이트
 }
 
-// 아이콘 툴팁(타이틀) 업데이트 함수
+/**
+ * Updates the action icon's tooltip.
+ */
 function updateActionTitle() {
     let sessionLabel;
     if (timerState.type === 'focus') {
@@ -565,7 +605,10 @@ function updateActionTitle() {
     chrome.action.setTitle({ title: `${sessionLabel} ${timeStr} 남음` });
 }
 
-// 뱃지 텍스트 업데이트 헬퍼 함수
+/**
+ * Updates the badge text for the timer.
+ * @param {number} timeLeft
+ */
 function updateBadgeText(timeLeft) {
     // 유효성 검사
     if (!timeLeft || isNaN(timeLeft) || timeLeft < 0) {
@@ -653,7 +696,13 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     });
 });
 
-// Offscreen Document를 통해 소리를 재생하는 함수
+/**
+ * Handles playing a sound via the offscreen document.
+ * @param {string} soundType
+ * @param {boolean} [isPreview=false]
+ * @param {number} [volume]
+ * @returns {Promise<void>}
+ */
 async function playSound(soundType, isPreview = false, volume = undefined) {
     console.log('[SOUND][playSound] 호출:', {
         soundType: soundType,
@@ -754,14 +803,20 @@ function getSettings() {
     });
 }
 
-// 새로운 싸이클 시작
+/**
+ * Starts a new Pomodoro cycle.
+ * @returns {Promise<void>}
+ */
 async function startNewCycle() {
     timerState.pomodoroCount = 0;
     await startTimer('focus');
     await createRunningMenus();
 }
 
-// 타이머 중지
+/**
+ * Stops the timer and resets state.
+ * @returns {Promise<void>}
+ */
 async function stopTimer() {
     console.log('[TIMER][stopTimer] 타이머 중지');
     
@@ -804,7 +859,9 @@ async function stopTimer() {
     chrome.action.setBadgeBackgroundColor({ color: '#3498db' });
 }
 
-// 타이머 업데이트
+/**
+ * Updates the timer countdown.
+ */
 function updateTimer() {
     if (!timerState.isRunning) return;
 
@@ -817,7 +874,10 @@ function updateTimer() {
     }
 }
 
-// 타이머 완료
+/**
+ * Handles timer completion logic and transitions.
+ * @returns {Promise<void>}
+ */
 async function timerComplete() {
     console.log('[TIMER][timerComplete] 세션 종료');
     console.log('[TIMER][timerComplete] 세션 정보:', {
@@ -951,7 +1011,11 @@ async function timerComplete() {
     });
 }
 
-// 세션 데이터 저장 (신규 함수)
+/**
+ * Saves a completed session to storage.
+ * @param {object} completedSession
+ * @returns {Promise<void>}
+ */
 async function saveSessionData(completedSession) {
     // completedSession: { startTime, type, durationMinutes, projectName }
    if (!completedSession || !completedSession.startTime || !completedSession.type) {
@@ -1049,31 +1113,10 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
 
 // --- 통계 관련 함수들 --- 
 
-// CSV 특수 문자 처리 함수
-function escapeCsvField(field) {
-    if (field === null || field === undefined) {
-        return '';
-    }
-    const str = String(field);
-    // 필드에 쉼표, 큰따옴표, 또는 줄바꿈 문자가 포함된 경우 큰따옴표로 묶고 내부 큰따옴표는 두 번 씁니다.
-    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
-        return `"${str.replace(/"/g, '""')}"`;
-    }
-    return str;
-}
-
-// 날짜를 'YYYY-MM-DD HH:mm' 포맷으로 변환하는 함수
-function formatDateToYMDHM(dateString) {
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hour = String(date.getHours()).padStart(2, '0');
-    const minute = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hour}:${minute}`;
-}
-
-// 통계 데이터 내보내기 (CSV 형식, 날짜 포맷 엄격 적용)
+/**
+ * Exports statistics as a CSV file.
+ * @returns {Promise<{success: boolean, dataUri?: string, filename?: string, message?: string}>}
+ */
 async function exportStats() {
     try {
         const result = await chrome.storage.local.get('pomodoroHistory');
@@ -1114,7 +1157,11 @@ async function exportStats() {
     }
 }
 
-// 파싱된 통계 데이터 가져오기 (신규 함수)
+/**
+ * Imports parsed statistics from an array.
+ * @param {Array} historyArray
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
 async function importParsedStats(historyArray) {
     // console.log("[Background] Received data for importParsedStats:", JSON.stringify(historyArray?.slice(0, 5))); // 수신 데이터 로그 추가
     try {
@@ -1147,7 +1194,10 @@ async function importParsedStats(historyArray) {
     }
 }
 
-// 통계 데이터 초기화
+/**
+ * Resets statistics in storage.
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
 async function resetStats() {
     try {
         // 사용자 확인은 dashboard에서 처리 가정
