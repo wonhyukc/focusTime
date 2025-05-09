@@ -1,4 +1,4 @@
-import { PROJECT_HISTORY_KEY, MAX_HISTORY_SIZE, DEFAULT_VERSION, DEFAULT_LANG, DEFAULT_SETTINGS_BG, validateDuration, ProjectHistoryManager, normalizeSettings } from './common.js';
+import { PROJECT_HISTORY_KEY, MAX_HISTORY_SIZE, DEFAULT_VERSION, DEFAULT_LANG, DEFAULT_SETTINGS_BG, validateDuration, ProjectHistoryManager, normalizeSettings, showToast } from './common.js';
 
 // 상수 정의
 const CONSTANTS = {

@@ -142,4 +142,22 @@ export function normalizeSettings(settings) {
     if (typeof normalized.longBreak.duration !== 'number') normalized.longBreak.duration = DEFAULT_SETTINGS_BG.longBreak.duration;
     if (typeof normalized.longBreak.startAfter !== 'number') normalized.longBreak.startAfter = DEFAULT_SETTINGS_BG.longBreak.startAfter;
     return normalized;
+}
+
+// 사용자 피드백용 토스트 함수 (간단 버전)
+export function showToast(message, type = 'info') {
+    // type: 'info', 'success', 'error'
+    if (typeof window !== 'undefined' && window.showToast) {
+        window.showToast(message, type);
+    } else if (typeof window !== 'undefined') {
+        // 간단 대체: alert
+        alert(`[${type}] ${message}`);
+    } else {
+        // background 등에서는 콘솔로 대체
+        if (type === 'error') {
+            console.error(message);
+        } else {
+            console.log(message);
+        }
+    }
 } 

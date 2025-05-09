@@ -1,4 +1,4 @@
-import { PROJECT_HISTORY_KEY, MAX_HISTORY_SIZE, DEFAULT_VERSION, DEFAULT_LANG, DEFAULT_SETTINGS_BG, validateDuration, escapeCsvField, formatDateToYMDHM, ProjectHistoryManager, normalizeSettings } from './scripts/common.js';
+import { PROJECT_HISTORY_KEY, MAX_HISTORY_SIZE, DEFAULT_VERSION, DEFAULT_LANG, DEFAULT_SETTINGS_BG, validateDuration, escapeCsvField, formatDateToYMDHM, ProjectHistoryManager, normalizeSettings, showToast } from './scripts/common.js';
 
 // 프로젝트 기록 저장 키 (settings.js와 동일하게 사용)
 const PROJECT_HISTORY_KEY = 'projectHistory';
