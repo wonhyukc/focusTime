@@ -1,5 +1,5 @@
 // offscreen.js
-console.log('\n---집중시간 앱 시작---------------');
+
 
 // 문서 로드 완료 시 background로 메시지 전송
 document.addEventListener('DOMContentLoaded', () => {

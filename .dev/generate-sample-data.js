@@ -183,10 +183,8 @@ function convertToCSV(data) {
 
 // 데이터 생성 및 CSV 저장
 const sampleData = generateSampleData();
-console.log(`생성된 샘플 데이터: ${sampleData.length}개 세션`);
 
-// JSON 형식으로 콘솔에 출력 (디버깅용)
-// console.log(JSON.stringify(sampleData, null, 2));
+
 
 // CSV 형식으로 변환
 const csvData = convertToCSV(sampleData);
@@ -205,9 +203,8 @@ if (typeof document !== 'undefined') {
     link.click();
     document.body.removeChild(link);
     
-    console.log('CSV 파일 다운로드 준비 완료. 저장되는 위치를 확인하세요.');
+    
 } else {
     // Node.js 환경일 경우
-    console.log(csvData);
-    console.log('위 CSV 데이터를 복사하여 파일로 저장하세요.');
+    
 } 
