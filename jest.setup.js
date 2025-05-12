@@ -1,7 +1,7 @@
 // Jest DOM 확장
 require('@testing-library/jest-dom');
 
-// 전역 모의 객체 설정
+// Chrome API 모의
 global.chrome = {
     storage: {
         local: {
@@ -35,4 +35,7 @@ global.KeyboardEvent = class KeyboardEvent {
         this.key = options.key;
         this.bubbles = options.bubbles;
     }
-}; 
+};
+
+// 타이머 모의
+jest.useFakeTimers(); 
