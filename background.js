@@ -1,47 +1,15 @@
-// 프로젝트 기록 저장 키 (settings.js와 동일하게 사용)
-const PROJECT_HISTORY_KEY = 'projectHistory';
-const MAX_HISTORY_SIZE = 10; // 기록 최대 개수 (선택 사항)
+import { TimerManager } from './scripts/timer.js';
+import { NotificationManager } from './scripts/notification.js';
+import { DEFAULT_SETTINGS_BG } from './scripts/settings.js';
 
-// 기본 설정값 (background용 - settings.js와 동기화 필요)
-const DEFAULT_SETTINGS_BG = {
-    projectName: "포모로그 설정", // 기본 프로젝트 이름 변경
-    version: "1.0", // 버전 정보 추가
-    focus: {
-        duration: 25,
-        sound: "beep", // '타이머 소리' 기본값
-        soundVolume: 10, // 디폴트 볼륨을 10으로 변경
-        soundType: "brown_noise", // '재생' 기본값 (이제 beep/gong 제외)
-        desktopNotification: true,
-        tabNotification: true
-    },
-    shortBreak: {
-        duration: 5,
-        sound: "beep", // '타이머 소리' 기본값
-        soundVolume: 10,
-        desktopNotification: true,
-        tabNotification: true
-    },
-    longBreak: {
-        duration: 15,
-        startAfter: 4,
-        sound: "beep", // '타이머 소리' 기본값
-        soundVolume: 10,
-        desktopNotification: true,
-        tabNotification: true
-    },
-    general: {
-        soundEnabled: true,
-        autoStartBreaks: false,
-        autoStartPomodoros: false,
-        availableSounds: [
-            { name: "기본 비프음", value: "low-short-beep" }, // 이 값은 이제 '재생'에는 없음
-            { name: "공(Gong)", value: "gong" },
-            { name: "Brown Noise", value: "brown_noise" },
-            { name: "Rainy Day", value: "rainy_birds" },
-            { name: "Clock Ticking", value: "clock_ticking" }
-        ]
-    }
-};
+// 프로젝트 기록 저장 키
+const PROJECT_HISTORY_KEY = 'projectHistory';
+const MAX_HISTORY_SIZE = 10;
+
+// 전역 변수
+let timerManager;
+let notificationManager;
+let settings = DEFAULT_SETTINGS_BG;
 
 // 타이머 상태
 let timerState = {
@@ -177,82 +145,122 @@ function openDashboardPage() {
     chrome.tabs.create({ url: chrome.runtime.getURL('dashboard.html') });
 }
 
-// 초기 설정
-chrome.runtime.onInstalled.addListener(async (details) => {
-    // 확장 프로그램이 설치, 업데이트, 재로드될 때마다 dashboard.html을 새 탭으로 엽니다.
-    if (["install", "update", "chrome_update", "reload"].includes(details.reason)) {
-        openDashboardPage();
+// 초기화
+async function initialize() {
+    // 설정 로드
+    const result = await chrome.storage.local.get('settings');
+    if (result.settings) {
+        settings = { ...DEFAULT_SETTINGS_BG, ...result.settings };
     }
-    // 기본 설정 초기화
-    chrome.storage.sync.get(['settings'], (result) => {
-        if (!result.settings) {
-            chrome.storage.sync.set({ settings: DEFAULT_SETTINGS_BG }, () => {
-                
-            });
+
+    // 매니저 초기화
+    notificationManager = new NotificationManager();
+    timerManager = new TimerManager(settings, notificationManager);
+
+    // 이벤트 리스너 설정
+    setupEventListeners();
+}
+
+// 이벤트 리스너 설정
+function setupEventListeners() {
+    // 알람 이벤트
+    chrome.alarms.onAlarm.addListener(async (alarm) => {
+        if (alarm.name === timerManager.state.alarmName) {
+            if (timerManager.state.isRunning) {
+                if (timerManager.state.timeLeft > 0) {
+                    timerManager.state.timeLeft--;
+                    await timerManager.saveState();
+                } else {
+                    await timerManager.completeTimer();
+                }
+            }
         }
     });
-    // 초기 메뉴 생성
-    await createInitialMenus();
-});
 
-// 알람 이벤트 처리
-chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === timerState.alarmName && timerState.isRunning) {
-        if (timerState.timeLeft > 0) {
-            timerState.timeLeft--;
-            chrome.storage.local.set({ timeLeft: timerState.timeLeft });
-            updateBadge(timerState.timeLeft, timerState.type !== 'focus');
-                } else {
-            timerComplete();
-            }
-    }
-});
-
-// 알림 클릭 이벤트 처리
-chrome.notifications.onClicked.addListener(async (notificationId) => {
-    if (notificationId === 'pomodoroNotification') {
-        
-                chrome.notifications.clear(notificationId);
-        // --- 이전 세션 타입을 storage에서 읽어서 사용 ---
-        let previousType = 'unknown';
-        try {
-            const result = await chrome.storage.local.get('pomodoroPreviousType');
-            if (result.pomodoroPreviousType) previousType = result.pomodoroPreviousType;
-        } catch (e) {}
-        // 다음 세션 타입 명확히 계산
-        let nextType;
-        if (previousType === 'focus') {
-            const settings = await getCurrentSettings();
-            if (timerState.pomodoroCount > 0 && timerState.pomodoroCount % validateDuration(settings.longBreak.startAfter, DEFAULT_SETTINGS_BG.longBreak.startAfter) === 0) {
-                nextType = 'longBreak';
-            } else {
-                nextType = 'shortBreak';
-            }
-        } else {
-            nextType = 'focus';
+    // 메시지 이벤트
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.target === 'background') {
+            handleMessage(message, sendResponse);
+            return true;
         }
-        await startNextSession(nextType);
-    }
-});
+    });
 
-// 확장 프로그램 아이콘 클릭 이벤트 처리
-chrome.action.onClicked.addListener(async () => {
-    const { isRunning, timeLeft, sessionComplete, type } = timerState;
-    if (isRunning) {
-        // 실행 중이면 일시정지
-        
-        await toggleTimer();
-    } else if (!isRunning && timeLeft > 0 && !sessionComplete) {
-        // 일시정지 상태면 재개
-        
-        await toggleTimer();
-    } else {
-        // 완전히 정지/종료 상태면 현재 세션 타입으로 시작
-        
-        await startTimer(type);
-        await createRunningMenus();
+    // 알림 클릭 이벤트
+    chrome.notifications.onClicked.addListener((notificationId) => {
+        notificationManager.handleNotificationClick(notificationId);
+    });
+
+    // 설정 변경 이벤트
+    chrome.storage.onChanged.addListener(async (changes, namespace) => {
+        if (namespace === 'sync' && changes.settings) {
+            settings = { ...settings, ...changes.settings.newValue };
+            if (timerManager.state.timeLeft > 0) {
+                await timerManager.updateTimerSettings(settings);
+            }
+        }
+    });
+}
+
+// 메시지 처리
+async function handleMessage(message, sendResponse) {
+    switch (message.type) {
+        case 'start-timer':
+            await timerManager.startTimer(message.data.type);
+            sendResponse({ success: true });
+            break;
+
+        case 'toggle-timer':
+            await timerManager.toggleTimer();
+            sendResponse({ success: true });
+            break;
+
+        case 'stop-timer':
+            await timerManager.stopTimer();
+            sendResponse({ success: true });
+            break;
+
+        case 'get-timer-state':
+            sendResponse({
+                timeLeft: timerManager.state.timeLeft,
+                isRunning: timerManager.state.isRunning,
+                type: timerManager.state.type,
+                sessionComplete: timerManager.state.sessionComplete,
+                pomodoroCount: timerManager.state.pomodoroCount
+            });
+            break;
+
+        case 'update-settings':
+            settings = { ...settings, ...message.data };
+            await chrome.storage.local.set({ settings });
+            sendResponse({ success: true });
+            break;
+
+        case 'get-settings':
+            sendResponse(settings);
+            break;
+
+        case 'export-stats':
+            const result = await timerManager.exportStats();
+            sendResponse(result);
+            break;
+
+        case 'import-stats':
+            const importResult = await timerManager.importStats(message.data);
+            sendResponse(importResult);
+            break;
+
+        case 'reset-stats':
+            const resetResult = await timerManager.resetStats();
+            sendResponse(resetResult);
+            break;
+
+        default:
+            sendResponse({ success: false, error: 'Unknown message type' });
     }
-});
+}
+
+// 초기화 실행
+initialize();
 
 // 프로젝트 기록에 이름 추가 (background용)
 async function addProjectToHistoryBackground(projectName) {
@@ -873,53 +881,6 @@ async function saveSessionData(completedSession) {
        console.error("Error saving session history:", error);
    }
 }
-
-// 설정 변경 감지 및 현재 세션 업데이트
-chrome.storage.onChanged.addListener(async (changes, namespace) => {
-    if (namespace === 'sync' && changes.settings) {
-        const settings = await getCurrentSettings();
-        // 현재 실행 중인 세션이 있을 경우 시간 업데이트
-        if (timerState.timeLeft > 0) {
-            let newDuration;
-            let newVolume;
-            let newSoundType;
-            switch (timerState.type) {
-                case 'focus':
-                    newDuration = settings.focus.duration * 60;
-                    newVolume = settings.focus.soundTypeVolume ?? settings.focus.soundVolume ?? DEFAULT_SETTINGS_BG.focus.soundVolume;
-                    newSoundType = settings.focus.soundType;
-                    break;
-                case 'shortBreak':
-                    newDuration = settings.shortBreak.duration * 60;
-                    newVolume = settings.shortBreak.soundTypeVolume ?? settings.shortBreak.soundVolume ?? DEFAULT_SETTINGS_BG.shortBreak.soundVolume;
-                    newSoundType = settings.shortBreak.soundType;
-                    break;
-                case 'longBreak':
-                    newDuration = settings.longBreak.duration * 60;
-                    newVolume = settings.longBreak.soundTypeVolume ?? settings.longBreak.soundVolume ?? DEFAULT_SETTINGS_BG.longBreak.soundVolume;
-                    newSoundType = settings.longBreak.soundType;
-                    break;
-            }
-            // 남은 시간 비율 계산 및 적용
-            const remainingRatio = timerState.timeLeft / (timerState.timeLeft + 1);
-            timerState.timeLeft = Math.round(newDuration * remainingRatio);
-            // 상태 저장
-            await chrome.storage.local.set({ timeLeft: timerState.timeLeft });
-            // 뱃지 업데이트
-            updateBadgeForPauseState();
-            // --- 볼륨 즉시 반영 ---
-            if (typeof newVolume === 'number') {
-                chrome.runtime.sendMessage({
-                    command: 'playSound',
-                    soundType: newSoundType,
-                    isPreview: false,
-                    volume: newVolume
-                });
-            }
-            // --- 볼륨 즉시 반영 끝 ---
-        }
-    }
-});
 
 // --- 통계 관련 함수들 --- 
 
