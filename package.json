@@ -1,14 +1,21 @@
 {
-  "name": "pomolog-pomodoro-timer",
+  "name": "pomodoro-timer",
   "version": "1.0.0",
-  "description": "포모로그 타이머 크롬 확장 프로그램",
+  "description": "A simple Pomodoro timer extension",
   "scripts": {
-    "generate-icons": "node generate-icons.js"
+    "build": "tsc && npm run copy-files",
+    "watch": "tsc -w",
+    "test": "jest",
+    "copy-files": "copyfiles \"dashboard.html\" \"offscreen.html\" \"styles/*\" \"sounds/*\" \"icons/*\" \"i18n/*\" \"scripts/*.js\" dist"
   },
   "dependencies": {
     "sharp": "^0.32.1"
   },
   "devDependencies": {
-    "@types/chrome": "^0.0.322"
+    "@types/chrome": "^0.0.260",
+    "@types/jest": "^29.5.12",
+    "copyfiles": "^2.4.1",
+    "jest": "^29.7.0",
+    "typescript": "^5.3.3"
   }
 }

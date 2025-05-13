@@ -1,5 +1,5 @@
 import { StateManager } from './state';
-import { TimerType, TimerSettings, SessionData } from './types';
+import { TimerType, TimerSettings, SessionData, TimerState } from './types';
 
 export class TimerManager {
     private stateManager: StateManager;
@@ -14,7 +14,7 @@ export class TimerManager {
 
     // 타이머 시작
     async startTimer(type: TimerType): Promise<void> {
-        const updates = {
+        const updates: Partial<TimerState> = {
             type,
             isRunning: true,
             sessionComplete: false,
@@ -108,7 +108,7 @@ export class TimerManager {
 
         // 다음 세션 타입 결정
         const nextType = this.getNextSessionType();
-        const updates = {
+        const updates: Partial<TimerState> = {
             type: nextType,
             timeLeft: this.getDurationForType(nextType) * 60,
             sessionStartTime: new Date().toISOString(),

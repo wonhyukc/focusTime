@@ -14,5 +14,25 @@ export const DEFAULT_SETTINGS_BG: TimerSettings = {
     },
     autoStartPomodoro: false,
     autoStartBreaks: false,
-    longBreakInterval: 4
+    longBreakInterval: 4,
+    focus: {
+        duration: 25,
+        sound: 'bell',
+        soundVolume: 1.0
+    },
+    shortBreak: {
+        duration: 5,
+        sound: 'gentle',
+        soundVolume: 1.0
+    },
+    longBreak: {
+        duration: 15,
+        startAfter: 4,
+        sound: 'chime',
+        soundVolume: 1.0
+    },
+    general: {
+        autoStartPomodoros: false,
+        autoStartBreaks: false
+    }
 }; 

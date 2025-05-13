@@ -94,7 +94,7 @@ async function handleMessage(message: Message, sender: any, sendResponse: (respo
             break;
 
         case 'GET_SETTINGS':
-            sendResponse({ success: true, settings: state.settings });
+            sendResponse({ success: true, settings: state.settings || undefined });
             break;
 
         case 'UPDATE_SETTINGS':

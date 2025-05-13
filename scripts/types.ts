@@ -31,6 +31,26 @@ export interface TimerSettings {
     autoStartPomodoro: boolean;
     autoStartBreaks: boolean;
     longBreakInterval: number;
+    focus: {
+        duration: number;
+        sound: SoundType;
+        soundVolume: number;
+    };
+    shortBreak: {
+        duration: number;
+        sound: SoundType;
+        soundVolume: number;
+    };
+    longBreak: {
+        duration: number;
+        startAfter: number;
+        sound: SoundType;
+        soundVolume: number;
+    };
+    general: {
+        autoStartPomodoros: boolean;
+        autoStartBreaks: boolean;
+    };
 }
 
 // 세션 데이터 인터페이스

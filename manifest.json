@@ -4,6 +4,7 @@
   "version": "1.0",
   "description": "A simple Pomodoro timer extension",
   "action": {
+    "default_popup": "dashboard.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -11,7 +12,7 @@
     }
   },
   "background": {
-    "service_worker": "background.js",
+    "service_worker": "dist/background.js",
     "type": "module"
   },
   "permissions": [
@@ -20,6 +21,7 @@
     "notifications",
     "offscreen"
   ],
+  "offline_enabled": true,
   "web_accessible_resources": [
     {
       "resources": ["sounds/*"],
