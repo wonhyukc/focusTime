@@ -1,5 +1,7 @@
 import { StateManager } from './state';
 import { TimerType, TimerSettings, SessionData, TimerState } from './types';
+import { handleError } from './utils';
+import { PomodoroError } from './errors';
 
 export class TimerManager {
     private stateManager: StateManager;
@@ -165,11 +167,24 @@ export class TimerManager {
         }
     }
 
+    private async saveSessionDataWithRetry(data: any, retries = 2) {
+        try {
+            await chrome.storage.local.set({ pomodoroHistory: data });
+        } catch (error) {
+            if (retries > 0) {
+                await this.saveSessionDataWithRetry(data, retries - 1);
+            } else {
+                handleError(error, 'saveSessionData');
+                // 사용자에게 알림 등 추가 복구 로직
+                throw new PomodoroError('세션 데이터 저장 실패', 'SESSION_SAVE_FAIL');
+            }
+        }
+    }
+
     private async saveSessionData(): Promise<void> {
         const state = this.stateManager.getState();
         const endTime = new Date();
         let durationMinutes = 0;
-        
         if (state.timer.sessionStartTime) {
             try {
                 const start = new Date(state.timer.sessionStartTime);
@@ -178,7 +193,6 @@ export class TimerManager {
                 durationMinutes = 0;
             }
         }
-
         const completedSessionData: SessionData = {
             startTime: state.timer.sessionStartTime || new Date().toISOString(),
             endTime: endTime.toISOString(),
@@ -186,20 +200,18 @@ export class TimerManager {
             durationMinutes: durationMinutes,
             projectName: state.timer.currentProjectName || "N/A"
         };
-
         if (state.timer.type === 'focus') {
             await this.stateManager.updateTimerState({
                 pomodoroCount: state.timer.pomodoroCount + 1
             });
         }
-
         try {
             const result = await chrome.storage.local.get('pomodoroHistory');
             const history = result.pomodoroHistory || [];
             history.push(completedSessionData);
-            await chrome.storage.local.set({ pomodoroHistory: history });
+            await this.saveSessionDataWithRetry(history);
         } catch (error) {
-            console.error("Error saving session history:", error);
+            handleError(error, 'saveSessionData');
         }
     }
 
