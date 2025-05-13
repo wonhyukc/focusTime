@@ -1,5 +1,6 @@
 import { TimerManager } from './scripts/timer.js';
 import { NotificationManager } from './scripts/notification.js';
+import { StateManager } from './scripts/state.js';
 import { DEFAULT_SETTINGS_BG } from './scripts/settings.js';
 
 // 프로젝트 기록 저장 키
@@ -9,6 +10,7 @@ const MAX_HISTORY_SIZE = 10;
 // 전역 변수
 let timerManager;
 let notificationManager;
+let stateManager;
 let settings = DEFAULT_SETTINGS_BG;
 
 // 타이머 상태
@@ -149,11 +151,10 @@ function openDashboardPage() {
 async function initialize() {
     // 설정 로드
     const result = await chrome.storage.local.get('settings');
-    if (result.settings) {
-        settings = { ...DEFAULT_SETTINGS_BG, ...result.settings };
-    }
+    const settings = result.settings || DEFAULT_SETTINGS_BG;
 
     // 매니저 초기화
+    stateManager = new StateManager();
     notificationManager = new NotificationManager();
     timerManager = new TimerManager(settings, notificationManager);
 
@@ -165,97 +166,90 @@ async function initialize() {
 function setupEventListeners() {
     // 알람 이벤트
     chrome.alarms.onAlarm.addListener(async (alarm) => {
-        if (alarm.name === timerManager.state.alarmName) {
-            if (timerManager.state.isRunning) {
-                if (timerManager.state.timeLeft > 0) {
-                    timerManager.state.timeLeft--;
-                    await timerManager.saveState();
-                } else {
-                    await timerManager.completeTimer();
-                }
+        if (alarm.name === 'pomodoroTimer') {
+            const state = stateManager.getState();
+            if (state.timer.timeLeft > 0) {
+                await stateManager.updateTimerState({
+                    timeLeft: state.timer.timeLeft - 1
+                });
+            } else {
+                await timerManager.completeTimer();
             }
         }
     });
 
     // 메시지 이벤트
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (message.target === 'background') {
-            handleMessage(message, sendResponse);
-            return true;
-        }
+        handleMessage(message, sender, sendResponse);
+        return true;
     });
 
     // 알림 클릭 이벤트
     chrome.notifications.onClicked.addListener((notificationId) => {
-        notificationManager.handleNotificationClick(notificationId);
+        if (notificationId === 'pomodoroNotification') {
+            chrome.tabs.create({ url: 'dashboard.html' });
+        }
     });
 
     // 설정 변경 이벤트
-    chrome.storage.onChanged.addListener(async (changes, namespace) => {
-        if (namespace === 'sync' && changes.settings) {
-            settings = { ...settings, ...changes.settings.newValue };
-            if (timerManager.state.timeLeft > 0) {
-                await timerManager.updateTimerSettings(settings);
-            }
+    chrome.storage.onChanged.addListener(async (changes, areaName) => {
+        if (areaName === 'local' && changes.settings) {
+            await timerManager.updateSettings(changes.settings.newValue);
         }
     });
 }
 
 // 메시지 처리
-async function handleMessage(message, sendResponse) {
+async function handleMessage(message, sender, sendResponse) {
+    const state = stateManager.getState();
+
     switch (message.type) {
-        case 'start-timer':
-            await timerManager.startTimer(message.data.type);
+        case 'START_TIMER':
+            await timerManager.startTimer(message.timerType);
             sendResponse({ success: true });
             break;
 
-        case 'toggle-timer':
-            await timerManager.toggleTimer();
-            sendResponse({ success: true });
-            break;
-
-        case 'stop-timer':
+        case 'STOP_TIMER':
             await timerManager.stopTimer();
             sendResponse({ success: true });
             break;
 
-        case 'get-timer-state':
-            sendResponse({
-                timeLeft: timerManager.state.timeLeft,
-                isRunning: timerManager.state.isRunning,
-                type: timerManager.state.type,
-                sessionComplete: timerManager.state.sessionComplete,
-                pomodoroCount: timerManager.state.pomodoroCount
-            });
-            break;
-
-        case 'update-settings':
-            settings = { ...settings, ...message.data };
-            await chrome.storage.local.set({ settings });
+        case 'TOGGLE_TIMER':
+            await timerManager.toggleTimer();
             sendResponse({ success: true });
             break;
 
-        case 'get-settings':
-            sendResponse(settings);
+        case 'GET_TIMER_STATE':
+            sendResponse({ state: state.timer });
             break;
 
-        case 'export-stats':
-            const result = await timerManager.exportStats();
-            sendResponse(result);
+        case 'GET_SETTINGS':
+            sendResponse({ settings: state.settings });
             break;
 
-        case 'import-stats':
-            const importResult = await timerManager.importStats(message.data);
-            sendResponse(importResult);
+        case 'UPDATE_SETTINGS':
+            await stateManager.updateSettings(message.settings);
+            await timerManager.updateSettings(message.settings);
+            sendResponse({ success: true });
             break;
 
-        case 'reset-stats':
-            const resetResult = await timerManager.resetStats();
-            sendResponse(resetResult);
+        case 'EXPORT_STATS':
+            const stats = await timerManager.exportStats();
+            sendResponse({ stats });
+            break;
+
+        case 'IMPORT_STATS':
+            const result = await timerManager.importStats(message.stats);
+            sendResponse({ success: result });
+            break;
+
+        case 'RESET_STATS':
+            await timerManager.resetStats();
+            sendResponse({ success: true });
             break;
 
         default:
-            sendResponse({ success: false, error: 'Unknown message type' });
+            sendResponse({ error: 'Unknown message type' });
     }
 }
 

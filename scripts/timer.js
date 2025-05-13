@@ -1,3 +1,5 @@
+import { StateManager } from './state.js';
+
 // 타이머 상태 관리
 export class TimerState {
     constructor() {
@@ -15,18 +17,20 @@ export class TimerState {
 // 타이머 관리 클래스
 export class TimerManager {
     constructor(settings, notification) {
-        this.settings = settings;
+        this.stateManager = new StateManager();
         this.notification = notification;
-        this.state = new TimerState();
+        this.settings = settings;
     }
 
     // 타이머 시작
     async startTimer(type) {
-        this.state.type = type;
-        this.state.isRunning = true;
-        this.state.sessionComplete = false;
-        this.state.sessionStartTime = new Date().toISOString();
-        this.state.currentProjectName = this.settings.projectName || "N/A";
+        const updates = {
+            type,
+            isRunning: true,
+            sessionComplete: false,
+            sessionStartTime: new Date().toISOString(),
+            currentProjectName: this.settings.projectName || "N/A"
+        };
 
         // 타입에 따른 시간 설정
         let durationMinutes;
@@ -50,44 +54,46 @@ export class TimerManager {
                 await this.notification.playSound('none', false, 0);
         }
 
-        this.state.timeLeft = durationMinutes * 60;
-        await this.saveState();
+        updates.timeLeft = durationMinutes * 60;
+        await this.stateManager.updateTimerState(updates);
         
         // 알람 생성
-        chrome.alarms.create(this.state.alarmName, { periodInMinutes: 1/60 });
+        chrome.alarms.create('pomodoroTimer', { periodInMinutes: 1/60 });
     }
 
     // 타이머 일시정지/재개
     async toggleTimer() {
-        this.state.isRunning = !this.state.isRunning;
-        this.state.sessionComplete = false;
+        const state = this.stateManager.getState();
+        const updates = {
+            isRunning: !state.timer.isRunning,
+            sessionComplete: false
+        };
         
-        if (this.state.isRunning) {
-            chrome.alarms.create(this.state.alarmName, { periodInMinutes: 1/60 });
+        if (updates.isRunning) {
+            chrome.alarms.create('pomodoroTimer', { periodInMinutes: 1/60 });
         } else {
-            chrome.alarms.clear(this.state.alarmName);
+            chrome.alarms.clear('pomodoroTimer');
         }
         
-        await this.saveState();
+        await this.stateManager.updateTimerState(updates);
     }
 
     // 타이머 중지
     async stopTimer() {
-        chrome.alarms.clear(this.state.alarmName);
+        chrome.alarms.clear('pomodoroTimer');
         await this.notification.playSound('none', false, 0);
-        
-        this.state = new TimerState();
-        await this.saveState();
+        await this.stateManager.resetState();
     }
 
     // 타이머 완료 처리
     async completeTimer() {
-        chrome.alarms.clear(this.state.alarmName);
+        const state = this.stateManager.getState();
+        chrome.alarms.clear('pomodoroTimer');
         await this.notification.playSound('none', false, 0);
 
         // 알림음 재생
         let soundType, soundVolume;
-        switch (this.state.type) {
+        switch (state.timer.type) {
             case 'focus':
                 soundType = this.settings.focus.sound;
                 soundVolume = this.settings.focus.soundVolume;
@@ -111,10 +117,12 @@ export class TimerManager {
 
         // 다음 세션 타입 결정
         const nextType = this.getNextSessionType();
-        this.state.type = nextType;
-        this.state.timeLeft = this.getDurationForType(nextType) * 60;
-        this.state.sessionStartTime = new Date().toISOString();
-        this.state.currentProjectName = this.settings.projectName || "N/A";
+        const updates = {
+            type: nextType,
+            timeLeft: this.getDurationForType(nextType) * 60,
+            sessionStartTime: new Date().toISOString(),
+            currentProjectName: this.settings.projectName || "N/A"
+        };
 
         // 자동 시작 설정 확인
         const shouldAutoStart = nextType !== 'focus'
@@ -122,11 +130,13 @@ export class TimerManager {
             : this.settings.general.autoStartPomodoros;
 
         if (shouldAutoStart) {
+            updates.isRunning = true;
+            await this.stateManager.updateTimerState(updates);
             await this.startTimer(nextType);
         } else {
-            this.state.isRunning = false;
-            this.state.sessionComplete = true;
-            await this.saveState();
+            updates.isRunning = false;
+            updates.sessionComplete = true;
+            await this.stateManager.updateTimerState(updates);
         }
 
         // 알림 표시
@@ -140,9 +150,10 @@ export class TimerManager {
     }
 
     getNextSessionType() {
-        if (this.state.type === 'focus') {
-            if (this.state.pomodoroCount > 0 &&
-                this.state.pomodoroCount % this.validateDuration(this.settings.longBreak.startAfter) === 0) {
+        const state = this.stateManager.getState();
+        if (state.timer.type === 'focus') {
+            if (state.timer.pomodoroCount > 0 &&
+                state.timer.pomodoroCount % this.validateDuration(this.settings.longBreak.startAfter) === 0) {
                 return 'longBreak';
             }
             return 'shortBreak';
@@ -163,25 +174,14 @@ export class TimerManager {
         }
     }
 
-    async saveState() {
-        await chrome.storage.local.set({
-            timeLeft: this.state.timeLeft,
-            isRunning: this.state.isRunning,
-            type: this.state.type,
-            sessionComplete: this.state.sessionComplete,
-            pomodoroCount: this.state.pomodoroCount,
-            sessionStartTime: this.state.sessionStartTime,
-            currentProjectName: this.state.currentProjectName
-        });
-    }
-
     async saveSessionData() {
+        const state = this.stateManager.getState();
         const endTime = new Date();
         let durationMinutes = 0;
         
-        if (this.state.sessionStartTime) {
+        if (state.timer.sessionStartTime) {
             try {
-                const start = new Date(this.state.sessionStartTime);
+                const start = new Date(state.timer.sessionStartTime);
                 durationMinutes = Math.round((endTime - start) / 1000 / 60 * 100) / 100;
             } catch (e) {
                 durationMinutes = 0;
@@ -189,15 +189,17 @@ export class TimerManager {
         }
 
         const completedSessionData = {
-            startTime: this.state.sessionStartTime,
+            startTime: state.timer.sessionStartTime,
             endTime: endTime.toISOString(),
-            type: this.state.type,
+            type: state.timer.type,
             durationMinutes: durationMinutes,
-            projectName: this.state.currentProjectName
+            projectName: state.timer.currentProjectName
         };
 
-        if (this.state.type === 'focus') {
-            this.state.pomodoroCount++;
+        if (state.timer.type === 'focus') {
+            await this.stateManager.updateTimerState({
+                pomodoroCount: state.timer.pomodoroCount + 1
+            });
         }
 
         try {
@@ -305,38 +307,43 @@ export class TimerManager {
     }
 
     // 설정 업데이트
-    async updateTimerSettings(newSettings) {
+    async updateSettings(newSettings) {
         this.settings = newSettings;
-        let newDuration;
-        let newVolume;
-        let newSoundType;
+        const state = this.stateManager.getState();
+        
+        if (state.timer.timeLeft > 0) {
+            let newDuration;
+            let newVolume;
+            let newSoundType;
 
-        switch (this.state.type) {
-            case 'focus':
-                newDuration = this.settings.focus.duration * 60;
-                newVolume = this.settings.focus.soundVolume;
-                newSoundType = this.settings.focus.soundType;
-                break;
-            case 'shortBreak':
-                newDuration = this.settings.shortBreak.duration * 60;
-                newVolume = this.settings.shortBreak.soundVolume;
-                newSoundType = this.settings.shortBreak.soundType;
-                break;
-            case 'longBreak':
-                newDuration = this.settings.longBreak.duration * 60;
-                newVolume = this.settings.longBreak.soundVolume;
-                newSoundType = this.settings.longBreak.soundType;
-                break;
-        }
+            switch (state.timer.type) {
+                case 'focus':
+                    newDuration = this.settings.focus.duration * 60;
+                    newVolume = this.settings.focus.soundVolume;
+                    newSoundType = this.settings.focus.soundType;
+                    break;
+                case 'shortBreak':
+                    newDuration = this.settings.shortBreak.duration * 60;
+                    newVolume = this.settings.shortBreak.soundVolume;
+                    newSoundType = this.settings.shortBreak.soundType;
+                    break;
+                case 'longBreak':
+                    newDuration = this.settings.longBreak.duration * 60;
+                    newVolume = this.settings.longBreak.soundVolume;
+                    newSoundType = this.settings.longBreak.soundType;
+                    break;
+            }
 
-        // 남은 시간 비율 계산 및 적용
-        const remainingRatio = this.state.timeLeft / (this.state.timeLeft + 1);
-        this.state.timeLeft = Math.round(newDuration * remainingRatio);
-        await this.saveState();
+            // 남은 시간 비율 계산 및 적용
+            const remainingRatio = state.timer.timeLeft / (state.timer.timeLeft + 1);
+            await this.stateManager.updateTimerState({
+                timeLeft: Math.round(newDuration * remainingRatio)
+            });
 
-        // 소리 설정 업데이트
-        if (typeof newVolume === 'number') {
-            await this.notification.playSound(newSoundType, false, newVolume);
+            // 소리 설정 업데이트
+            if (typeof newVolume === 'number') {
+                await this.notification.playSound(newSoundType, false, newVolume);
+            }
         }
     }
 } 
