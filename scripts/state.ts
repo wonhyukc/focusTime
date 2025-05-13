@@ -1,146 +1,82 @@
 import { TimerState, TimerSettings, SessionData } from './types';
 
-interface State {
-    timer: TimerState;
-    settings: TimerSettings | null;
-    projectHistory: string[];
-    lastPlayedSound: {
-        type: string | null;
-        volume: number | null;
-    };
-}
-
-type StateListener = (state: State) => void;
+type StateListener = (oldState: TimerState, newState: TimerState) => void;
 
 export class StateManager {
-    private state: State;
-    private listeners: Set<StateListener>;
+    private state: TimerState;
+    private listeners: StateListener[] = [];
 
     constructor() {
-        this.state = {
-            timer: {
-                timeLeft: 0,
-                isRunning: false,
-                type: 'focus',
-                pomodoroCount: 0,
-                sessionComplete: false,
-                sessionStartTime: null,
-                currentProjectName: null
-            },
+        this.state = this.loadState();
+    }
+
+    subscribe(listener: StateListener): void {
+        this.listeners.push(listener);
+    }
+
+    unsubscribe(listener: StateListener): void {
+        this.listeners = this.listeners.filter(l => l !== listener);
+    }
+
+    private notifyListeners(oldState: TimerState, newState: TimerState): void {
+        this.listeners.forEach(listener => listener(oldState, newState));
+    }
+
+    async updateTimerState(updates: Partial<TimerState>): Promise<void> {
+        const oldState = { ...this.state };
+        this.state = { ...this.state, ...updates };
+        this.notifyListeners(oldState, this.state);
+        await this.saveState();
+    }
+
+    async updateSettings(settings: TimerSettings): Promise<void> {
+        const oldState = { ...this.state };
+        this.state = { ...this.state, settings };
+        this.notifyListeners(oldState, this.state);
+        await this.saveState();
+    }
+
+    async updateProjectHistory(history: SessionData[]): Promise<void> {
+        const oldState = { ...this.state };
+        this.state = { ...this.state, projectHistory: history };
+        this.notifyListeners(oldState, this.state);
+        await this.saveState();
+    }
+
+    async updateLastPlayedSound(sound: string): Promise<void> {
+        const oldState = { ...this.state };
+        this.state = { ...this.state, lastPlayedSound: sound };
+        this.notifyListeners(oldState, this.state);
+        await this.saveState();
+    }
+
+    private async saveState(): Promise<void> {
+        await chrome.storage.local.set({ state: this.state });
+    }
+
+    private loadState(): TimerState {
+        return {
+            timeLeft: 0,
+            isRunning: false,
+            type: 'focus',
+            pomodoroCount: 0,
+            sessionComplete: false,
+            sessionStartTime: null,
+            currentProjectName: '',
             settings: null,
             projectHistory: [],
-            lastPlayedSound: {
-                type: null,
-                volume: null
-            }
+            lastPlayedSound: null
         };
-        this.listeners = new Set();
     }
 
-    // 상태 구독
-    subscribe(listener: StateListener): () => void {
-        this.listeners.add(listener);
-        return () => this.listeners.delete(listener);
-    }
-
-    // 상태 변경 알림
-    private notifyListeners(): void {
-        this.listeners.forEach(listener => listener(this.state));
-    }
-
-    // 타이머 상태 업데이트
-    async updateTimerState(updates: Partial<TimerState>): Promise<void> {
-        this.state.timer = { ...this.state.timer, ...updates };
-        await this.saveState();
-        this.notifyListeners();
-    }
-
-    // 설정 업데이트
-    async updateSettings(settings: Partial<TimerSettings>): Promise<void> {
-        if (this.state.settings) {
-            this.state.settings = { ...this.state.settings, ...settings };
-        } else {
-            this.state.settings = settings as TimerSettings;
-        }
-        await this.saveState();
-        this.notifyListeners();
-    }
-
-    // 프로젝트 히스토리 업데이트
-    async updateProjectHistory(projectName: string): Promise<void> {
-        if (!projectName) return;
-
-        const history = this.state.projectHistory.filter(item => item !== projectName);
-        history.unshift(projectName);
-        if (history.length > 10) {
-            history.pop();
-        }
-
-        this.state.projectHistory = history;
-        await this.saveState();
-        this.notifyListeners();
-    }
-
-    // 마지막 재생된 소리 업데이트
-    updateLastPlayedSound(type: string | null, volume: number | null): void {
-        this.state.lastPlayedSound = { type, volume };
-        this.notifyListeners();
-    }
-
-    // 상태 저장
-    private async saveState(): Promise<void> {
-        await chrome.storage.local.set({
-            timerState: this.state.timer,
-            settings: this.state.settings,
-            projectHistory: this.state.projectHistory
-        });
-    }
-
-    // 상태 로드
-    async loadState(): Promise<State> {
-        const result = await chrome.storage.local.get([
-            'timerState',
-            'settings',
-            'projectHistory'
-        ]);
-
-        this.state = {
-            timer: result.timerState || this.state.timer,
-            settings: result.settings || this.state.settings,
-            projectHistory: result.projectHistory || [],
-            lastPlayedSound: this.state.lastPlayedSound
-        };
-
-        this.notifyListeners();
-        return this.state;
-    }
-
-    // 상태 초기화
     async resetState(): Promise<void> {
-        this.state = {
-            timer: {
-                timeLeft: 0,
-                isRunning: false,
-                type: 'focus',
-                pomodoroCount: 0,
-                sessionComplete: false,
-                sessionStartTime: null,
-                currentProjectName: null
-            },
-            settings: this.state.settings,
-            projectHistory: [],
-            lastPlayedSound: {
-                type: null,
-                volume: null
-            }
-        };
-
+        const oldState = { ...this.state };
+        this.state = this.loadState();
+        this.notifyListeners(oldState, this.state);
         await this.saveState();
-        this.notifyListeners();
     }
 
-    // 현재 상태 가져오기
-    getState(): State {
+    getState(): TimerState {
         return this.state;
     }
 } 

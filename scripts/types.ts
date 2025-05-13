@@ -13,6 +13,9 @@ export interface TimerState {
     sessionComplete: boolean;
     sessionStartTime: string | null;
     currentProjectName: string | null;
+    settings: TimerSettings | null;
+    projectHistory: SessionData[];
+    lastPlayedSound: string | null;
 }
 
 // 설정 인터페이스
@@ -89,6 +92,7 @@ export interface Response {
     state?: TimerState;
     settings?: TimerSettings;
     stats?: {
+        success: boolean;
         dataUri?: string;
         filename?: string;
         message?: string;

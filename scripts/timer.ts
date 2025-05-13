@@ -1,17 +1,24 @@
 import { StateManager } from './state';
-import { TimerType, TimerSettings, SessionData, TimerState } from './types';
+import { TimerType, TimerSettings, SessionData, TimerState, SoundType } from './types';
 import { handleError } from './utils';
 import { PomodoroError } from './errors';
+import { StatisticsManager } from './statistics';
+import { StorageManager } from './storage';
+import { NotificationManager } from './notification';
 
 export class TimerManager {
     private stateManager: StateManager;
-    private notification: any; // NotificationManager 타입은 나중에 정의
+    private notification: NotificationManager;
     private settings: TimerSettings;
+    private statisticsManager: StatisticsManager;
+    private storageManager: StorageManager;
 
-    constructor(settings: TimerSettings, notification: any) {
+    constructor(settings: TimerSettings, notification: NotificationManager) {
         this.stateManager = new StateManager();
         this.notification = notification;
         this.settings = settings;
+        this.statisticsManager = new StatisticsManager();
+        this.storageManager = new StorageManager();
     }
 
     // 타이머 시작
@@ -30,7 +37,7 @@ export class TimerManager {
             case 'focus':
                 durationMinutes = this.validateDuration(this.settings.focus.duration);
                 if (this.settings.focus.sound && this.settings.focus.sound !== 'none') {
-                    await this.notification.playSound(this.settings.focus.sound, false, this.settings.focus.soundVolume);
+                    await this.notification.playSound(this.settings.focus.sound as SoundType, false, this.settings.focus.soundVolume);
                 }
                 break;
             case 'shortBreak':
@@ -57,7 +64,7 @@ export class TimerManager {
     async toggleTimer(): Promise<void> {
         const state = this.stateManager.getState();
         const updates = {
-            isRunning: !state.timer.isRunning,
+            isRunning: !state.isRunning,
             sessionComplete: false
         };
         
@@ -84,9 +91,9 @@ export class TimerManager {
         await this.notification.playSound('none', false, 0);
 
         // 알림음 재생
-        let soundType: string;
+        let soundType: SoundType;
         let soundVolume: number;
-        switch (state.timer.type) {
+        switch (state.type) {
             case 'focus':
                 soundType = this.settings.focus.sound;
                 soundVolume = this.settings.focus.soundVolume;
@@ -144,9 +151,9 @@ export class TimerManager {
 
     private getNextSessionType(): TimerType {
         const state = this.stateManager.getState();
-        if (state.timer.type === 'focus') {
-            if (state.timer.pomodoroCount > 0 &&
-                state.timer.pomodoroCount % this.validateDuration(this.settings.longBreak.startAfter) === 0) {
+        if (state.type === 'focus') {
+            if (state.pomodoroCount > 0 &&
+                state.pomodoroCount % this.validateDuration(this.settings.longBreak.startAfter) === 0) {
                 return 'longBreak';
             }
             return 'shortBreak';
@@ -167,49 +174,34 @@ export class TimerManager {
         }
     }
 
-    private async saveSessionDataWithRetry(data: any, retries = 2) {
-        try {
-            await chrome.storage.local.set({ pomodoroHistory: data });
-        } catch (error) {
-            if (retries > 0) {
-                await this.saveSessionDataWithRetry(data, retries - 1);
-            } else {
-                handleError(error, 'saveSessionData');
-                // 사용자에게 알림 등 추가 복구 로직
-                throw new PomodoroError('세션 데이터 저장 실패', 'SESSION_SAVE_FAIL');
-            }
-        }
-    }
-
     private async saveSessionData(): Promise<void> {
         const state = this.stateManager.getState();
         const endTime = new Date();
         let durationMinutes = 0;
-        if (state.timer.sessionStartTime) {
+        if (state.sessionStartTime) {
             try {
-                const start = new Date(state.timer.sessionStartTime);
+                const start = new Date(state.sessionStartTime);
                 durationMinutes = Math.round((endTime.getTime() - start.getTime()) / 1000 / 60 * 100) / 100;
             } catch (e) {
                 durationMinutes = 0;
             }
         }
         const completedSessionData: SessionData = {
-            startTime: state.timer.sessionStartTime || new Date().toISOString(),
+            startTime: state.sessionStartTime || new Date().toISOString(),
             endTime: endTime.toISOString(),
-            type: state.timer.type,
+            type: state.type,
             durationMinutes: durationMinutes,
-            projectName: state.timer.currentProjectName || "N/A"
+            projectName: state.currentProjectName || "N/A"
         };
-        if (state.timer.type === 'focus') {
+        if (state.type === 'focus') {
             await this.stateManager.updateTimerState({
-                pomodoroCount: state.timer.pomodoroCount + 1
+                pomodoroCount: state.pomodoroCount + 1
             });
         }
         try {
-            const result = await chrome.storage.local.get('pomodoroHistory');
-            const history = result.pomodoroHistory || [];
+            const history = await this.storageManager.getPomodoroHistory();
             history.push(completedSessionData);
-            await this.saveSessionDataWithRetry(history);
+            await this.storageManager.saveSessionDataWithRetry(history);
         } catch (error) {
             handleError(error, 'saveSessionData');
         }
@@ -217,74 +209,17 @@ export class TimerManager {
 
     // 통계 내보내기
     async exportStats(): Promise<{ success: boolean; dataUri?: string; filename?: string; message?: string }> {
-        try {
-            const result = await chrome.storage.local.get('pomodoroHistory');
-            const history: SessionData[] = result.pomodoroHistory || [];
-            if (history.length === 0) {
-                return { success: false, message: '내보낼 통계 데이터가 없습니다.' };
-            }
-
-            // CSV 헤더
-            const header = ['시작시각(년월일시분)', '세션', '지속시간', '프로젝트'];
-            // 데이터 행 생성
-            const rows = history.map(entry => {
-                const startTime = this.formatDateToYMDHM(entry.startTime);
-                const sessionType = entry.type === 'focus' ? '집중' : (entry.type === 'shortBreak' ? '휴식' : '긴휴식');
-                const duration = entry.durationMinutes;
-                const projectName = entry.projectName;
-
-                return [
-                    this.escapeCsvField(startTime),
-                    this.escapeCsvField(sessionType),
-                    this.escapeCsvField(duration),
-                    this.escapeCsvField(projectName)
-                ].join(',');
-            });
-
-            // CSV 내용 결합
-            const csvContent = [header.join(','), ...rows].join('\r\n');
-            const dataUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
-
-            return { success: true, dataUri: dataUri, filename: 'pomodoro_stats.csv' };
-        } catch (error) {
-            console.error("Error exporting stats:", error);
-            return { success: false, message: '통계 내보내기 중 오류 발생' };
-        }
+        return this.statisticsManager.exportStats();
     }
 
     // 통계 가져오기
     async importStats(historyArray: SessionData[]): Promise<{ success: boolean; message: string }> {
-        try {
-            if (!Array.isArray(historyArray)) {
-                throw new Error('Imported data is not an array.');
-            }
-
-            if (historyArray.length > 0 && (
-                !historyArray[0].startTime ||
-                !historyArray[0].type ||
-                historyArray[0].durationMinutes === undefined ||
-                historyArray[0].projectName === undefined)
-            ) {
-                throw new Error('Imported data structure mismatch.');
-            }
-
-            await chrome.storage.local.set({ pomodoroHistory: historyArray });
-            chrome.runtime.sendMessage({ action: "statsUpdated" });
-            return { success: true, message: `통계 ${historyArray.length}건 가져오기 완료` };
-        } catch (error) {
-            return { success: false, message: `통계 가져오기 실패: ${error instanceof Error ? error.message : 'Unknown error'}` };
-        }
+        return this.statisticsManager.importStats(historyArray);
     }
 
     // 통계 초기화
     async resetStats(): Promise<{ success: boolean; message: string }> {
-        try {
-            await chrome.storage.local.remove('pomodoroHistory');
-            chrome.runtime.sendMessage({ action: "statsUpdated" });
-            return { success: true, message: '통계 초기화 완료' };
-        } catch (error) {
-            return { success: false, message: '통계 초기화 중 오류 발생' };
-        }
+        return this.statisticsManager.resetStats();
     }
 
     // 유틸리티 메서드
@@ -314,12 +249,12 @@ export class TimerManager {
         this.settings = newSettings;
         const state = this.stateManager.getState();
         
-        if (state.timer.timeLeft > 0) {
+        if (state.timeLeft > 0) {
             let newDuration: number;
             let newVolume: number;
             let newSoundType: string;
 
-            switch (state.timer.type) {
+            switch (state.type) {
                 case 'focus':
                     newDuration = this.settings.focus.duration * 60;
                     newVolume = this.settings.focus.soundVolume;
@@ -340,14 +275,14 @@ export class TimerManager {
             }
 
             // 남은 시간 비율 계산 및 적용
-            const remainingRatio = state.timer.timeLeft / (state.timer.timeLeft + 1);
+            const remainingRatio = state.timeLeft / (state.timeLeft + 1);
             await this.stateManager.updateTimerState({
                 timeLeft: Math.round(newDuration * remainingRatio)
             });
 
             // 소리 설정 업데이트
             if (typeof newVolume === 'number') {
-                await this.notification.playSound(newSoundType, false, newVolume);
+                await this.notification.playSound(newSoundType as SoundType, false, newVolume);
             }
         }
     }

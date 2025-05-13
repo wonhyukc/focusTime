@@ -1,6 +1,13 @@
 import { SoundType } from './types';
 
-export class NotificationManager {
+export interface NotificationManager {
+    showNotification(title: string, message: string, icon: string): Promise<void>;
+    showSessionComplete(type: string): Promise<void>;
+    playSound(type: SoundType, loop?: boolean, volume?: number): Promise<void>;
+    handleNotificationClick(notificationId: string): void;
+}
+
+export class ChromeNotificationManager implements NotificationManager {
     private offscreenDocument: Window | null = null;
 
     constructor() {
